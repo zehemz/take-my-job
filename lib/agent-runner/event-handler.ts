@@ -1,6 +1,6 @@
-import type { Card, Column, AgentRun } from "../types";
-import type { IDbQueries, IBroadcaster, IAnthropicClient, AgentSessionEvent } from "../interfaces";
-import { handleUpdateCard, type UpdateCardInput } from "./tools";
+import type { Card, Column, AgentRun, UpdateCardInput } from "../types";
+import type { IDbQueries, IBroadcaster, IAnthropicClient } from "../interfaces";
+import { handleUpdateCard } from "./tools";
 
 // ---------------------------------------------------------------------------
 // Context
@@ -33,7 +33,7 @@ export interface HandleEventResult {
 // ---------------------------------------------------------------------------
 
 export async function handleEvent(
-  event: AgentSessionEvent,
+  event: unknown,
   ctx: EventHandlerContext
 ): Promise<HandleEventResult> {
   const {
@@ -48,18 +48,16 @@ export async function handleEvent(
     turnCount,
   } = ctx;
 
-  switch (event.type) {
+  const e = event as Record<string, unknown>;
+
+  switch (e.type) {
     // -----------------------------------------------------------------------
     case "agent.message": {
-      const text = (event.text as string) ?? "";
+      const text = (e.text as string) ?? "";
       if (text) {
         await db.appendAgentRunOutput(run.id, text);
       }
-      broadcaster.emit(card.id, {
-        type: "agent_message",
-        cardId: card.id,
-        text,
-      });
+      broadcaster.emit(card.id, { type: "agent_message", text });
       return { exitLoop: false };
     }
 
@@ -67,8 +65,7 @@ export async function handleEvent(
     case "agent.thinking": {
       broadcaster.emit(card.id, {
         type: "agent_thinking",
-        cardId: card.id,
-        thinking: event.thinking,
+        thinking: e.thinking as string,
       });
       return { exitLoop: false };
     }
@@ -77,18 +74,17 @@ export async function handleEvent(
     case "agent.tool_use": {
       broadcaster.emit(card.id, {
         type: "tool_use",
-        cardId: card.id,
-        tool_name: event.tool_name,
-        input: event.input,
+        tool_name: e.tool_name as string,
+        input: e.input,
       });
       return { exitLoop: false };
     }
 
     // -----------------------------------------------------------------------
     case "agent.custom_tool_use": {
-      if (event.tool_name === "update_card") {
-        const toolUseId = event.tool_use_id as string | undefined;
-        const toolInput = event.input as UpdateCardInput;
+      if (e.tool_name === "update_card") {
+        const toolUseId = e.tool_use_id as string | undefined;
+        const toolInput = e.input as UpdateCardInput;
 
         const result = await handleUpdateCard(toolInput, {
           card,
@@ -99,7 +95,6 @@ export async function handleEvent(
           sessionId,
         });
 
-        // Send tool result back to the session
         await anthropicClient.sendMessage(sessionId, {
           type: "user.custom_tool_result",
           tool_use_id: toolUseId,
@@ -115,7 +110,7 @@ export async function handleEvent(
 
     // -----------------------------------------------------------------------
     case "session.status_idle": {
-      const stopReason = event.stop_reason as { type: string } | undefined;
+      const stopReason = e.stop_reason as { type: string } | undefined;
       const stopType = stopReason?.type;
 
       if (stopType === "end_turn") {
@@ -127,12 +122,7 @@ export async function handleEvent(
         return { exitLoop: true, outcome: "failed" };
       }
 
-      if (stopType === "requires_action") {
-        // Waiting for tool result — keep loop alive
-        return { exitLoop: false };
-      }
-
-      // Unknown idle stop reason — keep looping
+      // "requires_action" or unknown — keep loop alive
       return { exitLoop: false };
     }
 
@@ -143,15 +133,13 @@ export async function handleEvent(
 
     // -----------------------------------------------------------------------
     case "session.error": {
-      const errorMsg = (event.error as string) ?? "Unknown session error";
+      const errorMsg = (e.error as string) ?? "Unknown session error";
       return { exitLoop: true, outcome: "failed", error: errorMsg };
     }
 
     // -----------------------------------------------------------------------
     case "span.model_request_end": {
-      const usage = event.usage as
-        | { input_tokens?: number; output_tokens?: number }
-        | undefined;
+      const usage = e.usage as { input_tokens?: number; output_tokens?: number } | undefined;
       if (usage) {
         tokenUsage.inputTokens += usage.input_tokens ?? 0;
         tokenUsage.outputTokens += usage.output_tokens ?? 0;
@@ -160,9 +148,7 @@ export async function handleEvent(
     }
 
     // -----------------------------------------------------------------------
-    default: {
-      // Unhandled event — safe to ignore
+    default:
       return { exitLoop: false };
-    }
   }
 }

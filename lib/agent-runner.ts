@@ -1,16 +1,9 @@
 import type { Card, Column, AgentRun } from "./types";
+import { AgentRunStatus } from "./types";
 import type { IDbQueries, IAnthropicClient, IBroadcaster } from "./interfaces";
+import { config } from "./config";
 import { renderTurnPrompt } from "./prompt-renderer";
 import { handleEvent } from "./agent-runner/event-handler";
-
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-const MAX_TURNS = parseInt(process.env.MAX_TURNS ?? "10", 10);
-
-const CONTINUATION_MESSAGE =
-  "Please continue working on the task. Remember to call update_card(completed) when done.";
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -51,7 +44,7 @@ export async function run(
     const resources: Array<{
       type: "github_repository";
       url: string;
-      authorization_token: string;
+      authorization_token?: string;
       mount_path: string;
       checkout: { type: "branch"; name: string };
     }> = card.githubRepoUrl
@@ -59,7 +52,7 @@ export async function run(
           {
             type: "github_repository",
             url: card.githubRepoUrl,
-            authorization_token: process.env.GITHUB_TOKEN ?? "",
+            authorization_token: config.GITHUB_TOKEN,
             mount_path: "/workspace/repo",
             checkout: { type: "branch", name: card.githubBranch ?? "main" },
           },
@@ -77,7 +70,7 @@ export async function run(
     const sessionId = session.id;
 
     // 4. Mark AgentRun as running with sessionId
-    const currentRun = await db.updateAgentRunStatus(agentRun.id, "running", {
+    const currentRun = await db.updateAgentRunStatus(agentRun.id, AgentRunStatus.running, {
       sessionId,
     });
 
@@ -90,9 +83,9 @@ export async function run(
       roleDisplayName: agentRun.role,
     });
 
-    // 6. Open stream and send first message concurrently
+    // 6. Open stream and send first message concurrently (stream-first per spec §6.3)
     const [stream] = await Promise.all([
-      Promise.resolve(anthropicClient.streamSession(sessionId)),
+      anthropicClient.streamSession(sessionId),
       anthropicClient.sendMessage(sessionId, {
         type: "user.message",
         content: prompt,
@@ -102,16 +95,15 @@ export async function run(
     // Shared mutable state threaded through handleEvent
     const tokenUsage = { inputTokens: 0, outputTokens: 0 };
     const turnCount = { value: 0 };
-
-    // Track whether we successfully completed
-    let outcome: "completed" | "failed" | "terminated" | undefined;
+    let finalOutcome: "completed" | "failed" | "terminated" | undefined;
+    let finalError: string | undefined;
 
     // 7. Event loop
     outerLoop: for await (const event of stream) {
       // Abort check
       if (signal?.aborted) {
         await anthropicClient.interruptSession(sessionId);
-        await db.updateAgentRunStatus(currentRun.id, "cancelled");
+        await db.updateAgentRunStatus(currentRun.id, AgentRunStatus.cancelled);
         return;
       }
 
@@ -128,29 +120,27 @@ export async function run(
       });
 
       if (result.exitLoop) {
-        outcome = result.outcome;
+        finalOutcome = result.outcome;
+        finalError = result.error;
 
-        // If the loop exited due to end_turn (idle) and we haven't completed
-        // via update_card, check whether we should continue or give up.
+        // session.status_idle with end_turn: agent finished a turn but may not have
+        // called update_card(completed) yet — check turn limit and nudge if needed.
         if (
-          outcome === "completed" &&
-          currentRun.status !== "completed" &&
-          currentRun.status !== "blocked"
+          finalOutcome === "completed" &&
+          currentRun.status !== AgentRunStatus.completed &&
+          currentRun.status !== AgentRunStatus.blocked
         ) {
-          // The session went idle without the agent calling update_card(completed)
-          if (turnCount.value < MAX_TURNS) {
-            // Send a nudge and keep iterating the same stream
+          if (turnCount.value < config.MAX_TURNS) {
             await anthropicClient.sendMessage(sessionId, {
               type: "user.message",
-              content: CONTINUATION_MESSAGE,
+              content:
+                "Please continue working on the task. Remember to call update_card(completed) when done.",
             });
-            // Do NOT break — continue iterating stream events
+            finalOutcome = undefined;
             continue outerLoop;
           } else {
-            // Max turns reached without completion
-            await db.updateAgentRunStatus(currentRun.id, "failed", {
-              error: `Max turns (${MAX_TURNS}) reached without completing the task.`,
-              retryAfterMs: null,
+            await db.updateAgentRunStatus(currentRun.id, AgentRunStatus.failed, {
+              error: `Max turns (${config.MAX_TURNS}) reached without completing the task.`,
             });
             return;
           }
@@ -160,35 +150,19 @@ export async function run(
       }
     }
 
-    // Post-loop: if the run did not reach a terminal DB state, mark failed
-    if (outcome === "failed") {
-      await db.updateAgentRunStatus(currentRun.id, "failed", {
-        error: result_error(outcome),
+    // 8. Post-loop terminal state handling
+    if (finalOutcome === "failed") {
+      await db.updateAgentRunStatus(currentRun.id, AgentRunStatus.failed, {
+        error: finalError ?? "Agent session failed.",
       });
-    } else if (outcome === "terminated") {
-      await db.updateAgentRunStatus(currentRun.id, "cancelled");
+    } else if (finalOutcome === "terminated") {
+      await db.updateAgentRunStatus(currentRun.id, AgentRunStatus.cancelled);
     }
-    // "completed" and "blocked" statuses are already set by handleUpdateCard
+    // "completed" and "blocked" are already written by handleUpdateCard
   } catch (err: unknown) {
-    // 9. Generic error handling
     const message = err instanceof Error ? err.message : String(err);
-    await db.updateAgentRunStatus(agentRun.id, "failed", {
+    await db.updateAgentRunStatus(agentRun.id, AgentRunStatus.failed, {
       error: message,
     });
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-function result_error(outcome: string | undefined): string {
-  switch (outcome) {
-    case "failed":
-      return "Agent session failed (retries exhausted or session error).";
-    case "terminated":
-      return "Agent session was terminated unexpectedly.";
-    default:
-      return "Agent run ended without completion.";
   }
 }

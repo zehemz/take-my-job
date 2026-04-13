@@ -1,21 +1,20 @@
-// Shared entity types — Hour 0 stub. Engineer 1 owns the Prisma-generated versions;
-// this file is the plain-TS contract all engineers build against.
-
-export type AgentRunStatus =
-  | "pending"
-  | "running"
-  | "idle"
-  | "blocked"
-  | "completed"
-  | "failed"
-  | "cancelled";
+export enum AgentRunStatus {
+  pending = "pending",
+  running = "running",
+  idle = "idle",
+  blocked = "blocked",
+  completed = "completed",
+  failed = "failed",
+  cancelled = "cancelled",
+}
 
 export interface Board {
   id: string;
   name: string;
-  columns: Column[];
   createdAt: Date;
   updatedAt: Date;
+  columns?: Column[];
+  cards?: Card[];
 }
 
 export interface Column {
@@ -25,6 +24,8 @@ export interface Column {
   position: number;
   isActiveState: boolean;
   isTerminalState: boolean;
+  board?: Board;
+  cards?: Card[];
 }
 
 export interface Card {
@@ -32,31 +33,34 @@ export interface Card {
   boardId: string;
   columnId: string;
   title: string;
-  description?: string | null;
-  acceptanceCriteria?: string | null;
-  role?: string | null;
+  description: string | null;
+  acceptanceCriteria: string | null;
+  role: string | null;
   position: number;
-  githubRepoUrl?: string | null;
-  githubBranch?: string | null;
+  githubRepoUrl: string | null;
+  githubBranch: string | null;
   createdAt: Date;
   updatedAt: Date;
+  board?: Board;
+  column?: Column;
+  agentRuns?: AgentRun[];
 }
 
 export interface AgentRun {
   id: string;
   cardId: string;
-  columnId: string;
   role: string;
-  sessionId?: string | null;
+  sessionId: string | null;
   status: AgentRunStatus;
-  output?: string | null;
-  criteriaResults?: string | null; // JSON: CriterionResult[]
-  blockedReason?: string | null;
+  output: string | null;
+  criteriaResults: string | null;
+  blockedReason: string | null;
   attempt: number;
-  retryAfterMs?: number | null;
-  error?: string | null;
+  retryAfterMs: bigint | null;
+  error: string | null;
   createdAt: Date;
   updatedAt: Date;
+  card?: Card;
 }
 
 export interface AgentConfig {
@@ -73,3 +77,22 @@ export interface CriterionResult {
   passed: boolean;
   evidence: string;
 }
+
+export interface UpdateCardInput {
+  status: "in_progress" | "completed" | "blocked";
+  summary: string;
+  next_column?: string;
+  criteria_results?: CriterionResult[];
+  blocked_reason?: string;
+}
+
+/** SSE event types broadcast to the UI */
+export type BroadcastEvent =
+  | { type: "agent_message"; text: string }
+  | { type: "agent_thinking"; thinking: string }
+  | { type: "tool_use"; tool_name: string; input: unknown }
+  | { type: "card_update"; status: string; summary: string; next_column?: string; criteria_results?: CriterionResult[] }
+  | { type: "card_blocked"; reason: string; session_id: string; cli_command: string }
+  | { type: "status_change"; status: AgentRunStatus }
+  | { type: "error"; message: string }
+  | { type: "done" };

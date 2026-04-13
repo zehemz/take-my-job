@@ -264,9 +264,6 @@
   │  └─────────────────────────────────────────────────────────────────┘  │
   │  [ Send to agent ]                                                      │
   │                                                                         │
-  │  Option B — Connect via CLI ────────────────────────────────────────   │
-  │  $ ant sessions connect ses_01jt4k...        [ Copy ]                  │
-  │                                                                         │
   │  Agent Output (last 5 lines) ───────────────────────────────────────   │
   │  ┌─────────────────────────────────────────────────────────────────┐  │
   │  │ ...reading migrations directory...                              │  │
@@ -388,7 +385,7 @@
 ║  │                                                                           │   ║
 ║  │  "Conflicting migration files — cannot determine intended schema state"   │   ║
 ║  │                                                                           │   ║
-║  │  Assigned to: @lucas                    [ Reply ]  [ Connect via CLI ]   │   ║
+║  │  Assigned to: @lucas                                         [ Reply ]   │   ║
 ║  └──────────────────────────────────────────────────────────────────────────┘   ║
 ║                                                                                  ║
 ║  ┌──────────────────────────────────────────────────────────────────────────┐   ║
@@ -416,4 +413,4 @@
 ╚══════════════════════════════════════════════════════════════════════════════════╝
 ```
 
-**Behind the scenes:** The Attention Queue is a read-only view computed from the database — no orchestrator interaction. It queries all cards across all boards where the current user is either assignee or reviewer, filtered to states: `blocked`, `isRevisionState`, and `pendingApproval`. Cards in `blocked` state for more than 1 hour are flagged as URGENT. Actions in this view (Reply, Approve, Connect via CLI) are the same API calls as from the board view — the queue is just a different entry point to the same interactions.
+**Behind the scenes:** The Attention Queue is a read-only view computed from the database — no orchestrator interaction. It queries all cards across all boards where the current user is either assignee or reviewer, filtered to states: `blocked`, `isRevisionState`, and `pendingApproval`. Cards in `blocked` state for more than 1 hour are flagged as URGENT. Actions in this view (Reply, Approve) are the same API calls as from the board view — the queue is just a different entry point to the same interactions.

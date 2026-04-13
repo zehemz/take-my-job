@@ -1,9 +1,5 @@
-import type {
-  BroadcastEvent,
-  BroadcastHandler,
-  IBroadcaster,
-  Unsubscribe,
-} from "./interfaces";
+import type { BroadcastEvent } from "./types";
+import type { IBroadcaster } from "./interfaces";
 
 /**
  * In-process pub-sub broadcaster keyed by cardId.
@@ -14,7 +10,7 @@ import type {
  *   prevent memory leaks.
  */
 export class Broadcaster implements IBroadcaster {
-  private readonly handlers = new Map<string, Set<BroadcastHandler>>();
+  private readonly handlers = new Map<string, Set<(event: BroadcastEvent) => void>>();
 
   emit(cardId: string, event: BroadcastEvent): void {
     const subscribers = this.handlers.get(cardId);
@@ -27,7 +23,7 @@ export class Broadcaster implements IBroadcaster {
     }
   }
 
-  subscribe(cardId: string, handler: BroadcastHandler): Unsubscribe {
+  subscribe(cardId: string, handler: (event: BroadcastEvent) => void): () => void {
     let subscribers = this.handlers.get(cardId);
     if (!subscribers) {
       subscribers = new Set();

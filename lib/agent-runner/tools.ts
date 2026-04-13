@@ -1,17 +1,11 @@
-import type { Card, Column, AgentRun } from "../types";
+import type { Card, Column, AgentRun, UpdateCardInput } from "../types";
+import { AgentRunStatus } from "../types";
 import type { IDbQueries, IBroadcaster } from "../interfaces";
+import { renderCliCommand } from "../config";
 
 // ---------------------------------------------------------------------------
-// Input / Context types
+// Context
 // ---------------------------------------------------------------------------
-
-export interface UpdateCardInput {
-  status: "in_progress" | "completed" | "blocked";
-  summary: string;
-  next_column?: string;
-  criteria_results?: Array<{ criterion: string; passed: boolean; evidence: string }>;
-  blocked_reason?: string;
-}
 
 export interface UpdateCardContext {
   card: Card & { column: Column };
@@ -23,7 +17,7 @@ export interface UpdateCardContext {
 }
 
 // ---------------------------------------------------------------------------
-// Result type
+// Result
 // ---------------------------------------------------------------------------
 
 export interface UpdateCardResult {
@@ -49,7 +43,6 @@ export async function handleUpdateCard(
 
       broadcaster.emit(card.id, {
         type: "card_update",
-        cardId: card.id,
         status: "in_progress",
         summary: input.summary,
       });
@@ -63,9 +56,7 @@ export async function handleUpdateCard(
       let targetColumn: Column | undefined;
 
       if (input.next_column) {
-        targetColumn = boardColumns.find(
-          (c) => c.name === input.next_column
-        );
+        targetColumn = boardColumns.find((c) => c.name === input.next_column);
         if (!targetColumn) {
           const validNames = boardColumns.map((c) => c.name).join(", ");
           return {
@@ -74,55 +65,44 @@ export async function handleUpdateCard(
           };
         }
       } else {
-        // Pick first terminal column by position
         const sorted = [...boardColumns].sort((a, b) => a.position - b.position);
         targetColumn = sorted.find((c) => c.isTerminalState);
         if (!targetColumn) {
-          return {
-            success: false,
-            reason: "No terminal column found on the board.",
-          };
+          return { success: false, reason: "No terminal column found on the board." };
         }
       }
 
-      // Validate criteria results
+      // Validate all criteria passed
       if (input.criteria_results && input.criteria_results.length > 0) {
         for (const cr of input.criteria_results) {
           if (!cr.passed) {
-            return {
-              success: false,
-              reason: `Criterion failed: ${cr.criterion}`,
-            };
+            return { success: false, reason: `Criterion failed: ${cr.criterion}` };
           }
         }
       }
 
-      // Persist summary and criteria
       const criteriaJson = input.criteria_results
         ? JSON.stringify(input.criteria_results)
         : undefined;
 
-      await db.updateAgentRunStatus(run.id, "completed", {
+      await db.updateAgentRunStatus(run.id, AgentRunStatus.completed, {
         output: input.summary,
         ...(criteriaJson ? { criteriaResults: criteriaJson } : {}),
       });
 
-      // Move card to target column
       await db.moveCard(card.id, targetColumn.id);
 
-      // Broadcast events
       broadcaster.emit(card.id, {
         type: "card_update",
-        cardId: card.id,
         status: "completed",
         summary: input.summary,
-        nextColumn: targetColumn.name,
+        next_column: targetColumn.name,
+        criteria_results: input.criteria_results,
       });
 
       broadcaster.emit(card.id, {
         type: "status_change",
-        cardId: card.id,
-        status: "completed",
+        status: AgentRunStatus.completed,
       });
 
       return { success: true };
@@ -132,21 +112,15 @@ export async function handleUpdateCard(
     case "blocked": {
       const blockedReason = input.blocked_reason ?? "No reason provided.";
 
-      await db.updateAgentRunStatus(run.id, "blocked", {
+      await db.updateAgentRunStatus(run.id, AgentRunStatus.blocked, {
         blockedReason,
       });
 
-      // Build CLI command
-      const template =
-        process.env.CLI_ATTACH_COMMAND_TEMPLATE ?? "ant session attach {sessionId}";
-      const cliCommand = template.replace("{sessionId}", sessionId);
-
       broadcaster.emit(card.id, {
         type: "card_blocked",
-        cardId: card.id,
         reason: blockedReason,
         session_id: sessionId,
-        cli_command: cliCommand,
+        cli_command: renderCliCommand(sessionId),
       });
 
       return { success: true, shouldExitLoop: true };

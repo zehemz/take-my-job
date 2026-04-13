@@ -183,7 +183,7 @@ failed      → terminal failure; eligible for retry or manual intervention
 cancelled   → card moved out of active column before agent completed
 ```
 
-A `blocked` run is distinct from a transient `idle`. It means the agent explicitly declared it cannot proceed without human intervention. The session remains live — a developer can attach to it via the CLI (see §13) or send a message through the card UI to unblock it.
+A `blocked` run is distinct from a transient `idle`. It means the agent explicitly declared it cannot proceed without human intervention. The session remains live — a user can send a message through the card UI to unblock it (see §13).
 
 ---
 
@@ -582,7 +582,7 @@ Returns an SSE stream. The connection stays open for the duration of an active A
 | `agent_thinking` | `{ thinking: string }` | Agent's extended thinking (collapsible) |
 | `tool_use` | `{ tool_name: string, input: object }` | Agent used a built-in tool |
 | `card_update` | `{ status, summary, next_column?, criteria_results? }` | Agent called update_card |
-| `card_blocked` | `{ reason: string, session_id: string, cli_command: string }` | Agent is blocked; includes the `ant` CLI command to attach (see §13) |
+| `card_blocked` | `{ reason: string, session_id: string }` | Agent is blocked; card UI should surface a message input (see §13) |
 | `status_change` | `{ status: AgentRunStatus }` | AgentRun status changed |
 | `error` | `{ message: string }` | Session error |
 | `done` | `{}` | Stream is closing (run terminal) |
@@ -652,7 +652,6 @@ All configuration is via environment variables.
 | `MAX_RETRY_BACKOFF_MS` | `300000` | Max retry delay (5 minutes) |
 | `MAX_TURNS` | `10` | Max agent turns per session before treating as failure |
 | `MAX_STALL_MS` | `3600000` | Max run time before stall detection (1 hour) |
-| `CLI_ATTACH_COMMAND_TEMPLATE` | `ant sessions connect {session_id}` | Template for the CLI attach command; `{session_id}` is replaced at render time |
 
 ---
 
@@ -707,70 +706,40 @@ A conforming implementation passes all of the following end-to-end scenarios.
 1. Same setup as 12.8, but agent can only satisfy the first criterion
 2. **Expected:** Agent runner rejects the `update_card(completed)` call with `{ success: false, reason: "Criterion failed: New endpoint returns 200..." }`; agent attempts to fix the failing criterion before retrying
 
-### 12.10 Developer Terminal Attach (Blocked Card)
+### 12.10 Human Unblock via Card UI
 1. Create a card the agent will be unable to complete autonomously (e.g. "Deploy to prod — credentials are in 1Password")
 2. Dispatch to "In Progress"
-3. **Expected:** Agent calls `update_card(blocked, blocked_reason="Need production credentials")`; card shows blocked badge; `card_blocked` SSE event fires with `cli_command`; developer copies command, runs it in terminal, sends the credentials as a message; agent resumes; session events continue streaming to card UI
+3. **Expected:** Agent calls `update_card(blocked, blocked_reason="Need production credentials")`; card shows blocked badge; `card_blocked` SSE event fires; user types credentials into the card message input and clicks Send; agent resumes; session events continue streaming to card UI
 
 ---
 
-## 13. Developer Terminal Access
+## 13. Human Intervention
 
-When a session is `blocked` or a developer wants to inspect a live session, the system provides a one-click path to attach to it via the Anthropic CLI (`ant`).
+When a session is `blocked` or a developer wants to send context to a live session, the card UI provides a direct message input.
 
 ### 13.1 Motivation
 
-The Managed Agents platform runs the container on Anthropic's infrastructure — there is no SSH or port forwarding. The `ant` CLI is the official first-party tool for interacting with sessions from a terminal. It connects to a running or idle session by ID and provides an interactive REPL over the same SSE event channel used by the board.
+The card UI is the intervention surface. Any team member can send a message directly from the board:
+- **Developer:** provides missing context or unblocks the session
+- **PM:** answers a clarifying question without leaving the board
+- **On-call engineer:** sends a nudge to a stuck session
 
-Any team member with the CLI installed and the API key configured can attach. This covers:
-- **Developer:** inspects what the agent did, provides missing context, unblocks the session
-- **PM:** reads the agent's progress without navigating the board UI
-- **On-call engineer:** diagnoses a stuck or failed session
-
-### 13.2 The Attach Command
-
-When a session is `running` or `idle`/`blocked`, the card UI displays the attach command. The exact command is produced by a configurable function:
-
-```
-CLI_ATTACH_COMMAND_TEMPLATE = "ant sessions connect {session_id}"
-```
-
-The template is an environment variable with `{session_id}` as a placeholder. Implementations MUST read the template at startup and substitute the session ID at render time. This allows the command to be updated when the Anthropic CLI surface changes (e.g. `ant beta sessions connect`, `ant sessions attach`) without modifying application code.
-
-The rendered command is:
-- Shown prominently on the card when status is `blocked`
-- Available via a "copy" button on any card with an active `sessionId`
-- Included in the `card_blocked` SSE event payload as `cli_command`
-
-### 13.3 What Happens When You Attach
-
-Attaching via the CLI connects to the live session. From that point:
-
-- You see the agent's full message history
-- You can send messages directly (`user.message` events) — the agent receives them and resumes
-- Any tool calls and responses are visible in real time
-- The board UI continues to receive SSE events from the same session — the card updates as the agent works
-- When the agent calls `update_card(completed)` or the session terminates, the card transitions normally
-
-The CLI session and the board UI are both consumers of the same Anthropic SSE stream. They are not in conflict.
-
-### 13.4 Card UI Requirements
-
-The card component MUST:
-
-1. Display the `sessionId` (truncated, e.g. `sess_abc…xyz`) for any AgentRun with status `running`, `idle`, or `blocked`
-2. Provide a "Copy attach command" button that writes the runtime-resolved `AgentRun.cliCommand` to the clipboard
-3. When status=`blocked`: surface a prominent "Blocked" badge, show `AgentRun.blockedReason`, and make the attach command the primary CTA
-4. When status=`running` or `idle`: show the attach command in a collapsible "Debug" panel
-
-### 13.5 Human Message from the UI (Optional Enhancement)
-
-As an alternative to the CLI, the card UI MAY provide a text input to send a `user.message` directly to a `blocked` or `idle` session via `POST /api/cards/[id]/message`. This is a convenience wrapper — it calls `sessions.events.send()` and relies on the existing SSE stream to reflect the response. It does not replace the CLI; it is a lower-friction option for simple unblocking messages.
+### 13.2 Message Endpoint
 
 `POST /api/cards/[id]/message`
 ```json
 { "text": "The production DB credentials are in ANTHROPIC_DB_URL env var" }
 ```
+
+This is a thin wrapper around `sessions.events.send()`. The response arrives via the existing SSE stream — no polling required.
+
+### 13.3 Card UI Requirements
+
+The card component MUST:
+
+1. Display the `sessionId` (truncated, e.g. `sesn_abc…xyz`) for any AgentRun with status `running`, `idle`, or `blocked` — for reference and support
+2. When status=`blocked`: surface a prominent "Blocked" badge, show `AgentRun.blockedReason`, and make the message input the primary CTA
+3. When status=`running` or `idle`: show the message input in a collapsible "Debug" panel
 
 The endpoint:
 1. Looks up the card's active AgentRun and its `sessionId`
@@ -778,7 +747,6 @@ The endpoint:
 3. Calls `sessions.events.send(sessionId, { type: "user.message", content: [{ type: "text", text }] })`
 4. Sets AgentRun status back to `running`
 
-**Concurrent access note:** A developer may be attached via the CLI and the UI simultaneously — both send `user.message` events to the same session via `sessions.events.send()`. The Anthropic API serializes events per session, so messages arrive in order of receipt. Implementations do not need to coordinate between the two channels, but should be aware that the agent may receive interleaved messages from both sources.
 
 ---
 

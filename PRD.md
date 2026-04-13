@@ -169,21 +169,13 @@ Users have two ways to respond when an agent is blocked. Both must be available.
 | 3.2.3 | The conversation thread between the user and the agent is shown in order on the card | Each message is attributed (user or agent) with a timestamp. |
 | 3.2.4 | When the agent resumes after a user message, the blocked badge clears automatically | No manual status reset required. |
 
-**Option B — Remote Session (CLI)**
-
-| # | Requirement | Acceptance Criteria |
-|---|---|---|
-| 3.2.5 | A blocked card shows a CLI attach command the user can copy | Command format: `ant sessions connect <session_id>`. |
-| 3.2.6 | While a developer is connected via CLI, the card's SSE stream continues to receive output | CLI and board UI observe the same session concurrently. |
-| 3.2.7 | Output sent through the CLI session appears in the card's output panel | No polling required — output is pushed in real time. |
-
 #### 3.3 Attention Queue
 
 The Attention Queue surfaces all cards that require a human decision, across all boards, in one place. Three states qualify for the queue:
 
 | State | Trigger | Required human action |
 |---|---|---|
-| **Blocked** | Agent called `update_card(blocked)` | Reply via card message or CLI attach |
+| **Blocked** | Agent called `update_card(blocked)` | Reply via card message |
 | **Revision Needed** | Evaluation agent found failing criteria | Review report, optionally add context, send back to In Progress |
 | **Pending Approval** | Evaluation passed, sign-off required | Approve or request revision |
 
@@ -304,7 +296,6 @@ These are product decisions not yet resolved. They should be answered before imp
 
 | # | Question | Affects |
 |---|---|---|
-| OQ.1 | Should non-developer roles (designer, content writer) have access to the remote CLI session attach feature, or is that developer-only? | M3 |
 | OQ.2 | Is there a concept of a "board template" (e.g. a pre-configured set of columns and roles for a sprint board vs. a content pipeline)? | M2 |
 | OQ.3 | What is the expected auth provider? (SSO, GitHub OAuth, email+password, or left to the implementer?) | M2 |
 | OQ.4 | Should the Attention Queue (§3.3) send push notifications to mobile? Is a mobile-responsive web experience sufficient? | M3 |
