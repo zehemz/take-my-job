@@ -183,7 +183,7 @@ failed      → terminal failure; eligible for retry or manual intervention
 cancelled   → card moved out of active column before agent completed
 ```
 
-A `blocked` run is distinct from a transient `idle`. It means the agent explicitly declared it cannot proceed without human intervention. The session remains live — a developer can attach to it via the CLI (see §13) or send a message through the card UI to unblock it.
+A `blocked` run is distinct from a transient `idle`. It means the agent explicitly declared it cannot proceed without human intervention. The session remains live — a user can send a message through the card UI to unblock it (see §13).
 
 ---
 
@@ -706,16 +706,16 @@ A conforming implementation passes all of the following end-to-end scenarios.
 1. Same setup as 12.8, but agent can only satisfy the first criterion
 2. **Expected:** Agent runner rejects the `update_card(completed)` call with `{ success: false, reason: "Criterion failed: New endpoint returns 200..." }`; agent attempts to fix the failing criterion before retrying
 
-### 12.10 Developer Terminal Attach (Blocked Card)
+### 12.10 Human Unblock via Card UI
 1. Create a card the agent will be unable to complete autonomously (e.g. "Deploy to prod — credentials are in 1Password")
 2. Dispatch to "In Progress"
-3. **Expected:** Agent calls `update_card(blocked, blocked_reason="Need production credentials")`; card shows blocked badge; `card_blocked` SSE event fires with `cli_command`; developer copies command, runs it in terminal, sends the credentials as a message; agent resumes; session events continue streaming to card UI
+3. **Expected:** Agent calls `update_card(blocked, blocked_reason="Need production credentials")`; card shows blocked badge; `card_blocked` SSE event fires; user types credentials into the card message input and clicks Send; agent resumes; session events continue streaming to card UI
 
 ---
 
 ## 13. Human Intervention
 
-When a session is `blocked` or a developer wants to send context to a live session, the card UI provides a direct message input. No external CLI is required.
+When a session is `blocked` or a developer wants to send context to a live session, the card UI provides a direct message input.
 
 ### 13.1 Motivation
 
@@ -747,7 +747,6 @@ The endpoint:
 3. Calls `sessions.events.send(sessionId, { type: "user.message", content: [{ type: "text", text }] })`
 4. Sets AgentRun status back to `running`
 
-**Concurrent access note:** A developer may be attached via the CLI and the UI simultaneously — both send `user.message` events to the same session via `sessions.events.send()`. The Anthropic API serializes events per session, so messages arrive in order of receipt. Implementations do not need to coordinate between the two channels, but should be aware that the agent may receive interleaved messages from both sources.
 
 ---
 
