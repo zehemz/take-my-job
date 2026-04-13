@@ -39,9 +39,9 @@ npm install
 
 # 4. Set up environment variables
 cp .env.example .env.local
-# Add your Anthropic API key and other config to .env.local
+# Add your Anthropic API key and Neon DATABASE_URL to .env.local
 
-# 5. Set up the database
+# 5. Set up the database (requires a running PostgreSQL — e.g. Neon free tier)
 npx prisma migrate dev
 
 # 6. Run one-time agent setup (creates Anthropic agents + environment)
@@ -60,7 +60,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | Variable | Default | Description |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | required | Anthropic API key ([console.anthropic.com](https://console.anthropic.com)) |
-| `DATABASE_URL` | `file:./dev.db` | SQLite database path |
+| `DATABASE_URL` | required | PostgreSQL connection string (e.g. Neon) |
 | `GITHUB_TOKEN` | optional | GitHub PAT for repo mounting (Contents: read+write) |
 | `POLL_INTERVAL_MS` | `3000` | Orchestrator poll cadence (ms) |
 | `MAX_CONCURRENT_AGENTS` | `5` | Global concurrency cap |
@@ -78,7 +78,7 @@ Open [http://localhost:3000](http://localhost:3000).
 |---|---|
 | Framework | Next.js 14 (App Router) |
 | Styling | Tailwind CSS |
-| Database | SQLite via Prisma |
+| Database | PostgreSQL (Neon) via Prisma |
 | AI | Anthropic Managed Agents API |
 | Language | TypeScript |
 
