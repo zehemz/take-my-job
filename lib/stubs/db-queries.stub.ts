@@ -1,111 +1,122 @@
-import type { IDbQueries } from "../interfaces";
-import type { AgentConfig, AgentRun, Card, Column } from "../types";
-import { AgentRunStatus } from "../types";
+import type { IDbQueries } from "../interfaces.js";
+import type { AgentConfig, AgentRun, AgentRunStatus, Board, Card, Column } from "../types.js";
+import { AgentRunStatus as Status } from "../types.js";
 
-export function createDbQueriesStub(initialData?: {
-  cards?: Card[];
-  columns?: Column[];
-  agentRuns?: AgentRun[];
-  agentConfigs?: AgentConfig[];
-}): IDbQueries {
-  const cards = new Map<string, Card>((initialData?.cards ?? []).map((c) => [c.id, c]));
-  const columns = new Map<string, Column>((initialData?.columns ?? []).map((c) => [c.id, c]));
-  const agentRuns = new Map<string, AgentRun>((initialData?.agentRuns ?? []).map((r) => [r.id, r]));
-  const agentConfigs = new Map<string, AgentConfig>((initialData?.agentConfigs ?? []).map((c) => [c.role, c]));
-  let runIdCounter = 1;
+let idCounter = 0;
+function nextId(): string {
+  return `stub-${++idCounter}`;
+}
 
-  return {
-    async getEligibleCards(maxConcurrent, claimedIds) {
-      return Array.from(cards.values())
-        .filter((c) => {
-          const col = columns.get(c.columnId);
-          if (!col?.isActiveState) return false;
-          if (claimedIds.has(c.id)) return false;
-          const hasActive = Array.from(agentRuns.values()).some(
-            (r) => r.cardId === c.id && (r.status === AgentRunStatus.running || r.status === AgentRunStatus.idle),
-          );
-          return !hasActive;
-        })
-        .slice(0, maxConcurrent);
-    },
+export class StubDbQueries implements IDbQueries {
+  boards: Board[] = [];
+  columns: Column[] = [];
+  cards: Card[] = [];
+  agentRuns: AgentRun[] = [];
+  agentConfigs: AgentConfig[] = [];
 
-    async createAgentRun(cardId, _columnId, role, attempt) {
-      const id = `run_${runIdCounter++}`;
-      const run: AgentRun = {
-        id,
-        cardId,
-        role,
-        sessionId: null,
-        status: AgentRunStatus.pending,
-        output: null,
-        criteriaResults: null,
-        blockedReason: null,
-        attempt,
-        retryAfterMs: null,
-        error: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      agentRuns.set(id, run);
-      return run;
-    },
+  static resetIdCounter(): void {
+    idCounter = 0;
+  }
 
-    async updateAgentRunStatus(id, status, extra) {
-      const run = agentRuns.get(id);
-      if (!run) throw new Error(`AgentRun ${id} not found`);
-      const updated = { ...run, status: status as AgentRunStatus, ...extra, updatedAt: new Date() };
-      agentRuns.set(id, updated);
-      return updated;
-    },
+  async getEligibleCards(maxConcurrent: number, claimedIds: string[]): Promise<Card[]> {
+    const activeColumnIds = new Set(
+      this.columns.filter((c) => c.isActiveState).map((c) => c.id),
+    );
+    const claimedSet = new Set(claimedIds);
+    return this.cards
+      .filter((c) => {
+        if (!activeColumnIds.has(c.columnId)) return false;
+        if (claimedSet.has(c.id)) return false;
+        const hasActive = this.agentRuns.some(
+          (r) => r.cardId === c.id && (r.status === Status.running || r.status === Status.idle),
+        );
+        return !hasActive;
+      })
+      .sort((a, b) => a.position - b.position || a.createdAt.getTime() - b.createdAt.getTime())
+      .slice(0, maxConcurrent);
+  }
 
-    async appendAgentRunOutput(id, chunk) {
-      const run = agentRuns.get(id);
-      if (!run) throw new Error(`AgentRun ${id} not found`);
-      run.output = (run.output ?? "") + chunk;
-      run.updatedAt = new Date();
-    },
+  async createAgentRun(cardId: string, columnId: string, role: string, attempt: number): Promise<AgentRun> {
+    const now = new Date();
+    const run: AgentRun = {
+      id: nextId(),
+      cardId,
+      columnId,
+      role,
+      sessionId: null,
+      status: Status.pending,
+      output: null,
+      criteriaResults: null,
+      blockedReason: null,
+      attempt,
+      retryAfterMs: null,
+      error: null,
+      createdAt: now,
+      updatedAt: now,
+    };
+    this.agentRuns.push(run);
+    return run;
+  }
 
-    async getAgentConfig(role) {
-      return agentConfigs.get(role) ?? null;
-    },
+  async updateAgentRunStatus(
+    id: string,
+    status: AgentRunStatus,
+    extra?: { retryAfterMs?: number; error?: string; criteriaResults?: string; output?: string },
+  ): Promise<AgentRun> {
+    const run = this.agentRuns.find((r) => r.id === id);
+    if (!run) throw new Error(`AgentRun ${id} not found`);
+    run.status = status;
+    run.updatedAt = new Date();
+    if (extra?.retryAfterMs !== undefined) run.retryAfterMs = BigInt(extra.retryAfterMs);
+    if (extra?.error !== undefined) run.error = extra.error;
+    if (extra?.criteriaResults !== undefined) run.criteriaResults = extra.criteriaResults;
+    if (extra?.output !== undefined) run.output = extra.output;
+    return run;
+  }
 
-    async getRunningRuns() {
-      return Array.from(agentRuns.values()).filter(
-        (r) => r.status === AgentRunStatus.running || r.status === AgentRunStatus.idle,
-      );
-    },
+  async appendAgentRunOutput(id: string, chunk: string): Promise<void> {
+    const run = this.agentRuns.find((r) => r.id === id);
+    if (!run) throw new Error(`AgentRun ${id} not found`);
+    run.output = (run.output ?? "") + chunk;
+    run.updatedAt = new Date();
+  }
 
-    async getCard(id) {
-      const card = cards.get(id);
-      if (!card) return null;
-      const column = columns.get(card.columnId);
-      if (!column) return null;
-      return { ...card, column } as Card & { column: Column };
-    },
+  async getAgentConfig(role: string): Promise<AgentConfig | null> {
+    return this.agentConfigs.find((c) => c.role === role) ?? null;
+  }
 
-    async moveCard(cardId, newColumnId) {
-      const card = cards.get(cardId);
-      if (!card) throw new Error(`Card ${cardId} not found`);
-      card.columnId = newColumnId;
-      card.updatedAt = new Date();
-      return card;
-    },
+  async getRunningRuns(): Promise<AgentRun[]> {
+    return this.agentRuns.filter((r) => r.status === Status.running || r.status === Status.idle);
+  }
 
-    async getRetryEligibleRuns() {
-      const now = BigInt(Date.now());
-      return Array.from(agentRuns.values()).filter(
-        (r) => r.status === AgentRunStatus.failed && r.retryAfterMs !== null && r.retryAfterMs <= now,
-      );
-    },
+  async getCard(id: string): Promise<(Card & { column: Column }) | null> {
+    const card = this.cards.find((c) => c.id === id);
+    if (!card) return null;
+    const column = this.columns.find((c) => c.id === card.columnId);
+    if (!column) return null;
+    return { ...card, column };
+  }
 
-    async getColumnByName(boardId, name) {
-      return Array.from(columns.values()).find((c) => c.boardId === boardId && c.name === name) ?? null;
-    },
+  async moveCard(cardId: string, newColumnId: string): Promise<Card> {
+    const card = this.cards.find((c) => c.id === cardId);
+    if (!card) throw new Error(`Card ${cardId} not found`);
+    card.columnId = newColumnId;
+    card.updatedAt = new Date();
+    return card;
+  }
 
-    async getBoardColumns(boardId) {
-      return Array.from(columns.values())
-        .filter((c) => c.boardId === boardId)
-        .sort((a, b) => a.position - b.position);
-    },
-  };
+  async getRetryEligibleRuns(): Promise<AgentRun[]> {
+    const now = BigInt(Date.now());
+    return this.agentRuns.filter(
+      (r) => r.status === Status.failed && r.retryAfterMs != null && r.retryAfterMs <= now,
+    );
+  }
+
+  async getColumnByName(boardId: string, name: string): Promise<Column | null> {
+    return this.columns.find((c) => c.boardId === boardId && c.name === name) ?? null;
+  }
+
+  async getBoardColumns(boardId: string): Promise<Column[]> {
+    return this.columns.filter((c) => c.boardId === boardId).sort((a, b) => a.position - b.position);
+  }
 }

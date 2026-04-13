@@ -1,62 +1,45 @@
-import type { IAnthropicClient } from "../interfaces";
+import type { IAnthropicClient, AgentEvent, SessionInfo } from "../interfaces.js";
 
-export interface CannedSession {
-  id: string;
-  events: unknown[];
-  status: string;
-  stop_reason?: { type: string } | null;
-}
+export class StubAnthropicClient implements IAnthropicClient {
+  queue: AgentEvent[][] = [];
+  createdSessions: Array<{ config: Parameters<IAnthropicClient["createSession"]>[0]; result: { id: string } }> = [];
+  sentMessages: Array<{ sessionId: string; message: { type: string; [key: string]: unknown } }> = [];
+  interruptedSessions: string[] = [];
 
-export function createAnthropicClientStub(sessions?: CannedSession[]): IAnthropicClient {
-  const sessionMap = new Map<string, CannedSession>(
-    (sessions ?? []).map((s) => [s.id, s]),
-  );
-  let sessionIdCounter = 1;
+  private sessionCounter = 0;
+  private defaultSessionInfo: Partial<SessionInfo> = {};
 
-  return {
-    async createSession(config) {
-      const id = `sess_stub_${sessionIdCounter++}`;
-      sessionMap.set(id, {
-        id,
-        events: [],
-        status: "running",
-      });
-      return { id };
-    },
+  configureDefaultSession(info: Partial<SessionInfo>): void {
+    this.defaultSessionInfo = info;
+  }
 
-    async streamSession(sessionId) {
-      const session = sessionMap.get(sessionId);
-      const events = session?.events ?? [];
-      async function* generate() {
-        for (const event of events) {
-          yield event;
-        }
-      }
-      return generate();
-    },
+  async createSession(config: Parameters<IAnthropicClient["createSession"]>[0]): Promise<{ id: string }> {
+    const id = `session-${++this.sessionCounter}`;
+    this.createdSessions.push({ config, result: { id } });
+    return { id };
+  }
 
-    async sendMessage(_sessionId, _message) {
-      // No-op in stub
-    },
+  async *streamSession(_sessionId: string): AsyncIterable<AgentEvent> {
+    const events = this.queue.shift() ?? [];
+    for (const event of events) {
+      yield event;
+    }
+  }
 
-    async retrieveSession(sessionId) {
-      const session = sessionMap.get(sessionId);
-      if (!session) {
-        return { id: sessionId, status: "terminated", stop_reason: { type: "error" } };
-      }
-      return {
-        id: session.id,
-        status: session.status,
-        stop_reason: session.stop_reason,
-      };
-    },
+  async sendMessage(sessionId: string, message: { type: string; [key: string]: unknown }): Promise<void> {
+    this.sentMessages.push({ sessionId, message });
+  }
 
-    async interruptSession(sessionId) {
-      const session = sessionMap.get(sessionId);
-      if (session) {
-        session.status = "terminated";
-        session.stop_reason = { type: "interrupted" };
-      }
-    },
-  };
+  async retrieveSession(sessionId: string): Promise<SessionInfo> {
+    return {
+      id: sessionId,
+      status: "terminated",
+      outcome: "success",
+      ...this.defaultSessionInfo,
+    };
+  }
+
+  async interruptSession(sessionId: string): Promise<void> {
+    this.interruptedSessions.push(sessionId);
+  }
 }
