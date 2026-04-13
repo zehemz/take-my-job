@@ -1,4 +1,4 @@
-# TAKE/MY/JOB — System Specification
+# Kobani — System Specification
 
 > A language-agnostic specification for a Kanban-driven agent orchestration system built on Anthropic Managed Agents. This document describes the architecture, data model, and behavioral contracts that any conforming implementation must satisfy. The reference implementation uses Next.js 14 (TypeScript), Prisma, and SQLite.
 
@@ -6,7 +6,7 @@
 
 ## 1. Overview
 
-**take/my/job** is a Kanban board that dispatches Claude managed agents to fulfill tasks. Each card on the board represents a unit of work. When a card enters an active column, the system automatically assigns a Claude agent with a specific organizational role (Backend Engineer, QA Engineer, Tech Lead) to work on the task. Agents operate autonomously, stream their output back to the card in real time, and transition the card to its next column when work is complete.
+**Kobani** is a Kanban board that dispatches Claude managed agents to fulfill tasks. Each card on the board represents a unit of work. When a card enters an active column, the system automatically assigns a Claude agent with a specific organizational role (Backend Engineer, QA Engineer, Tech Lead) to work on the task. Agents operate autonomously, stream their output back to the card in real time, and transition the card to its next column when work is complete.
 
 ### Design Goal
 
@@ -16,7 +16,7 @@ Teams interact with a familiar Kanban board. Column transitions—not manual pro
 
 ### Key Differences from Symphony
 
-| Symphony | take/my/job |
+| Symphony | Kobani |
 |---|---|
 | Work source: Linear GraphQL API | Work source: SQLite Kanban board |
 | Agent runtime: Codex (JSON-RPC app-server over stdio) | Agent runtime: Anthropic Managed Agents (SSE over HTTPS) |
@@ -526,7 +526,7 @@ Role-specific system prompts are loaded from `workflows/<role>.md` at setup time
 All roles share one Anthropic environment:
 ```json
 {
-  "name": "take-my-job-env",
+  "name": "kobani-env",
   "config": {
     "type": "cloud",
     "networking": { "type": "unrestricted" }
