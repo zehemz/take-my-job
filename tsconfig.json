@@ -5,7 +5,8 @@
     "moduleResolution": "bundler",
     "strict": true,
     "outDir": "dist",
-    "rootDir": "src"
+    "skipLibCheck": true
   },
-  "include": ["src"]
+  "include": ["lib", "scripts", "tests"],
+  "exclude": ["lib/db.ts", "lib/db-queries.ts", "scripts/setup-agents.ts", "prisma"]
 }
