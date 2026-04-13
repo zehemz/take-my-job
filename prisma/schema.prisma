@@ -82,3 +82,24 @@ model AgentConfig {
   anthropicEnvironmentId String
   createdAt              DateTime @default(now())
 }
+
+model RunEvent {
+  id        Int      @id @default(autoincrement())
+  cardId    String
+  runId     String
+  type      String
+  payload   Json
+  createdAt DateTime @default(now())
+
+  @@index([cardId, id])
+}
+
+model BoardEvent {
+  id        Int      @id @default(autoincrement())
+  boardId   String
+  type      String
+  payload   Json
+  createdAt DateTime @default(now())
+
+  @@index([boardId, id])
+}

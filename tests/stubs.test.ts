@@ -175,6 +175,57 @@ describe("broadcaster stub", () => {
   });
 });
 
+describe("db-queries stub — run events", () => {
+  it("stores and retrieves run events by cardId", async () => {
+    const db = new StubDbQueries();
+    await db.insertRunEvent("card-1", "run-1", { type: "agent_message", text: "hello" });
+    await db.insertRunEvent("card-1", "run-1", { type: "agent_thinking", thinking: "hmm" });
+    await db.insertRunEvent("card-2", "run-2", { type: "agent_message", text: "other" });
+
+    const events = await db.getRunEventsSince("card-1", 0);
+    expect(events).toHaveLength(2);
+    expect(events[0].event).toEqual({ type: "agent_message", text: "hello" });
+    expect(events[1].event).toEqual({ type: "agent_thinking", thinking: "hmm" });
+  });
+
+  it("cursor — only returns events with id > afterId", async () => {
+    const db = new StubDbQueries();
+    await db.insertRunEvent("card-1", "run-1", { type: "agent_message", text: "first" });
+    await db.insertRunEvent("card-1", "run-1", { type: "agent_message", text: "second" });
+    await db.insertRunEvent("card-1", "run-1", { type: "agent_message", text: "third" });
+
+    const all = await db.getRunEventsSince("card-1", 0);
+    const afterFirst = await db.getRunEventsSince("card-1", all[0].id);
+    expect(afterFirst).toHaveLength(2);
+    expect(afterFirst[0].event).toMatchObject({ text: "second" });
+  });
+});
+
+describe("db-queries stub — board events", () => {
+  it("stores and retrieves board events by boardId", async () => {
+    const db = new StubDbQueries();
+    await db.insertBoardEvent("board-1", { type: "card_updated", cardId: "card-1", columnId: "col-2", columnName: "Done" });
+    await db.insertBoardEvent("board-2", { type: "card_updated", cardId: "card-x", columnId: "col-y", columnName: "Review" });
+
+    const events = await db.getBoardEventsSince("board-1", 0);
+    expect(events).toHaveLength(1);
+    expect(events[0].event).toMatchObject({ type: "card_updated", cardId: "card-1", columnName: "Done" });
+  });
+
+  it("cursor — only returns events with id > afterId", async () => {
+    const db = new StubDbQueries();
+    await db.insertBoardEvent("board-1", { type: "card_updated", cardId: "c1", columnId: "col", columnName: "A" });
+    await db.insertBoardEvent("board-1", { type: "card_updated", cardId: "c2", columnId: "col", columnName: "B" });
+
+    const all = await db.getBoardEventsSince("board-1", 0);
+    expect(all).toHaveLength(2);
+
+    const afterFirst = await db.getBoardEventsSince("board-1", all[0].id);
+    expect(afterFirst).toHaveLength(1);
+    expect(afterFirst[0].event).toMatchObject({ cardId: "c2" });
+  });
+});
+
 describe("orchestrator stub", () => {
   it("records notifyCardMoved calls", async () => {
     const orch = new StubOrchestrator();

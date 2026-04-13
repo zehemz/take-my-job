@@ -88,7 +88,7 @@ export interface UpdateCardInput {
   blocked_reason?: string;
 }
 
-/** SSE event types broadcast to the UI */
+/** SSE event types broadcast to the UI (card-level and board-level streams) */
 export type BroadcastEvent =
   | { type: "agent_message"; text: string }
   | { type: "agent_thinking"; thinking: string }
@@ -96,5 +96,6 @@ export type BroadcastEvent =
   | { type: "card_update"; status: string; summary: string; next_column?: string; criteria_results?: CriterionResult[] }
   | { type: "card_blocked"; reason: string; session_id: string; cli_command: string }
   | { type: "status_change"; status: AgentRunStatus }
+  | { type: "card_updated"; cardId: string; columnId: string; columnName: string }
   | { type: "error"; message: string }
   | { type: "done" };

@@ -1,6 +1,17 @@
-import type { Card, Column, AgentRun, UpdateCardInput } from "../types.js";
+import type { Card, Column, AgentRun, BroadcastEvent, UpdateCardInput } from "../types.js";
 import type { IDbQueries, IBroadcaster, IAnthropicClient, AgentEvent } from "../interfaces.js";
 import { handleUpdateCard } from "./tools.js";
+
+function emitAndPersist(
+  event: BroadcastEvent,
+  cardId: string,
+  runId: string,
+  db: IDbQueries,
+  broadcaster: IBroadcaster,
+): Promise<void> {
+  broadcaster.emit(cardId, event);
+  return db.insertRunEvent(cardId, runId, event);
+}
 
 // ---------------------------------------------------------------------------
 // Context
@@ -55,26 +66,25 @@ export async function handleEvent(
       if (text) {
         await db.appendAgentRunOutput(run.id, text);
       }
-      broadcaster.emit(card.id, { type: "agent_message", text });
+      await emitAndPersist({ type: "agent_message", text }, card.id, run.id, db, broadcaster);
       return { exitLoop: false };
     }
 
     // -----------------------------------------------------------------------
     case "agent.thinking": {
-      broadcaster.emit(card.id, {
-        type: "agent_thinking",
-        thinking: event.content,
-      });
+      await emitAndPersist(
+        { type: "agent_thinking", thinking: event.content },
+        card.id, run.id, db, broadcaster,
+      );
       return { exitLoop: false };
     }
 
     // -----------------------------------------------------------------------
     case "agent.tool_use": {
-      broadcaster.emit(card.id, {
-        type: "tool_use",
-        tool_name: event.toolName,
-        input: event.input,
-      });
+      await emitAndPersist(
+        { type: "tool_use", tool_name: event.toolName, input: event.input },
+        card.id, run.id, db, broadcaster,
+      );
       return { exitLoop: false };
     }
 

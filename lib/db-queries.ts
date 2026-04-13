@@ -1,6 +1,7 @@
+import { Prisma } from "@prisma/client";
 import { prisma } from "./db";
 import type { IDbQueries } from "./interfaces";
-import type { AgentRun, Card, Column } from "./types";
+import type { AgentRun, BroadcastEvent, Card, Column } from "./types";
 
 export const dbQueries: IDbQueries = {
   async getEligibleCards(maxConcurrent: number, claimedIds: Set<string>): Promise<Card[]> {
@@ -22,7 +23,7 @@ export const dbQueries: IDbQueries = {
       const activeRun = await prisma.agentRun.findFirst({
         where: {
           cardId: card.id,
-          status: { in: ["running", "idle"] },
+          status: { in: ["pending", "running", "idle"] },
         },
       });
       if (activeRun) continue;
@@ -143,5 +144,55 @@ export const dbQueries: IDbQueries = {
       orderBy: { position: "asc" },
     });
     return columns as unknown as Column[];
+  },
+
+  async getAgentRun(id: string): Promise<AgentRun | null> {
+    const run = await prisma.agentRun.findUnique({ where: { id } });
+    return run as unknown as AgentRun | null;
+  },
+
+  async insertRunEvent(cardId: string, runId: string, event: BroadcastEvent): Promise<void> {
+    await prisma.runEvent.create({
+      data: {
+        cardId,
+        runId,
+        type: event.type,
+        payload: event as unknown as Prisma.InputJsonValue,
+      },
+    });
+  },
+
+  async getRunEventsSince(
+    cardId: string,
+    afterId: number,
+  ): Promise<Array<{ id: number; event: BroadcastEvent }>> {
+    const rows = await prisma.runEvent.findMany({
+      where: { cardId, id: { gt: afterId } },
+      orderBy: { id: "asc" },
+      take: 50,
+    });
+    return rows.map((r) => ({ id: r.id, event: r.payload as unknown as BroadcastEvent }));
+  },
+
+  async insertBoardEvent(boardId: string, event: BroadcastEvent): Promise<void> {
+    await prisma.boardEvent.create({
+      data: {
+        boardId,
+        type: event.type,
+        payload: event as unknown as Prisma.InputJsonValue,
+      },
+    });
+  },
+
+  async getBoardEventsSince(
+    boardId: string,
+    afterId: number,
+  ): Promise<Array<{ id: number; event: BroadcastEvent }>> {
+    const rows = await prisma.boardEvent.findMany({
+      where: { boardId, id: { gt: afterId } },
+      orderBy: { id: "asc" },
+      take: 50,
+    });
+    return rows.map((r) => ({ id: r.id, event: r.payload as unknown as BroadcastEvent }));
   },
 };

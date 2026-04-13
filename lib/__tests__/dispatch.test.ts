@@ -251,6 +251,26 @@ describe('dispatchPending', () => {
     expect(state.claimed.has('card-1')).toBe(true)
   })
 
+  it('does not dispatch card that already has a pending run (concurrent cron guard)', async () => {
+    const col = makeColumn()
+    const card = makeCard('card-1', col.id)
+    db.columns.push(col)
+    db.cards.push(card)
+
+    // Simulate a pending run already created by a concurrent cron tick
+    db.agentRuns.push({
+      id: 'run-existing', cardId: 'card-1', columnId: col.id,
+      role: 'backend_engineer', sessionId: null, status: 'pending',
+      output: null, criteriaResults: null, blockedReason: null, attempt: 1,
+      retryAfterMs: null, error: null, createdAt: new Date(), updatedAt: new Date(),
+    })
+
+    await dispatchPending(state, deps, spawnRunner)
+
+    expect(db.agentRuns).toHaveLength(1) // no new run created
+    expect(spawnRunner).not.toHaveBeenCalled()
+  })
+
   it('does nothing when no eligible cards exist', async () => {
     const col = makeColumn()
     db.columns.push(col)

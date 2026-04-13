@@ -1,7 +1,18 @@
-import type { Card, Column, AgentRun, UpdateCardInput } from "../types.js";
+import type { Card, Column, AgentRun, BroadcastEvent, UpdateCardInput } from "../types.js";
 import { AgentRunStatus } from "../types.js";
 import type { IDbQueries, IBroadcaster } from "../interfaces.js";
 import { renderCliCommand } from "../config.js";
+
+function emitAndPersist(
+  event: BroadcastEvent,
+  cardId: string,
+  runId: string,
+  db: IDbQueries,
+  broadcaster: IBroadcaster,
+): Promise<void> {
+  broadcaster.emit(cardId, event);
+  return db.insertRunEvent(cardId, runId, event);
+}
 
 // ---------------------------------------------------------------------------
 // Context
@@ -41,11 +52,10 @@ export async function handleUpdateCard(
     case "in_progress": {
       await db.appendAgentRunOutput(run.id, input.summary);
 
-      broadcaster.emit(card.id, {
-        type: "card_update",
-        status: "in_progress",
-        summary: input.summary,
-      });
+      await emitAndPersist(
+        { type: "card_update", status: "in_progress", summary: input.summary },
+        card.id, run.id, db, broadcaster,
+      );
 
       return { success: true };
     }
@@ -92,18 +102,29 @@ export async function handleUpdateCard(
 
       await db.moveCard(card.id, targetColumn.id);
 
-      broadcaster.emit(card.id, {
-        type: "card_update",
-        status: "completed",
-        summary: input.summary,
-        next_column: targetColumn.name,
-        criteria_results: input.criteria_results,
+      // Notify the board-level stream that this card changed columns
+      await db.insertBoardEvent(card.boardId, {
+        type: "card_updated",
+        cardId: card.id,
+        columnId: targetColumn.id,
+        columnName: targetColumn.name,
       });
 
-      broadcaster.emit(card.id, {
-        type: "status_change",
-        status: AgentRunStatus.completed,
-      });
+      await emitAndPersist(
+        {
+          type: "card_update",
+          status: "completed",
+          summary: input.summary,
+          next_column: targetColumn.name,
+          criteria_results: input.criteria_results,
+        },
+        card.id, run.id, db, broadcaster,
+      );
+
+      await emitAndPersist(
+        { type: "status_change", status: AgentRunStatus.completed },
+        card.id, run.id, db, broadcaster,
+      );
 
       return { success: true };
     }
@@ -116,12 +137,15 @@ export async function handleUpdateCard(
         blockedReason,
       });
 
-      broadcaster.emit(card.id, {
-        type: "card_blocked",
-        reason: blockedReason,
-        session_id: sessionId,
-        cli_command: renderCliCommand(sessionId),
-      });
+      await emitAndPersist(
+        {
+          type: "card_blocked",
+          reason: blockedReason,
+          session_id: sessionId,
+          cli_command: renderCliCommand(sessionId),
+        },
+        card.id, run.id, db, broadcaster,
+      );
 
       return { success: true, shouldExitLoop: true };
     }

@@ -163,5 +163,8 @@ export async function run(
     await db.updateAgentRunStatus(agentRun.id, AgentRunStatus.failed, {
       error: message,
     });
+  } finally {
+    broadcaster.emit(card.id, { type: "done" });
+    await db.insertRunEvent(card.id, agentRun.id, { type: "done" }).catch(() => {});
   }
 }

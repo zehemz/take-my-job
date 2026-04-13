@@ -1,5 +1,5 @@
 import type { IDbQueries } from "../interfaces.js";
-import type { AgentConfig, AgentRun, AgentRunStatus, Board, Card, Column } from "../types.js";
+import type { AgentConfig, AgentRun, AgentRunStatus, BroadcastEvent, Board, Card, Column } from "../types.js";
 import { AgentRunStatus as Status } from "../types.js";
 
 let idCounter = 0;
@@ -13,6 +13,8 @@ export class StubDbQueries implements IDbQueries {
   cards: Card[] = [];
   agentRuns: AgentRun[] = [];
   agentConfigs: AgentConfig[] = [];
+  runEvents: Array<{ id: number; cardId: string; runId: string; event: BroadcastEvent }> = [];
+  private runEventIdCounter = 0;
 
   static resetIdCounter(): void {
     idCounter = 0;
@@ -28,7 +30,7 @@ export class StubDbQueries implements IDbQueries {
         if (!activeColumnIds.has(c.columnId)) return false;
         if (claimedSet.has(c.id)) return false;
         const hasActive = this.agentRuns.some(
-          (r) => r.cardId === c.id && (r.status === Status.running || r.status === Status.idle),
+          (r) => r.cardId === c.id && (r.status === Status.pending || r.status === Status.running || r.status === Status.idle),
         );
         return !hasActive;
       })
@@ -122,5 +124,38 @@ export class StubDbQueries implements IDbQueries {
     return this.columns
       .filter((c) => c.boardId === boardId)
       .sort((a, b) => a.position - b.position);
+  }
+
+  async getAgentRun(id: string): Promise<AgentRun | null> {
+    return this.agentRuns.find((r) => r.id === id) ?? null;
+  }
+
+  async insertRunEvent(cardId: string, runId: string, event: BroadcastEvent): Promise<void> {
+    this.runEvents.push({ id: ++this.runEventIdCounter, cardId, runId, event });
+  }
+
+  async getRunEventsSince(
+    cardId: string,
+    afterId: number,
+  ): Promise<Array<{ id: number; event: BroadcastEvent }>> {
+    return this.runEvents
+      .filter((e) => e.cardId === cardId && e.id > afterId)
+      .map((e) => ({ id: e.id, event: e.event }));
+  }
+
+  boardEvents: Array<{ id: number; boardId: string; event: BroadcastEvent }> = [];
+  private boardEventIdCounter = 0;
+
+  async insertBoardEvent(boardId: string, event: BroadcastEvent): Promise<void> {
+    this.boardEvents.push({ id: ++this.boardEventIdCounter, boardId, event });
+  }
+
+  async getBoardEventsSince(
+    boardId: string,
+    afterId: number,
+  ): Promise<Array<{ id: number; event: BroadcastEvent }>> {
+    return this.boardEvents
+      .filter((e) => e.boardId === boardId && e.id > afterId)
+      .map((e) => ({ id: e.id, event: e.event }));
   }
 }
