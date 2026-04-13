@@ -101,5 +101,11 @@ export function createDbQueriesStub(initialData?: {
     async getColumnByName(boardId, name) {
       return Array.from(columns.values()).find((c) => c.boardId === boardId && c.name === name) ?? null;
     },
+
+    async getBoardColumns(boardId) {
+      return Array.from(columns.values())
+        .filter((c) => c.boardId === boardId)
+        .sort((a, b) => a.position - b.position);
+    },
   };
 }

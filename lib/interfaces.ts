@@ -11,6 +11,7 @@ export interface IDbQueries {
   moveCard(cardId: string, newColumnId: string): Promise<Card>;
   getRetryEligibleRuns(): Promise<AgentRun[]>;
   getColumnByName(boardId: string, name: string): Promise<Column | null>;
+  getBoardColumns(boardId: string): Promise<Column[]>;
 }
 
 export interface IAnthropicClient {
