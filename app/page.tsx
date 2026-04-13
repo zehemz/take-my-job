@@ -1,7 +1,9 @@
-export default function Home() {
-  return (
-    <main className="flex min-h-screen items-center justify-center">
-      <h1 className="text-4xl font-bold">Kobani</h1>
-    </main>
-  );
+export const dynamic = 'force-dynamic';
+
+import nextDynamic from 'next/dynamic';
+
+const BoardListClient = nextDynamic(() => import('./_components/BoardListClient'), { ssr: false });
+
+export default function HomePage() {
+  return <BoardListClient />;
 }
