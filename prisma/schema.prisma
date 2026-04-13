@@ -1,0 +1,84 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Board {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  columns   Column[]
+  cards     Card[]
+}
+
+model Column {
+  id              String  @id @default(cuid())
+  boardId         String
+  name            String
+  position        Int
+  isActiveState   Boolean @default(false)
+  isTerminalState Boolean @default(false)
+  board           Board   @relation(fields: [boardId], references: [id])
+  cards           Card[]
+
+  @@unique([boardId, position])
+}
+
+model Card {
+  id                 String     @id @default(cuid())
+  boardId            String
+  columnId           String
+  title              String
+  description        String?
+  acceptanceCriteria String?
+  role               String?
+  position           Int
+  githubRepoUrl      String?
+  githubBranch       String?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+  board              Board      @relation(fields: [boardId], references: [id])
+  column             Column     @relation(fields: [columnId], references: [id])
+  agentRuns          AgentRun[]
+}
+
+enum AgentRunStatus {
+  pending
+  running
+  idle
+  blocked
+  completed
+  failed
+  cancelled
+}
+
+model AgentRun {
+  id              String         @id @default(cuid())
+  cardId          String
+  role            String
+  sessionId       String?
+  status          AgentRunStatus
+  output          String?
+  criteriaResults String?
+  blockedReason   String?
+  attempt         Int            @default(1)
+  retryAfterMs    BigInt?
+  error           String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  card            Card           @relation(fields: [cardId], references: [id])
+}
+
+model AgentConfig {
+  id                     String   @id @default(cuid())
+  role                   String   @unique
+  anthropicAgentId       String
+  anthropicAgentVersion  String
+  anthropicEnvironmentId String
+  createdAt              DateTime @default(now())
+}

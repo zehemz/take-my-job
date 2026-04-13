@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: kobani
+    runtime: docker
+    plan: free
+    region: ohio
+    healthCheckPath: /
+    disk:
+      name: kobani-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: DATABASE_URL
+        value: file:/data/kobani.db
+      - key: NODE_ENV
+        value: production
+      - key: ANTHROPIC_API_KEY
+        sync: false
