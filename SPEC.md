@@ -146,6 +146,7 @@ Records one attempt by a managed agent to fulfill a card. A card may accumulate 
 |---|---|---|---|
 | `id` | String | PK, auto-generated | |
 | `cardId` | String | FK → Card | The card being worked on |
+| `columnId` | String | FK → Column | The column that triggered this run |
 | `role` | String | required | Workflow role (e.g. "backend_engineer") |
 | `sessionId` | String | optional | Anthropic session ID once created |
 | `status` | AgentRunStatus | required | See §3.2 |
@@ -206,6 +207,7 @@ A card is eligible for dispatch if and only if:
 - It is in an `isActiveState` column, AND
 - It has no AgentRun with status `running` or `idle`, AND
 - It has no AgentRun with `retryAfterMs` in the future
+- It has no AgentRun with status `completed` whose `columnId` matches the current column
 
 ### 4.3 Card Lifecycle (Symphony §4 equivalent)
 
@@ -252,9 +254,11 @@ loop every POLL_INTERVAL_MS (default: 3000):
   2. dispatch_pending()
 ```
 
-The poll interval is configurable via environment variable. Minimum: 1000ms. Maximum: 30000ms.
+POLL_INTERVAL_MS is measured from tick **completion**, not tick start — the next tick fires N ms after the previous reconcile + dispatch cycle finishes. This prevents tick overlap when a reconcile pass takes longer than the interval. The poll interval is configurable via environment variable. Minimum: 1000ms. Maximum: 30000ms.
 
 ### 5.3 Reconcile Running
+
+All per-card checks in a single reconcile pass are issued in parallel (`Promise.all`) and awaited together before any state is written. This ensures the pass completes in one round-trip regardless of the number of running agents.
 
 For each card in `running` map:
 
@@ -445,7 +449,7 @@ This tool allows the agent to post structured progress updates back to the card.
 |---|---|
 | `in_progress` | Append summary to `AgentRun.output`; broadcast `card_update` SSE event; send `{ success: true }` result; session continues |
 | `completed` | Store summary + `criteria_results` in AgentRun; broadcast; move card to `input.next_column` if set; mark AgentRun completed; session ends |
-| `blocked` | Store `blocked_reason` in `AgentRun.blockedReason`; set status=blocked; broadcast `card_blocked` SSE event with CLI attach command (see §13); send `{ success: true }` result; session stays live, awaiting human input |
+| `blocked` | Store `blocked_reason` in `AgentRun.blockedReason`; set status=blocked; broadcast `card_blocked` SSE event with CLI attach command (see §13); send `{ success: true }` result; **exit the event-consume loop** — the runner must not send any further messages to the session until a human message arrives (via `POST /api/cards/[id]/message` or the CLI). Once the human message is dispatched the runner re-enters the consume loop and the agent continues. |
 
 If `status=completed` but any `criteria_results[].passed == false`, the agent runner should **not** mark the run completed. Instead respond with `{ success: false, reason: "Criterion failed: <criterion>" }` so the agent can attempt to fix it.
 
@@ -549,6 +553,14 @@ All roles share one Anthropic environment:
   }
 }
 ```
+
+### 7.4 Security Considerations
+
+The `unrestricted` networking type is required because agents must install packages, invoke build tools, fetch external resources, and call APIs during task execution. However, this configuration has security implications that operators SHOULD address:
+
+1. **Trust boundary.** The GitHub PAT provided during setup (see §9) carries write access to the target repository and is passed into an Anthropic-hosted container. Operators should treat this as a credential delegation to a third-party compute environment.
+2. **Minimum-permission PAT scope.** The PAT SHOULD be scoped to the minimum permissions required by the workflow. If the task only requires reading code and proposing changes via pull request, a read-only contents permission plus pull-request write permission is sufficient. Full repo write access SHOULD only be granted when the agent must push commits or merge directly.
+3. **Secret exposure.** Agents have access to any environment variables and repository secrets mounted into the session. Operators MUST NOT inject secrets beyond those required for the agent's role.
 
 ---
 
@@ -747,7 +759,7 @@ The CLI session and the board UI are both consumers of the same Anthropic SSE st
 The card component MUST:
 
 1. Display the `sessionId` (truncated, e.g. `sess_abc…xyz`) for any AgentRun with status `running`, `idle`, or `blocked`
-2. Provide a "Copy attach command" button that writes `ant sessions connect <session_id>` to the clipboard
+2. Provide a "Copy attach command" button that writes the runtime-resolved `AgentRun.cliCommand` to the clipboard
 3. When status=`blocked`: surface a prominent "Blocked" badge, show `AgentRun.blockedReason`, and make the attach command the primary CTA
 4. When status=`running` or `idle`: show the attach command in a collapsible "Debug" panel
 
