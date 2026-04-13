@@ -49,6 +49,8 @@ export interface Card {
 export interface AgentRun {
   id: string;
   cardId: string;
+  /** Column that triggered this run (set at creation time). */
+  columnId: string;
   role: string;
   sessionId: string | null;
   status: AgentRunStatus;

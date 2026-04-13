@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { IAnthropicClient } from "./interfaces";
+import type { IAnthropicClient, AgentEvent, SessionInfo } from "./interfaces";
 
 const client = new Anthropic();
 
@@ -29,9 +29,10 @@ export const anthropicClient: IAnthropicClient = {
     return { id: session.id };
   },
 
-  async streamSession(sessionId: string) {
+  // eslint-disable-next-line require-yield
+  async *streamSession(sessionId: string): AsyncIterable<AgentEvent> {
     const stream = await beta.sessions.events.stream(sessionId);
-    return stream as AsyncIterable<unknown>;
+    yield* stream as AsyncIterable<AgentEvent>;
   },
 
   async sendMessage(sessionId: string, message) {
@@ -64,13 +65,16 @@ export const anthropicClient: IAnthropicClient = {
     }
   },
 
-  async retrieveSession(sessionId: string) {
+  async retrieveSession(sessionId: string): Promise<SessionInfo> {
     const session = await beta.sessions.retrieve(sessionId);
-    return {
-      id: session.id,
-      status: session.status,
-      stop_reason: session.stop_reason ?? null,
-    };
+    // Map platform status to our SessionInfo shape
+    const status: SessionInfo["status"] =
+      session.status === "terminated" ? "terminated" :
+      session.status === "idle" ? "idle" : "running";
+    const outcome: SessionInfo["outcome"] =
+      session.stop_reason?.type === "error" ? "error" :
+      session.status === "terminated" ? "success" : undefined;
+    return { id: session.id, status, outcome };
   },
 
   async interruptSession(sessionId: string) {

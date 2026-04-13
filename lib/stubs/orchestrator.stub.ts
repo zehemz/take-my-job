@@ -1,27 +1,17 @@
-import type { IOrchestrator } from "../interfaces";
+import type { IOrchestrator } from "../interfaces.js";
 
-export interface RecordedNotification {
-  cardId: string;
-  newColumnId: string;
-  timestamp: Date;
-}
+export class StubOrchestrator implements IOrchestrator {
+  calls: Array<{ cardId: string; newColumnId: string }> = [];
 
-export function createOrchestratorStub(): IOrchestrator & { notifications: RecordedNotification[] } {
-  const notifications: RecordedNotification[] = [];
+  async start(): Promise<void> {
+    // No-op in stub
+  }
 
-  return {
-    notifications,
+  stop(): void {
+    // No-op in stub
+  }
 
-    async start() {
-      // No-op in stub
-    },
-
-    stop() {
-      // No-op in stub
-    },
-
-    async notifyCardMoved(cardId, newColumnId) {
-      notifications.push({ cardId, newColumnId, timestamp: new Date() });
-    },
-  };
+  async notifyCardMoved(cardId: string, newColumnId: string): Promise<void> {
+    this.calls.push({ cardId, newColumnId });
+  }
 }
