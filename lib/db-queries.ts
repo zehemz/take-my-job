@@ -136,4 +136,12 @@ export const dbQueries: IDbQueries = {
     });
     return column as unknown as Column | null;
   },
+
+  async getBoardColumns(boardId: string): Promise<Column[]> {
+    const columns = await prisma.column.findMany({
+      where: { boardId },
+      orderBy: { position: "asc" },
+    });
+    return columns as unknown as Column[];
+  },
 };
