@@ -1,9 +1,9 @@
-import type { Metadata } from "next";
-import "./globals.css";
+import type { Metadata } from 'next';
+import './globals.css';
 
 export const metadata: Metadata = {
-  title: "Kobani",
-  description: "Kanban-driven agent orchestration",
+  title: 'Kobani',
+  description: 'Kanban-driven agent orchestration',
 };
 
 export default function RootLayout({
@@ -13,7 +13,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className="bg-zinc-950 min-h-screen flex flex-col">
+        {children}
+      </body>
     </html>
   );
 }

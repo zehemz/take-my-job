@@ -17,5 +17,15 @@
     "paths": { "@/*": ["./*"] }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "exclude": [
+    "node_modules",
+    "lib/db.ts",
+    "lib/db-queries.ts",
+    "lib/anthropic-client.ts",
+    "lib/config.ts",
+    "lib/interfaces.ts",
+    "scripts",
+    "prisma",
+    ".claude"
+  ]
 }
