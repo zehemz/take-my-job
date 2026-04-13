@@ -2,13 +2,14 @@ import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { reconcileRunning } from '../orchestrator/reconcile.js'
 import { StubDbQueries } from '../stubs/db-queries.stub.js'
 import { StubAnthropicClient } from '../stubs/anthropic-client.stub.js'
+import { AgentRunStatus } from '../types.js'
 import type { AgentRun, Column } from '../types.js'
 import type { OrchestratorState, OrchestratorDeps } from '../orchestrator/types.js'
 
 function makeRun(overrides?: Partial<AgentRun>): AgentRun {
   return {
     id: 'run-1', cardId: 'card-1', columnId: 'col-1', role: 'backend_engineer',
-    sessionId: 'session-1', status: 'running', output: null, criteriaResults: null,
+    sessionId: 'session-1', status: AgentRunStatus.running, output: null, criteriaResults: null,
     blockedReason: null, attempt: 1, retryAfterMs: null, error: null,
     createdAt: new Date(), updatedAt: new Date(), ...overrides,
   }
@@ -55,7 +56,7 @@ describe('reconcileRunning', () => {
     db.agentRuns.push(run)
     db.cards.push({
       id: 'card-1', boardId: 'board-1', columnId: 'col-terminal',
-      title: 'Test', position: 0, createdAt: new Date(), updatedAt: new Date(),
+      title: 'Test', description: null, acceptanceCriteria: null, role: null, position: 0, githubRepoUrl: null, githubBranch: null, createdAt: new Date(), updatedAt: new Date(),
     })
     const entry = makeRunningEntry(run)
     state.running.set('card-1', entry)
@@ -74,7 +75,7 @@ describe('reconcileRunning', () => {
     db.agentRuns.push(run)
     db.cards.push({
       id: 'card-1', boardId: 'board-1', columnId: 'col-inactive',
-      title: 'Test', position: 0, createdAt: new Date(), updatedAt: new Date(),
+      title: 'Test', description: null, acceptanceCriteria: null, role: null, position: 0, githubRepoUrl: null, githubBranch: null, createdAt: new Date(), updatedAt: new Date(),
     })
     const entry = makeRunningEntry(run)
     state.running.set('card-1', entry)
@@ -108,7 +109,7 @@ describe('reconcileRunning', () => {
     db.agentRuns.push(run)
     db.cards.push({
       id: 'card-1', boardId: 'board-1', columnId: 'col-active',
-      title: 'Test', position: 0, createdAt: new Date(), updatedAt: new Date(),
+      title: 'Test', description: null, acceptanceCriteria: null, role: null, position: 0, githubRepoUrl: null, githubBranch: null, createdAt: new Date(), updatedAt: new Date(),
     })
     anthropic.configureDefaultSession({ status: 'terminated', outcome: 'success' })
     state.running.set('card-1', makeRunningEntry(run))
@@ -126,7 +127,7 @@ describe('reconcileRunning', () => {
     db.agentRuns.push(run)
     db.cards.push({
       id: 'card-1', boardId: 'board-1', columnId: 'col-active',
-      title: 'Test', position: 0, createdAt: new Date(), updatedAt: new Date(),
+      title: 'Test', description: null, acceptanceCriteria: null, role: null, position: 0, githubRepoUrl: null, githubBranch: null, createdAt: new Date(), updatedAt: new Date(),
     })
     anthropic.configureDefaultSession({ status: 'terminated', outcome: 'error' })
     state.running.set('card-1', makeRunningEntry(run))
@@ -146,7 +147,7 @@ describe('reconcileRunning', () => {
     db.agentRuns.push(run)
     db.cards.push({
       id: 'card-1', boardId: 'board-1', columnId: 'col-active',
-      title: 'Test', position: 0, createdAt: new Date(), updatedAt: new Date(),
+      title: 'Test', description: null, acceptanceCriteria: null, role: null, position: 0, githubRepoUrl: null, githubBranch: null, createdAt: new Date(), updatedAt: new Date(),
     })
     anthropic.configureDefaultSession({ status: 'running' })
     state.running.set('card-1', makeRunningEntry(run))
@@ -165,7 +166,7 @@ describe('reconcileRunning', () => {
     db.agentRuns.push(run)
     db.cards.push({
       id: 'card-1', boardId: 'board-1', columnId: 'col-active',
-      title: 'Test', position: 0, createdAt: new Date(), updatedAt: new Date(),
+      title: 'Test', description: null, acceptanceCriteria: null, role: null, position: 0, githubRepoUrl: null, githubBranch: null, createdAt: new Date(), updatedAt: new Date(),
     })
     anthropic.configureDefaultSession({ status: 'running' })
     state.running.set('card-1', makeRunningEntry(run))
@@ -186,7 +187,7 @@ describe('reconcileRunning', () => {
     db.agentRuns.push(run)
     db.cards.push({
       id: 'card-1', boardId: 'board-1', columnId: 'col-active',
-      title: 'Test', position: 0, createdAt: new Date(), updatedAt: new Date(),
+      title: 'Test', description: null, acceptanceCriteria: null, role: null, position: 0, githubRepoUrl: null, githubBranch: null, createdAt: new Date(), updatedAt: new Date(),
     })
     anthropic.configureDefaultSession({ status: 'running' })
     state.running.set('card-1', makeRunningEntry(run))
@@ -206,7 +207,7 @@ describe('reconcileRunning', () => {
     db.agentRuns.push(runA)
     db.cards.push({
       id: 'card-a', boardId: 'board-1', columnId: 'col-terminal',
-      title: 'A', position: 0, createdAt: new Date(), updatedAt: new Date(),
+      title: 'A', description: null, acceptanceCriteria: null, role: null, position: 0, githubRepoUrl: null, githubBranch: null, createdAt: new Date(), updatedAt: new Date(),
     })
 
     // Card B: deleted → cancelled
@@ -219,7 +220,7 @@ describe('reconcileRunning', () => {
     db.agentRuns.push(runC)
     db.cards.push({
       id: 'card-c', boardId: 'board-1', columnId: 'col-active',
-      title: 'C', position: 2, createdAt: new Date(), updatedAt: new Date(),
+      title: 'C', description: null, acceptanceCriteria: null, role: null, position: 2, githubRepoUrl: null, githubBranch: null, createdAt: new Date(), updatedAt: new Date(),
     })
     anthropic.configureDefaultSession({ status: 'running' })
 
@@ -255,8 +256,8 @@ describe('reconcileRunning', () => {
     const runInactive = makeRun({ id: 'run-i', cardId: 'card-i', columnId: 'col-inactive', sessionId: 'sess-i' })
     db.agentRuns.push(runTerminal, runInactive)
     db.cards.push(
-      { id: 'card-t', boardId: 'board-1', columnId: 'col-terminal', title: 'T', position: 0, createdAt: new Date(), updatedAt: new Date() },
-      { id: 'card-i', boardId: 'board-1', columnId: 'col-inactive', title: 'I', position: 1, createdAt: new Date(), updatedAt: new Date() },
+      { id: 'card-t', boardId: 'board-1', columnId: 'col-terminal', title: 'T', description: null, acceptanceCriteria: null, role: null, position: 0, githubRepoUrl: null, githubBranch: null, createdAt: new Date(), updatedAt: new Date() },
+      { id: 'card-i', boardId: 'board-1', columnId: 'col-inactive', title: 'I', description: null, acceptanceCriteria: null, role: null, position: 1, githubRepoUrl: null, githubBranch: null, createdAt: new Date(), updatedAt: new Date() },
     )
 
     const entryT = makeRunningEntry(runTerminal)

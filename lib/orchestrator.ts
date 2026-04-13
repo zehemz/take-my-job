@@ -71,7 +71,7 @@ export class Orchestrator implements IOrchestrator {
     // ── 3. Make retry-eligible runs immediately dispatchable ────
     const retryRuns = await this.deps.db.getRetryEligibleRuns()
     for (const run of retryRuns) {
-      await this.deps.db.updateAgentRunStatus(run.id, 'failed', {
+      await this.deps.db.updateAgentRunStatus(run.id, AgentRunStatus.failed, {
         retryAfterMs: Date.now(),
       })
     }

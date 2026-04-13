@@ -1,6 +1,7 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { scheduleRetry } from '../orchestrator/retry.js'
 import { StubDbQueries } from '../stubs/db-queries.stub.js'
+import { AgentRunStatus } from '../types.js'
 import type { AgentRun } from '../types.js'
 
 function makeRun(attempt: number): AgentRun {
@@ -10,7 +11,7 @@ function makeRun(attempt: number): AgentRun {
     columnId: 'col-1',
     role: 'developer',
     sessionId: null,
-    status: 'running',
+    status: AgentRunStatus.running,
     output: null,
     criteriaResults: null,
     blockedReason: null,
@@ -96,19 +97,20 @@ describe('scheduleRetry', () => {
   it('attempt=6 → capped at 300_000', async () => {
     const origMax = process.env.MAX_ATTEMPTS
     process.env.MAX_ATTEMPTS = '10'
-
-    const mod = await import('../orchestrator/retry.js?attempt_capped')
+    vi.resetModules()
+    const { scheduleRetry: scheduleRetryFresh } = await import('../orchestrator/retry.js')
 
     const run = makeRun(6)
     db.agentRuns[0] = run
     const before = Date.now()
-    await mod.scheduleRetry(run, db)
+    await scheduleRetryFresh(run, db)
     const after = Date.now()
 
     const retry = Number(run.retryAfterMs!)
     expect(retry).toBeGreaterThanOrEqual(before + 300_000 - 500)
     expect(retry).toBeLessThanOrEqual(after + 300_000 + 500)
 
+    vi.resetModules()
     if (origMax === undefined) {
       delete process.env.MAX_ATTEMPTS
     } else {
@@ -123,11 +125,12 @@ describe('scheduleRetry', () => {
 
     // Re-import to pick up the new env value
     // Since the module caches the value at import time, we need to reset the module
-    const mod = await import('../orchestrator/retry.js?attempt_exceeded')
+    vi.resetModules()
+    const { scheduleRetry: scheduleRetryFresh } = await import('../orchestrator/retry.js')
 
     const run = makeRun(4)
     db.agentRuns[0] = run
-    await mod.scheduleRetry(run, db)
+    await scheduleRetryFresh(run, db)
 
     expect(run.status).toBe('failed')
     expect(run.retryAfterMs).toBeNull()
