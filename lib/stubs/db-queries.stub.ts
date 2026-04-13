@@ -61,7 +61,7 @@ export class StubDbQueries implements IDbQueries {
   async updateAgentRunStatus(
     id: string,
     status: AgentRunStatus,
-    extra?: { retryAfterMs?: number; error?: string; criteriaResults?: string; output?: string },
+    extra?: { retryAfterMs?: number; error?: string; criteriaResults?: string; output?: string; sessionId?: string; blockedReason?: string },
   ): Promise<AgentRun> {
     const run = this.agentRuns.find((r) => r.id === id);
     if (!run) throw new Error(`AgentRun ${id} not found`);
@@ -71,6 +71,8 @@ export class StubDbQueries implements IDbQueries {
     if (extra?.error !== undefined) run.error = extra.error;
     if (extra?.criteriaResults !== undefined) run.criteriaResults = extra.criteriaResults;
     if (extra?.output !== undefined) run.output = extra.output;
+    if (extra?.sessionId !== undefined) run.sessionId = extra.sessionId;
+    if (extra?.blockedReason !== undefined) run.blockedReason = extra.blockedReason;
     return run;
   }
 
@@ -114,5 +116,11 @@ export class StubDbQueries implements IDbQueries {
 
   async getColumnByName(boardId: string, name: string): Promise<Column | null> {
     return this.columns.find((c) => c.boardId === boardId && c.name === name) ?? null;
+  }
+
+  async getBoardColumns(boardId: string): Promise<Column[]> {
+    return this.columns
+      .filter((c) => c.boardId === boardId)
+      .sort((a, b) => a.position - b.position);
   }
 }

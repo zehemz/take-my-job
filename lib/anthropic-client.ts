@@ -1,5 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
-import type { IAnthropicClient } from "./interfaces";
+import type { IAnthropicClient, AgentEvent, SessionInfo } from "./interfaces.js";
 
 const client = new Anthropic();
 
@@ -29,9 +29,16 @@ export const anthropicClient: IAnthropicClient = {
     return { id: session.id };
   },
 
-  async streamSession(sessionId: string) {
-    const stream = await beta.sessions.events.stream(sessionId);
-    return stream as AsyncIterable<unknown>;
+  streamSession(sessionId: string): AsyncIterable<AgentEvent> {
+    // Wrap the async SDK call in a sync async generator so the caller
+    // gets an AsyncIterable immediately (stream-first ordering per spec §6.3).
+    return (async function* () {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const stream: AsyncIterable<any> = await beta.sessions.events.stream(sessionId);
+      for await (const event of stream) {
+        yield event as AgentEvent;
+      }
+    })();
   },
 
   async sendMessage(sessionId: string, message) {
@@ -64,12 +71,12 @@ export const anthropicClient: IAnthropicClient = {
     }
   },
 
-  async retrieveSession(sessionId: string) {
+  async retrieveSession(sessionId: string): Promise<SessionInfo> {
     const session = await beta.sessions.retrieve(sessionId);
     return {
       id: session.id,
       status: session.status,
-      stop_reason: session.stop_reason ?? null,
+      outcome: session.outcome ?? undefined,
     };
   },
 

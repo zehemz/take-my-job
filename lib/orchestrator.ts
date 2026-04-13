@@ -3,6 +3,7 @@ import { dispatchPending } from './orchestrator/dispatch.js'
 import { reconcileRunning } from './orchestrator/reconcile.js'
 import { scheduleRetry } from './orchestrator/retry.js'
 import type { OrchestratorDeps, OrchestratorState, SpawnRunner } from './orchestrator/types.js'
+import { AgentRunStatus } from './types.js'
 
 export type { OrchestratorDeps, OrchestratorState, SpawnRunner }
 
@@ -51,7 +52,7 @@ export class Orchestrator implements IOrchestrator {
 
       if (session.status === 'terminated') {
         if (session.outcome === 'success') {
-          await this.deps.db.updateAgentRunStatus(run.id, 'completed')
+          await this.deps.db.updateAgentRunStatus(run.id, AgentRunStatus.completed)
         } else {
           await scheduleRetry(run, this.deps.db)
         }
@@ -70,7 +71,7 @@ export class Orchestrator implements IOrchestrator {
     // ── 3. Make retry-eligible runs immediately dispatchable ────
     const retryRuns = await this.deps.db.getRetryEligibleRuns()
     for (const run of retryRuns) {
-      await this.deps.db.updateAgentRunStatus(run.id, 'failed', {
+      await this.deps.db.updateAgentRunStatus(run.id, AgentRunStatus.failed, {
         retryAfterMs: Date.now(),
       })
     }
@@ -123,7 +124,7 @@ export class Orchestrator implements IOrchestrator {
     }
 
     // Transition the run to cancelled
-    await this.deps.db.updateAgentRunStatus(entry.run.id, 'cancelled')
+    await this.deps.db.updateAgentRunStatus(entry.run.id, AgentRunStatus.cancelled)
 
     // Clean up in-memory state
     entry.abortController.abort()

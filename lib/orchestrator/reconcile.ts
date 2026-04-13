@@ -1,3 +1,4 @@
+import { AgentRunStatus } from '../types.js'
 import { scheduleRetry } from './retry.js'
 import type { OrchestratorState, OrchestratorDeps } from './types.js'
 
@@ -15,7 +16,7 @@ export async function reconcileRunning(
       if (!card) {
         // Card deleted — cancel
         await deps.anthropic.interruptSession(run.sessionId!)
-        await deps.db.updateAgentRunStatus(run.id, 'cancelled')
+        await deps.db.updateAgentRunStatus(run.id, AgentRunStatus.cancelled)
         state.running.delete(cardId)
         state.claimed.delete(cardId)
         return
@@ -25,7 +26,7 @@ export async function reconcileRunning(
       if (card.column.isTerminalState || !card.column.isActiveState) {
         abortController.abort()
         await deps.anthropic.interruptSession(run.sessionId!)
-        await deps.db.updateAgentRunStatus(run.id, 'cancelled')
+        await deps.db.updateAgentRunStatus(run.id, AgentRunStatus.cancelled)
         state.running.delete(cardId)
         state.claimed.delete(cardId)
         return
@@ -36,7 +37,7 @@ export async function reconcileRunning(
         const session = await deps.anthropic.retrieveSession(run.sessionId)
         if (session.status === 'terminated') {
           if (session.outcome === 'success') {
-            await deps.db.updateAgentRunStatus(run.id, 'completed')
+            await deps.db.updateAgentRunStatus(run.id, AgentRunStatus.completed)
             state.running.delete(cardId)
             state.claimed.delete(cardId)
           } else {

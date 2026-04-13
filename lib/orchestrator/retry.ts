@@ -1,3 +1,4 @@
+import { AgentRunStatus } from '../types.js'
 import type { AgentRun } from '../types.js'
 import type { IDbQueries } from '../interfaces.js'
 
@@ -7,7 +8,7 @@ const MAX_ATTEMPTS = parseInt(process.env.MAX_ATTEMPTS ?? '5', 10)
 export async function scheduleRetry(run: AgentRun, db: IDbQueries): Promise<void> {
   if (run.attempt > MAX_ATTEMPTS) {
     // Permanent failure — no more retries
-    await db.updateAgentRunStatus(run.id, 'failed', {
+    await db.updateAgentRunStatus(run.id, AgentRunStatus.failed, {
       error: `Exceeded max attempts (${MAX_ATTEMPTS})`
     })
     return
@@ -15,7 +16,7 @@ export async function scheduleRetry(run: AgentRun, db: IDbQueries): Promise<void
 
   const delay = Math.min(10_000 * Math.pow(2, run.attempt - 1), MAX_RETRY_BACKOFF_MS)
 
-  await db.updateAgentRunStatus(run.id, 'failed', {
+  await db.updateAgentRunStatus(run.id, AgentRunStatus.failed, {
     retryAfterMs: Date.now() + delay,
     error: `Attempt ${run.attempt} failed; retry in ${delay}ms`
   })

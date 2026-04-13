@@ -3,7 +3,7 @@ import type { AgentConfig, AgentRun, AgentRunStatus, BroadcastEvent, Card, Colum
 export interface IDbQueries {
   getEligibleCards(maxConcurrent: number, claimedIds: string[]): Promise<Card[]>;
   createAgentRun(cardId: string, columnId: string, role: string, attempt: number): Promise<AgentRun>;
-  updateAgentRunStatus(id: string, status: AgentRunStatus, extra?: { retryAfterMs?: number; error?: string; criteriaResults?: string; output?: string }): Promise<AgentRun>;
+  updateAgentRunStatus(id: string, status: AgentRunStatus, extra?: { retryAfterMs?: number; error?: string; criteriaResults?: string; output?: string; sessionId?: string; blockedReason?: string }): Promise<AgentRun>;
   appendAgentRunOutput(id: string, chunk: string): Promise<void>;
   getAgentConfig(role: string): Promise<AgentConfig | null>;
   getRunningRuns(): Promise<AgentRun[]>;
@@ -11,6 +11,7 @@ export interface IDbQueries {
   moveCard(cardId: string, newColumnId: string): Promise<Card>;
   getRetryEligibleRuns(): Promise<AgentRun[]>;
   getColumnByName(boardId: string, name: string): Promise<Column | null>;
+  getBoardColumns(boardId: string): Promise<Column[]>;
 }
 
 /** Typed events emitted by the Anthropic Managed Agents SSE stream. */
