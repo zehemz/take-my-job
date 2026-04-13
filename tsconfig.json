@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2022"],
+    "lib": ["ES2022", "DOM"],
     "module": "ESNext",
     "moduleResolution": "bundler",
     "strict": true,
@@ -11,5 +11,6 @@
     "skipLibCheck": true,
     "jsx": "react-jsx"
   },
-  "include": ["lib", "app", "scripts", "prisma"]
+  "include": ["lib", "scripts", "tests"],
+  "exclude": ["lib/db.ts", "lib/db-queries.ts", "scripts/setup-agents.ts", "prisma"]
 }
