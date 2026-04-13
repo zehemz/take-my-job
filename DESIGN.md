@@ -1,478 +1,543 @@
-# Kobani — Frontend Design Specification
+# Kobani — Frontend Design Spec
 
-> This document is the single source of truth for visual and layout decisions. A frontend engineer must be able to implement every component described here without making any design decisions. Tailwind utility classes are the only styling mechanism — no custom CSS, no external component libraries.
+> This document is the single source of truth for visual decisions. The Frontend Engineer makes zero design decisions — every Tailwind class, spacing value, and interaction state is specified here.
 
 ---
 
 ## 1. Design Principles
 
-**1. Status is always visible.** Every card must communicate its agent state without requiring any user interaction. The status badge is the primary visual anchor on the card face — never hidden, never truncated, always in the same position.
+1. **Dark canvas, bright signal.** The board is a dark neutral surface. Color is reserved for status and urgency — never decoration. A blocked card must be visually louder than a running card without any surrounding context.
 
-**2. Information density over whitespace.** The board is a work surface, not a marketing page. Columns show as many cards as possible. Padding is functional, not decorative. Empty space signals "nothing here yet", not aesthetic breathing room.
+2. **Everything in its place.** Spacing and sizing are systematic. Column widths never vary. Card padding never changes. The grid is rigid so that the eye can learn where information lives and stop searching.
 
-**3. Dark chrome, bright signal.** The board shell (nav, column headers, empty areas) uses a dark neutral palette so that status colors — which carry meaning — read with high contrast. Orange for blocked, green for completed, red for failed are vivid against the dark background.
+3. **Motion serves meaning.** Transitions only occur when they communicate something: a card being dragged, a cursor blinking, a drawer sliding in. There are no ambient animations.
 
-**4. Human actions are unambiguous.** Any element that requires a human decision (approve, reply, send back) must be visually distinct from informational elements. Primary action buttons use a solid accent fill; destructive or rejection actions use a red outline style. The user must never be unsure whether clicking something triggers an action.
+4. **Human attention is scarce.** Cards that require a human decision escalate their own visual weight automatically — amber for blocked, red for urgent, a dedicated drawer to collect all items needing action. The board should surface what demands the human without requiring them to read every card.
 
 ---
 
 ## 2. Color Palette
 
-All values are Tailwind utility classes. Use these exact class names everywhere.
+All colors are Tailwind classes. No arbitrary values except where explicitly marked.
 
-### 2.1 Background Colors
+### 2.1 Backgrounds
 
-| Role | Tailwind Class | Notes |
-|---|---|---|
-| Page background | `bg-zinc-950` | Outermost shell, behind everything |
-| Nav bar | `bg-zinc-900` | Top 1px border `border-b border-zinc-800` |
-| Board area | `bg-zinc-950` | Horizontal scroll container |
-| Column background | `bg-zinc-900` | Column container |
-| Column header area | `bg-zinc-900` | Same as column, no separate band |
-| Card background | `bg-zinc-800` | Default card face |
-| Card hover | `bg-zinc-700` | On `hover:` |
-| Card dragging | `bg-zinc-700` | Applied during drag |
-| Modal/drawer overlay | `bg-black/60` | Full-screen backdrop |
-| Modal/drawer panel | `bg-zinc-900` | The panel itself |
-| Agent output panel | `bg-zinc-950` | Pre-formatted code-like area |
-| Blocked banner background | `bg-amber-950` | Inside card detail, prominent |
-| Input / textarea | `bg-zinc-950` | Reply box, context note box |
-| Urgent card (attention queue) | `bg-red-950` | Cards > 1 hour in blocked/revision |
-
-### 2.2 Text Colors
-
-| Role | Tailwind Class |
+| Role | Class |
 |---|---|
-| Primary text | `text-zinc-100` |
-| Secondary text | `text-zinc-400` |
-| Muted / metadata | `text-zinc-500` |
-| Placeholder text | `placeholder-zinc-600` |
-| Link / interactive | `text-indigo-400` |
-| Error text | `text-red-400` |
-| Inverted (on colored button) | `text-white` |
+| Page / outermost canvas | `bg-zinc-950` |
+| Top navigation bar | `bg-zinc-900 border-b border-zinc-800` |
+| Column background | `bg-zinc-900` |
+| Card surface (default) | `bg-zinc-800` |
+| Card surface (hover) | `bg-zinc-700` |
+| Modal backdrop scrim | `bg-black/60` |
+| Modal surface | `bg-zinc-900` |
+| Agent output panel | `bg-zinc-950` |
+| Input / textarea | `bg-zinc-800 border border-zinc-700` |
+| Input / textarea (focus) | `bg-zinc-800 border border-zinc-600 ring-1 ring-zinc-500` |
+| Drawer surface | `bg-zinc-900` |
+| Drawer backdrop scrim | `bg-black/40` |
+| Tooltip | `bg-zinc-700` |
+
+### 2.2 Text
+
+| Role | Class |
+|---|---|
+| Primary text (headings, card titles) | `text-zinc-100` |
+| Secondary text (descriptions, metadata) | `text-zinc-400` |
+| Tertiary / placeholder text | `text-zinc-600` |
+| Link / interactive text | `text-sky-400 hover:text-sky-300` |
+| Destructive text | `text-red-400` |
+| Monospace / evidence text | `text-zinc-300 font-mono` |
+| Disabled text | `text-zinc-600` |
 
 ### 2.3 Status Badge Colors
 
-Each status has a background color, a text color, and a left-side border accent (3px, using `border-l-4`). Use these exact combinations for every `StatusBadge` instance.
+Each status uses a background, a text color, and an icon character (no external icon library required at this stage).
 
-| Status | Badge bg | Badge text | Left border | Label |
+| Status | Background | Text | Border | Icon char |
 |---|---|---|---|---|
-| `idle` | `bg-zinc-700` | `text-zinc-300` | `border-l-zinc-500` | Idle |
-| `running` | `bg-indigo-900` | `text-indigo-200` | `border-l-indigo-400` | Running |
-| `blocked` | `bg-amber-900` | `text-amber-200` | `border-l-amber-400` | Blocked |
-| `evaluating` | `bg-sky-900` | `text-sky-200` | `border-l-sky-400` | Evaluating |
-| `evaluation-failed` | `bg-rose-900` | `text-rose-200` | `border-l-rose-400` | Eval Failed |
-| `pending-approval` | `bg-violet-900` | `text-violet-200` | `border-l-violet-400` | Pending Approval |
-| `completed` | `bg-emerald-900` | `text-emerald-200` | `border-l-emerald-400` | Completed |
-| `failed` | `bg-red-900` | `text-red-200` | `border-l-red-400` | Failed |
+| `idle` | `bg-zinc-800` | `text-zinc-400` | `border border-zinc-600` | `○` |
+| `running` | `bg-sky-900/60` | `text-sky-300` | `border border-sky-700` | `⟳` |
+| `blocked` | `bg-amber-900/60` | `text-amber-300` | `border border-amber-600` | `⚠` |
+| `evaluating` | `bg-violet-900/60` | `text-violet-300` | `border border-violet-700` | `◎` |
+| `evaluation-failed` | `bg-red-900/60` | `text-red-300` | `border border-red-700` | `✗` |
+| `pending-approval` | `bg-yellow-900/60` | `text-yellow-300` | `border border-yellow-600` | `⏳` |
+| `completed` | `bg-emerald-900/60` | `text-emerald-300` | `border border-emerald-700` | `✓` |
+| `failed` | `bg-red-900/60` | `text-red-400` | `border border-red-800` | `✗` |
 
-### 2.4 Border, Shadow, and Interactive States
+> Note: `evaluation-failed` and `failed` share the same palette but carry different labels ("Eval Failed" vs "Failed"). The icon character `✗` is the same. The distinction is in the label text only.
 
-| Role | Tailwind Class |
+### 2.4 Borders
+
+| Role | Class |
 |---|---|
-| Column border | `border border-zinc-800` |
-| Card border (default) | `border border-zinc-700` |
-| Card border (hover) | `hover:border-zinc-500` |
-| Card border (dragging) | `border-indigo-500` |
-| Drop target column highlight | `ring-2 ring-indigo-500 ring-inset` |
-| Modal panel shadow | `shadow-2xl` |
-| Input border default | `border border-zinc-700` |
-| Input border focused | `focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500` |
-| Divider | `border-t border-zinc-800` |
-| Card shadow (default) | `shadow-sm` |
-| Card shadow (dragging) | `shadow-2xl` |
-| Urgent card border | `border border-red-500` |
+| Default card border | `border border-zinc-700` |
+| Column separator / divider | `border-zinc-800` |
+| Modal border | `border border-zinc-700` |
+| Input border | `border border-zinc-700` |
+| Input border (focus) | `border-zinc-600` |
+| Blocked card accent border | `border-l-4 border-l-amber-500` |
+| Evaluation-failed card accent border | `border-l-4 border-l-red-500` |
+| Pending-approval card accent border | `border-l-4 border-l-yellow-500` |
+| Urgent escalation border | `border border-red-600 ring-1 ring-red-700` |
 
-### 2.5 Button Colors
+### 2.5 Shadows
 
-| Variant | Classes |
+| Role | Class |
 |---|---|
-| Primary action (Approve, Send) | `bg-indigo-600 hover:bg-indigo-500 text-white` |
-| Destructive / reject | `border border-red-500 text-red-400 hover:bg-red-500 hover:text-white bg-transparent` |
-| Secondary / cancel | `bg-zinc-700 hover:bg-zinc-600 text-zinc-200` |
-| Ghost / subtle | `text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 bg-transparent` |
+| Card default | `shadow-sm shadow-black/40` |
+| Card hover | `shadow-md shadow-black/60` |
+| Card dragging | `shadow-2xl shadow-black/80` |
+| Modal | `shadow-2xl shadow-black/80` |
+| Drawer | `shadow-2xl shadow-black/60` |
 
-All buttons: `rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-150 cursor-pointer`.
+### 2.6 Hover and Active States
+
+| Element | Default | Hover | Active / Pressed |
+|---|---|---|---|
+| Card | `bg-zinc-800 border-zinc-700` | `bg-zinc-700 border-zinc-600` | `bg-zinc-700 scale-[0.99]` |
+| "Add card" button | `text-zinc-500` | `text-zinc-300 bg-zinc-800` | `text-zinc-200 bg-zinc-700` |
+| Primary button (Approve, Send) | `bg-sky-600 text-white` | `bg-sky-500` | `bg-sky-700` |
+| Destructive button (Request revision) | `bg-transparent text-red-400 border border-red-700` | `bg-red-900/40 text-red-300` | `bg-red-900/60` |
+| Ghost button (Cancel, secondary) | `bg-transparent text-zinc-400` | `bg-zinc-800 text-zinc-300` | `bg-zinc-700` |
+| Nav icon button | `text-zinc-400` | `text-zinc-200 bg-zinc-800` | `text-zinc-100` |
+| Column header drag handle | `text-zinc-600` | `text-zinc-400` | — |
 
 ---
 
 ## 3. Typography
 
-Use the Next.js default font stack (system sans-serif). No custom font import is required for the sprint-1 frontend.
+All type is set in the system sans-serif stack via Tailwind's default `font-sans`. Evidence and agent output use `font-mono`.
 
 | Element | Classes |
 |---|---|
-| Page / brand name ("Kobani") | `text-lg font-semibold text-zinc-100 tracking-tight` |
-| Board title | `text-base font-medium text-zinc-200` |
-| Column header name | `text-xs font-semibold text-zinc-400 uppercase tracking-widest` |
-| Card count badge | `text-xs font-medium text-zinc-500` |
+| App name / logo | `text-lg font-semibold tracking-tight text-zinc-100` |
+| Page / view title (Needs Attention, etc.) | `text-xl font-semibold text-zinc-100` |
+| Board name in nav | `text-sm font-medium text-zinc-300` |
+| Column header name | `text-xs font-semibold uppercase tracking-widest text-zinc-400` |
+| Column card count | `text-xs font-medium text-zinc-500 tabular-nums` |
 | Card title | `text-sm font-medium text-zinc-100 leading-snug` |
-| Card description (modal) | `text-sm text-zinc-300 leading-relaxed` |
-| Status badge label | `text-xs font-semibold` |
+| Card description (in modal) | `text-sm text-zinc-400 leading-relaxed` |
+| Badge label | `text-xs font-medium` (color from status table) |
+| Badge icon char | `text-xs` (same color as label) |
+| Metadata (role, time, attempt) | `text-xs text-zinc-500` |
+| Time-in-column label | `text-xs text-zinc-500 tabular-nums` |
+| Section label inside modal | `text-xs font-semibold uppercase tracking-wider text-zinc-500` |
 | Acceptance criterion text | `text-sm text-zinc-300` |
-| Evidence text (below criterion) | `text-xs text-zinc-500 font-mono` |
-| Agent output (pre-formatted) | `text-xs font-mono text-zinc-300 leading-relaxed` |
-| Metadata (time-in-column, etc.) | `text-xs text-zinc-500` |
-| Section label / divider text | `text-xs font-semibold text-zinc-500 uppercase tracking-wider` |
-| Blocked reason text | `text-sm text-amber-200 leading-relaxed` |
-| Input / textarea text | `text-sm text-zinc-100` |
-| Button text (primary) | `text-sm font-medium` |
-| Nav items (bell, dots) | `text-zinc-400 hover:text-zinc-100` |
-| Notification count badge | `text-xs font-bold text-white` |
+| Evidence text | `text-xs font-mono text-zinc-400 bg-zinc-950 px-1.5 py-0.5 rounded` |
+| Agent output text | `text-sm font-mono text-zinc-300 leading-relaxed whitespace-pre-wrap` |
+| Blocked reason quote | `text-sm text-amber-200 leading-relaxed` |
+| Input / textarea text | `text-sm text-zinc-100 placeholder:text-zinc-600` |
+| CLI command text | `text-xs font-mono text-zinc-300` |
+| Notification banner text | `text-sm text-zinc-100` |
+| Tooltip text | `text-xs text-zinc-300` |
 
 ---
 
 ## 4. Spacing and Layout
 
-### 4.1 Page Layout
+### 4.1 Page
 
-```
-AppShell (full viewport height, flex-col)
-  ├── Nav bar: h-12, px-4, flex items-center
-  └── Board area: flex-1 overflow-hidden
-        └── Board: flex-1 overflow-x-auto overflow-y-hidden
-```
+| Role | Value |
+|---|---|
+| Page horizontal padding | `px-6` |
+| Page top padding (below nav) | `pt-6` |
+| Page bottom padding | `pb-6` |
+| Top nav height | `h-12` |
+| Top nav horizontal padding | `px-4` |
 
-- Page background: `bg-zinc-950 min-h-screen`
-- Nav height: `h-12` (48px)
-- Board area fills remaining height: `flex-1 overflow-hidden`
-- Board horizontal padding: `px-4 py-4`
-- Column gap: `gap-3` (12px)
+### 4.2 Board
 
-### 4.2 Column Dimensions
+| Role | Value |
+|---|---|
+| Board container | `flex flex-row items-start gap-4 overflow-x-auto pb-6 min-h-0` |
+| Board horizontal scroll behavior | `overflow-x-auto` with `scroll-smooth`, custom scrollbar via `scrollbar-thin scrollbar-track-zinc-900 scrollbar-thumb-zinc-700` |
+| Space between columns | `gap-4` |
 
-- Column width: **fixed `w-72`** (288px) — do not use flex-grow
-- Column min-height: `min-h-0` (lets flex parent control height)
-- Column max-height: fills the board area height — achieved via `flex flex-col` on the column inside a `h-full` parent
-- Column internal layout: `flex flex-col` so the card list takes remaining height
-- Card list: `flex-1 overflow-y-auto` — vertical scroll within the column
-- Card gap: `gap-2` (8px)
-- Column header padding: `px-3 py-2.5`
-- Column body padding: `px-2 pb-2`
-- "Add card" button: `mt-auto px-3 py-2` at bottom of column
+### 4.3 Column
 
-### 4.3 Card Dimensions
+| Role | Value |
+|---|---|
+| Column width | `w-72` (fixed, never shrinks) |
+| Column flex behavior | `flex-none` |
+| Column outer container | `flex flex-col w-72 flex-none bg-zinc-900 rounded-xl border border-zinc-800` |
+| Column header padding | `px-3 pt-3 pb-2` |
+| Column header layout | `flex items-center justify-between` |
+| Column card list | `flex flex-col gap-2 px-2 pb-2 overflow-y-auto` |
+| Column card list max height | `max-h-[calc(100vh-12rem)]` |
+| "Add card" button padding | `px-3 py-2` |
+| "Add card" button layout | `flex items-center gap-1.5 w-full rounded-lg text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 transition-colors` |
 
-- Card padding: `p-3`
-- Card border-radius: `rounded-lg`
-- Card is not fixed height — it grows with content
-- Maximum card title lines: 2 (use `line-clamp-2` via `overflow-hidden`)
-- Minimum card height: implicitly ~72px from content
+### 4.4 Card
 
-### 4.4 Scrolling Behavior
+| Role | Value |
+|---|---|
+| Card padding | `p-3` |
+| Card border radius | `rounded-lg` |
+| Card gap between internal rows | `flex flex-col gap-2` |
+| Gap between title and metadata row | `gap-1.5` |
+| Gap between badge and avatar | `gap-1.5` |
 
-- **Board**: horizontal scroll, no vertical scroll. Class on the board container: `overflow-x-auto overflow-y-hidden flex flex-row flex-nowrap`
-- **Column card list**: vertical scroll only. Class: `overflow-y-auto overflow-x-hidden`
-- **Agent output panel (modal)**: vertical scroll only. Class: `overflow-y-auto max-h-64`
-- **Attention Queue Drawer**: vertical scroll. Class: `overflow-y-auto`
-- **Card Detail Modal**: the modal panel is `overflow-y-auto max-h-[90vh]`
+### 4.5 Modal
 
-### 4.5 Modal / Drawer Dimensions
-
-- Card Detail Modal: centered, `w-full max-w-2xl`, full-height capable: `max-h-[90vh]`, `rounded-xl`
-- Attention Queue Drawer: right-side drawer, `w-full max-w-md`, full viewport height, slides in from right
-- Overlay: `fixed inset-0` covering the entire viewport
+| Role | Value |
+|---|---|
+| Modal overlay | `fixed inset-0 z-50 flex items-center justify-center` |
+| Modal container | `relative w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl border border-zinc-700 bg-zinc-900 shadow-2xl shadow-black/80 overflow-hidden` |
+| Modal header padding | `px-6 pt-5 pb-4 border-b border-zinc-800` |
+| Modal body padding | `px-6 py-4 overflow-y-auto flex flex-col gap-5` |
+| Modal footer padding | `px-6 py-4 border-t border-zinc-800` |
 
 ---
 
-## 5. Component Specifications
+## 5. Component Specs
 
 ---
 
 ### 5.1 `AppShell`
 
-**Purpose:** Persistent top navigation and the page layout wrapper.
+The persistent chrome. Renders the top navigation bar; everything else is a child.
 
-**Layout:** `flex flex-col min-h-screen bg-zinc-950`
-
-**Nav bar container:**
+**Container:**
 ```
-<nav class="h-12 bg-zinc-900 border-b border-zinc-800 flex items-center px-4 gap-3 shrink-0">
+<div class="min-h-screen bg-zinc-950 flex flex-col">
+  <nav class="h-12 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between px-4 flex-none z-40">
+    ...
+  </nav>
+  <main class="flex-1 min-h-0 overflow-hidden">
+    ...
+  </main>
+</div>
 ```
 
-**Nav bar internal layout (left to right):**
-1. Brand + breadcrumb (left, flex-1):
-   - `"Kobani"` — `text-lg font-semibold text-zinc-100 tracking-tight`
-   - Separator: `text-zinc-600 mx-1` — character `/`
-   - Board name: `text-base font-medium text-zinc-400`
-2. Right cluster (right, `flex items-center gap-3`):
-   - Notification bell: `relative` wrapper; icon `w-5 h-5 text-zinc-400 hover:text-zinc-100 cursor-pointer transition-colors`; unread badge: `absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-4 h-4 flex items-center justify-center`
-   - User avatar: `w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-semibold text-white cursor-pointer`
-   - Overflow menu (`···`): `text-zinc-400 hover:text-zinc-100 cursor-pointer px-1`
+**Nav left region — app name + breadcrumb:**
+```
+<div class="flex items-center gap-2">
+  <span class="text-lg font-semibold tracking-tight text-zinc-100">Kobani</span>
+  <span class="text-zinc-600">/</span>
+  <span class="text-sm font-medium text-zinc-300">{boardName}</span>
+</div>
+```
 
-**Below nav:** `<main class="flex-1 overflow-hidden">` — contains the Board.
+**Nav right region — notification bell + avatar:**
+```
+<div class="flex items-center gap-2">
+  <!-- Notification bell -->
+  <button class="relative p-1.5 rounded-md text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 transition-colors">
+    <BellIcon class="w-5 h-5" />
+    <!-- Badge: only rendered when count > 0 -->
+    <span class="absolute -top-0.5 -right-0.5 min-w-[1.1rem] h-[1.1rem] flex items-center justify-center rounded-full bg-red-600 text-[10px] font-semibold text-white px-0.5 tabular-nums">
+      {count}
+    </span>
+  </button>
 
-**Implementation notes:**
-- The board name in the breadcrumb is dynamic; it reads from the current board's `name` field.
-- The notification bell badge is hidden when count is 0; render it conditionally.
-- The avatar shows the user's initials (first letter of first and last name).
+  <!-- User avatar -->
+  <button class="w-7 h-7 rounded-full bg-zinc-700 flex items-center justify-center text-xs font-medium text-zinc-200 hover:ring-2 hover:ring-zinc-500 transition-all overflow-hidden">
+    <!-- If avatar URL: <img src="{url}" alt="{name}" class="w-full h-full object-cover" /> -->
+    <!-- Fallback: first letter of display name -->
+    {initial}
+  </button>
+</div>
+```
+
+**Notification bell badge visual states:**
+
+| State | Classes |
+|---|---|
+| No notifications | badge not rendered |
+| 1–9 | `bg-red-600 text-white` |
+| 10+ | `bg-red-600 text-white` (truncated to "9+") |
 
 ---
 
 ### 5.2 `Board`
 
-**Purpose:** Horizontal scrollable container of all columns for a single board.
+The horizontal scroll container that holds all columns.
 
-**Container:**
 ```
-<div class="flex flex-row flex-nowrap gap-3 px-4 py-4 overflow-x-auto overflow-y-hidden h-full items-start">
+<div class="flex flex-row items-start gap-4 overflow-x-auto px-6 pt-6 pb-6 min-h-0 h-full
+            scrollbar-thin scrollbar-track-zinc-900 scrollbar-thumb-zinc-700 hover:scrollbar-thumb-zinc-600">
+  {columns.map(col => <Column ... />)}
+</div>
 ```
 
-**Visual states:**
-- Default: no special styling on the container itself
-- While any column is a valid drop target: individual column receives the drop target ring (see §6)
-
-**Implementation notes:**
-- `h-full` on the board container ensures columns extend to fill the vertical space
-- Use `@dnd-kit/core` `<DndContext>` wrapping the entire Board
-- Columns are rendered in their `position` order (ascending)
-- No empty-state illustration needed for sprint 1 — empty columns already communicate empty state via the "Add card" button
+- `items-start` keeps columns top-aligned when they differ in height.
+- `min-h-0` is required inside a flex column parent to allow proper scroll containment.
+- The board itself does not scroll vertically; columns scroll vertically inside their own containers.
 
 ---
 
 ### 5.3 `Column`
 
-**Purpose:** A named vertical swim lane that holds an ordered list of cards.
-
-**Outer container (fixed-width, full-height flex column):**
+**Outer container:**
 ```
-<div class="w-72 shrink-0 flex flex-col bg-zinc-900 border border-zinc-800 rounded-xl h-full">
+<div class="flex flex-col w-72 flex-none bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden">
 ```
 
-**Header:**
+**Column header:**
 ```
-<div class="flex items-center justify-between px-3 py-2.5 shrink-0">
-  <span class="text-xs font-semibold text-zinc-400 uppercase tracking-widest">{column.name}</span>
-  <span class="text-xs font-medium text-zinc-500 bg-zinc-800 rounded-full px-2 py-0.5">{cards.length}</span>
+<div class="flex items-center justify-between px-3 pt-3 pb-2">
+  <span class="text-xs font-semibold uppercase tracking-widest text-zinc-400">{name}</span>
+  <span class="text-xs font-medium text-zinc-500 tabular-nums">{cardCount}</span>
 </div>
 ```
 
-**Divider below header:** `<div class="border-t border-zinc-800 mx-0" />`
-
 **Card list (scrollable):**
 ```
-<div class="flex-1 overflow-y-auto overflow-x-hidden flex flex-col gap-2 px-2 py-2">
-  {/* Cards rendered here */}
+<div class="flex flex-col gap-2 px-2 pb-2 overflow-y-auto max-h-[calc(100vh-12rem)]
+            scrollbar-thin scrollbar-track-transparent scrollbar-thumb-zinc-700">
+  {cards.map(card => <Card ... />)}
+
+  <!-- Drop ghost placeholder — shown only during active drag-over -->
+  <div class="h-20 rounded-lg border-2 border-dashed border-zinc-700 bg-zinc-800/30 flex-none" />
 </div>
 ```
 
 **"Add card" button:**
 ```
-<div class="px-2 pb-2 shrink-0">
-  <button class="w-full text-left text-sm text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 rounded-lg px-3 py-2 transition-colors duration-150 cursor-pointer">
-    + Add card
-  </button>
-</div>
+<button class="flex items-center gap-1.5 w-full px-3 py-2 text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800
+               rounded-b-xl transition-colors text-sm">
+  <span class="text-base leading-none">+</span>
+  <span>Add card</span>
+</button>
 ```
 
-**Drop target state:** When a card is dragged over this column, add `ring-2 ring-indigo-500 ring-inset` to the outer container. Remove when drag leaves.
-
-**Implementation notes:**
-- Use `@dnd-kit/sortable` `<SortableContext>` inside the card list for within-column reordering
-- The column `position` field governs render order; do not sort by name
-- Column header card count badge updates reactively as cards move in/out
+**Column drop-target highlight state** (active drag over this column, no specific position):
+```
+// Add to outer container when isDragOver and no child drop target is active:
+ring-2 ring-inset ring-sky-700 bg-zinc-800/60
+```
 
 ---
 
 ### 5.4 `Card`
 
-**Purpose:** The card face — the unit of work visible on the board. Clicking opens `CardDetailModal`.
+The card is a draggable surface. Clicking it opens `CardDetailModal`.
 
-**Container:**
+**Default state:**
 ```
-<div class="bg-zinc-800 border border-zinc-700 hover:border-zinc-500 rounded-lg p-3 cursor-pointer shadow-sm hover:shadow-md transition-all duration-150 select-none">
-```
+<div class="group relative flex flex-col gap-2 p-3 rounded-lg bg-zinc-800 border border-zinc-700
+            shadow-sm shadow-black/40 cursor-grab active:cursor-grabbing
+            hover:bg-zinc-700 hover:border-zinc-600 hover:shadow-md hover:shadow-black/60
+            transition-colors duration-100 select-none">
 
-**Internal layout (flex column, gap-2):**
-```
-<div class="flex flex-col gap-2">
-  <!-- Row 1: Title -->
-  <p class="text-sm font-medium text-zinc-100 leading-snug line-clamp-2">{card.title}</p>
+  <!-- Card title -->
+  <p class="text-sm font-medium text-zinc-100 leading-snug">{title}</p>
 
-  <!-- Row 2: Status badge -->
-  <StatusBadge status={card.agentStatus} />
-
-  <!-- Row 3: Footer — assignee + time-in-column -->
+  <!-- Bottom row: status badge + assignee avatar + time-in-column -->
   <div class="flex items-center justify-between">
-    <div class="flex items-center gap-1.5">
+    <StatusBadge status={card.status} />
+    <div class="flex items-center gap-2">
+      <span class="text-xs text-zinc-500 tabular-nums">{timeInColumn}</span>
       <!-- Assignee avatar -->
-      <div class="w-5 h-5 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-semibold text-white shrink-0">
-        {initials}
+      <div class="w-5 h-5 rounded-full bg-zinc-600 flex items-center justify-center text-[10px] font-medium text-zinc-300 overflow-hidden flex-none">
+        {assigneeInitial}
       </div>
-      <span class="text-xs text-zinc-500">@{assignee.username}</span>
     </div>
-    <!-- Time in column -->
-    <span class="text-xs text-zinc-500">{timeInColumn}</span>
   </div>
 </div>
 ```
 
-**Visual states:**
+**Accent border modifiers** — applied on top of the base card classes based on status:
 
-| State | Classes applied to container |
+| Status | Add these classes |
 |---|---|
-| Default | `bg-zinc-800 border-zinc-700 shadow-sm` |
-| Hovered | `bg-zinc-700 border-zinc-500 shadow-md` |
-| Dragging (active drag) | `bg-zinc-700 border-indigo-500 shadow-2xl opacity-80 rotate-1 scale-105` |
-| Drag placeholder (slot left behind) | `bg-zinc-800/40 border-dashed border-zinc-600 opacity-50` |
+| `blocked` | `border-l-4 border-l-amber-500` |
+| `evaluation-failed` | `border-l-4 border-l-red-500` |
+| `pending-approval` | `border-l-4 border-l-yellow-500` |
+| `failed` | `border-l-4 border-l-red-700` |
 
-**Implementation notes:**
-- `timeInColumn` is displayed as a relative string: `"3h"`, `"2d"`, `"just now"`. Compute from `card.movedToColumnAt` at render time.
-- Assignee avatar: if no assignee, render nothing in that slot — do not show a placeholder avatar.
-- The card does not show description text on the card face. Title + status badge + assignee + time is the complete surface.
-- `line-clamp-2` requires `overflow-hidden` — include that in the `<p>` element.
+**Urgent escalation** (blocked or revision-needed for more than 1 hour): add `ring-1 ring-red-700 border-red-600` and replace the amber accent with `border-l-amber-400`.
 
 ---
 
 ### 5.5 `StatusBadge`
 
-**Purpose:** A pill badge showing the agent's current status for a card.
+A pill that always shows: icon char + label. Never truncated.
 
-**Container structure:**
+**Base shell:**
 ```
-<span class="inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-semibold border-l-4 {bgColor} {textColor} {borderColor}">
-  {icon}
-  {label}
+<span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border {bgClass} {textClass} {borderClass}">
+  <span class="text-xs leading-none">{iconChar}</span>
+  <span>{label}</span>
 </span>
 ```
 
-**Per-status spec:**
+**Per-status values** (applying the palette from §2.3):
 
-| Status | bg | text | border-l | Icon | Label |
+| Status | `bgClass` | `textClass` | `borderClass` | `iconChar` | `label` |
 |---|---|---|---|---|---|
-| `idle` | `bg-zinc-700` | `text-zinc-300` | `border-l-zinc-500` | `○` (circle outline, 10px) | Idle |
-| `running` | `bg-indigo-900` | `text-indigo-200` | `border-l-indigo-400` | Animated spinner (see below) | Running |
-| `blocked` | `bg-amber-900` | `text-amber-200` | `border-l-amber-400` | `⚠` | Blocked |
-| `evaluating` | `bg-sky-900` | `text-sky-200` | `border-l-sky-400` | Animated spinner | Evaluating |
-| `evaluation-failed` | `bg-rose-900` | `text-rose-200` | `border-l-rose-400` | `✗` | Eval Failed |
-| `pending-approval` | `bg-violet-900` | `text-violet-200` | `border-l-violet-400` | `⏳` | Pending Approval |
-| `completed` | `bg-emerald-900` | `text-emerald-200` | `border-l-emerald-400` | `✓` | Completed |
-| `failed` | `bg-red-900` | `text-red-200` | `border-l-red-400` | `✗` | Failed |
-
-**Spinner (for `running` and `evaluating`):** A 10×10px inline SVG circle with `animate-spin`, `stroke-current`, `fill-none`. Class: `w-2.5 h-2.5 animate-spin`.
-
-**"Live" pulse dot (for `running` and `evaluating` on the `AgentOutputPanel`):** `w-2 h-2 rounded-full bg-indigo-400 animate-pulse` — rendered adjacent to the "Agent Output" section heading, not inside the badge itself.
-
-**Implementation notes:**
-- `StatusBadge` is a pure display component. It receives a `status` prop of the union type and renders deterministically.
-- Do not conditionally show/hide text — the label always appears.
-- The `border-l-4` left accent requires the badge container to have `border-l-4` and the specific `border-l-{color}` class. Do not use `border` shorthand, as that would add borders on all sides.
+| `idle` | `bg-zinc-800` | `text-zinc-400` | `border-zinc-600` | `○` | `Idle` |
+| `running` | `bg-sky-900/60` | `text-sky-300` | `border-sky-700` | `⟳` | `Running` |
+| `blocked` | `bg-amber-900/60` | `text-amber-300` | `border-amber-600` | `⚠` | `Blocked` |
+| `evaluating` | `bg-violet-900/60` | `text-violet-300` | `border-violet-700` | `◎` | `Evaluating` |
+| `evaluation-failed` | `bg-red-900/60` | `text-red-300` | `border-red-700` | `✗` | `Eval Failed` |
+| `pending-approval` | `bg-yellow-900/60` | `text-yellow-300` | `border-yellow-600` | `⏳` | `Pending Approval` |
+| `completed` | `bg-emerald-900/60` | `text-emerald-300` | `border-emerald-700` | `✓` | `Completed` |
+| `failed` | `bg-red-900/60` | `text-red-400` | `border-red-800` | `✗` | `Failed` |
 
 ---
 
 ### 5.6 `CardDetailModal`
 
-**Purpose:** Full-screen overlay showing all card details, agent output, acceptance criteria, and action buttons. Opened by clicking any card on the board.
+A centered modal with a max width of `max-w-2xl`. It overlays the board with a backdrop scrim.
 
-**Overlay:**
+**Backdrop:**
 ```
-<div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-```
-
-**Panel:**
-```
-<div class="bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto flex flex-col">
+<div class="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4"
+     onClick={closeOnBackdropClick}>
 ```
 
-**Panel internal sections (top to bottom, each separated by `border-t border-zinc-800`):**
-
-**Header:**
+**Modal container:**
 ```
-<div class="flex items-start justify-between px-6 py-4 shrink-0">
+<div class="relative w-full max-w-2xl max-h-[90vh] flex flex-col rounded-2xl
+            border border-zinc-700 bg-zinc-900 shadow-2xl shadow-black/80 overflow-hidden"
+     onClick={stopPropagation}>
+```
+
+**Header (always visible, does not scroll):**
+```
+<div class="flex items-start justify-between px-6 pt-5 pb-4 border-b border-zinc-800 flex-none">
   <div class="flex flex-col gap-1.5">
-    <h2 class="text-base font-semibold text-zinc-100">{card.title}</h2>
+    <h2 class="text-base font-semibold text-zinc-100">{title}</h2>
     <div class="flex items-center gap-2">
-      <StatusBadge status={card.agentStatus} />
-      <span class="text-xs text-zinc-500">{timeInColumn} in {column.name}</span>
+      <StatusBadge status={status} />
+      <span class="text-xs text-zinc-500">{role} · Attempt {n}/5 · {relativeTime}</span>
     </div>
   </div>
-  <!-- Close button -->
-  <button class="text-zinc-500 hover:text-zinc-100 transition-colors p-1 rounded cursor-pointer">✕</button>
+  <button class="text-zinc-500 hover:text-zinc-300 transition-colors p-1 -mr-1">
+    <span class="text-lg leading-none">×</span>
+  </button>
 </div>
 ```
 
-**Metadata row (role, attempt, started):**
+**Body (scrollable):**
 ```
-<div class="px-6 py-3 flex items-center gap-4 text-xs text-zinc-500 shrink-0">
-  <span>Role: <span class="text-zinc-300">{role}</span></span>
-  <span>Attempt: <span class="text-zinc-300">{attempt} / 5</span></span>
-  <span>Started: <span class="text-zinc-300">{relativeTime}</span></span>
-</div>
-```
-Only render this row when an AgentRun exists for the card.
+<div class="flex flex-col gap-5 px-6 py-4 overflow-y-auto flex-1 min-h-0">
+  <!-- Description -->
+  <section class="flex flex-col gap-1.5">
+    <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500">Description</span>
+    <p class="text-sm text-zinc-400 leading-relaxed">{description}</p>
+  </section>
 
-**BlockedBanner:** Rendered here when `status === 'blocked'` (see §5.9).
+  <!-- Acceptance Criteria -->
+  <AcceptanceCriteriaList criteria={criteria} />
 
-**Acceptance Criteria section:**
-```
-<div class="px-6 py-4">
-  <p class="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Acceptance Criteria</p>
-  <AcceptanceCriteriaList criteria={card.criteria} />
-</div>
-```
+  <!-- Blocked banner — only when status === 'blocked' -->
+  <BlockedBanner reason={blockedReason} sessionId={sessionId} />
 
-**Agent Output section:**
-```
-<div class="px-6 py-4 flex-1">
-  <div class="flex items-center gap-2 mb-3">
-    <p class="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Agent Output</p>
-    {isLive && <span class="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />}
-  </div>
-  <AgentOutputPanel output={agentRun.output} isLive={isLive} />
+  <!-- Agent Output Panel -->
+  <AgentOutputPanel output={output} status={status} />
+
+  <!-- Conditional action panel — only shown in relevant states -->
+  <!-- See §5.6.1 below -->
 </div>
 ```
 
-**Action buttons (bottom, only when applicable):**
+**Footer (always visible, does not scroll):**
+Only rendered for `pending-approval` and `evaluation-failed` / revision states.
 ```
-<div class="px-6 py-4 flex items-center justify-between shrink-0 border-t border-zinc-800">
-  <!-- Left: destructive -->
-  <button class="border border-red-500 text-red-400 hover:bg-red-500 hover:text-white bg-transparent rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-150 cursor-pointer">
+<div class="flex items-center justify-between px-6 py-4 border-t border-zinc-800 flex-none bg-zinc-900">
+  <!-- content varies by status — see §5.6.1 -->
+</div>
+```
+
+#### 5.6.1 Conditional Action Panel by Status
+
+**`pending-approval`** — in the modal footer:
+```
+<div class="flex items-center justify-between w-full">
+  <button class="px-3 py-1.5 rounded-lg text-sm font-medium
+                 text-red-400 border border-red-700 hover:bg-red-900/40 hover:text-red-300
+                 transition-colors">
     ✗ Request Revision
   </button>
-  <!-- Right: primary -->
-  <button class="bg-indigo-600 hover:bg-indigo-500 text-white rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-150 cursor-pointer">
+  <button class="px-4 py-1.5 rounded-lg text-sm font-semibold
+                 bg-emerald-700 text-white hover:bg-emerald-600 active:bg-emerald-800
+                 transition-colors">
     ✓ Approve &amp; Close
   </button>
 </div>
 ```
-Only render action buttons when `status === 'pending-approval'`. For `status === 'evaluation-failed'` in the Revision column, render a single `"Send back to In Progress"` primary button aligned right, with the optional context note textarea above it (see W-07).
 
-**Closing behavior:** Clicking the overlay background or the `✕` button closes the modal. Implement with `onClick` on the overlay div and `stopPropagation` on the panel.
+**`evaluation-failed` (revision needed)** — context note textarea in the modal body (before agent output), send-back button in the footer:
+```
+<!-- In body, after AcceptanceCriteriaList -->
+<section class="flex flex-col gap-2">
+  <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500">
+    Add context for the agent before sending back (optional)
+  </span>
+  <textarea rows="3"
+            class="w-full rounded-lg bg-zinc-800 border border-zinc-700 px-3 py-2
+                   text-sm text-zinc-100 placeholder:text-zinc-600
+                   focus:outline-none focus:border-zinc-600 focus:ring-1 focus:ring-zinc-500
+                   resize-none transition-colors"
+            placeholder="Explain what the agent should fix or clarify..." />
+</section>
 
-**Implementation notes:**
-- The modal mounts into a React portal at `document.body`.
-- When open, add `overflow-hidden` to `<body>` to prevent background scroll.
-- The "Previous work by Backend Engineer" collapsed section (W-03) renders as a `<details>` element: `<details class="mt-2"><summary class="text-xs text-zinc-500 cursor-pointer hover:text-zinc-300">Previous work — click to expand</summary>...</details>`
+<!-- In footer -->
+<button class="ml-auto px-4 py-1.5 rounded-lg text-sm font-semibold
+               bg-sky-600 text-white hover:bg-sky-500 active:bg-sky-700
+               transition-colors">
+  Send back to In Progress
+</button>
+```
+
+**`running`** — no footer. The output panel shows live streaming output with the `▌` cursor.
+
+**`blocked`** — no footer. `BlockedBanner` is rendered in the body.
+
+**`failed`** — retry schedule rendered in the body, below the output panel. No footer.
+```
+<div class="flex flex-col gap-1 p-3 rounded-lg bg-zinc-950 border border-zinc-800">
+  <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500 mb-1">Retry Schedule</span>
+  <!-- One row per attempt: -->
+  <div class="flex items-center gap-3 text-xs text-zinc-500">
+    <span class="tabular-nums w-16">Attempt {n}</span>
+    <span class="{statusColor}">{attemptStatus}</span>
+    <span class="tabular-nums">{timestamp}</span>
+    <!-- If pending: show countdown -->
+    <span class="text-zinc-400">(in {countdown})</span>
+  </div>
+</div>
+```
+
+**`completed` / `idle`** — no footer.
 
 ---
 
 ### 5.7 `AgentOutputPanel`
 
-**Purpose:** Scrollable pre-formatted agent output. Shows streamed text; maintains scroll position at the bottom when new content arrives (auto-scroll while live, locked after user scrolls up).
+A scrollable monospace output area that streams tokens in real time.
 
 **Container:**
 ```
-<div class="bg-zinc-950 border border-zinc-800 rounded-lg overflow-y-auto max-h-64 p-3">
-  <pre class="text-xs font-mono text-zinc-300 leading-relaxed whitespace-pre-wrap break-words m-0">
-    {output}
-  </pre>
-</div>
+<section class="flex flex-col gap-1.5">
+  <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500">Agent Output</span>
+
+  <div class="relative rounded-lg bg-zinc-950 border border-zinc-800 overflow-hidden">
+    <pre class="text-sm font-mono text-zinc-300 leading-relaxed whitespace-pre-wrap
+                px-4 py-3 overflow-y-auto max-h-64
+                scrollbar-thin scrollbar-track-transparent scrollbar-thumb-zinc-700"
+    >{output}<span class="animate-pulse text-zinc-400">▌</span></pre>
+    <!-- The ▌ cursor is only rendered when status === 'running' or status === 'evaluating' -->
+  </div>
+</section>
 ```
 
-**"Live" cursor:** When `isLive === true`, append a blinking cursor character after the last character of output:
-```
-<span class="animate-pulse text-indigo-400">▌</span>
-```
+**States:**
 
-**Auto-scroll behavior:**
-- On mount and when `output` changes: if the user has not manually scrolled up (track with a `userScrolled` ref), programmatically scroll to the bottom using `scrollIntoView` or `scrollTop = scrollHeight`.
-- If the user scrolls up: set `userScrolled = true`, stop auto-scroll.
-- When `isLive` becomes `false`: re-enable auto-scroll reset.
+| State | Rendering |
+|---|---|
+| `running` or `evaluating` with output | Output text + blinking `▌` cursor via `animate-pulse` |
+| `running` or `evaluating`, no output yet | Empty `pre` + blinking cursor only |
+| Any completed state | Output text, no cursor |
+| No output at all (idle, no run yet) | Empty state (see below) |
 
-**Empty state** (no output yet):
+**Empty state** (shown when no AgentRun exists yet):
 ```
-<div class="bg-zinc-950 border border-zinc-800 rounded-lg p-3 flex items-center justify-center max-h-64">
-  <span class="text-xs text-zinc-600">Waiting for agent output...</span>
+<div class="flex items-center justify-center h-20 text-sm text-zinc-600 italic">
+  No output yet — agent has not started.
 </div>
 ```
 
@@ -480,375 +545,417 @@ Only render action buttons when `status === 'pending-approval'`. For `status ===
 
 ### 5.8 `AcceptanceCriteriaList`
 
-**Purpose:** Checklist of acceptance criteria. Shows unchecked (pending), pass, or fail state per criterion. When evaluated, shows evidence text below each item.
+A checklist with four visual states per criterion.
 
-**Container:** `<ul class="flex flex-col gap-2 list-none m-0 p-0">`
+**Container:**
+```
+<section class="flex flex-col gap-1.5">
+  <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500">Acceptance Criteria</span>
+  <ul class="flex flex-col gap-2">
+    {criteria.map(c => <AcceptanceCriterionRow criterion={c} />)}
+  </ul>
+</section>
+```
 
-**Each criterion item:**
+**Per-criterion row — four states:**
+
+| State | Icon | Icon color | Text classes | Evidence |
+|---|---|---|---|---|
+| `unchecked` | `◻` | `text-zinc-600` | `text-sm text-zinc-400` | not shown |
+| `checking` | `⟳` | `text-violet-400 animate-spin` | `text-sm text-zinc-300` | `text-xs text-zinc-500 italic` "checking..." |
+| `passed` | `✓` | `text-emerald-400` | `text-sm text-zinc-300` | evidence in monospace (see below) |
+| `failed` | `✗` | `text-red-400` | `text-sm text-zinc-300` | evidence in monospace (see below) |
+
+**Evidence line** (shown for `passed` and `failed`):
+```
+<p class="text-xs font-mono text-zinc-400 bg-zinc-950 px-1.5 py-0.5 rounded ml-5 break-all">
+  {evidence}
+</p>
+```
+
+**Full row markup example (passed):**
 ```
 <li class="flex flex-col gap-0.5">
-  <div class="flex items-start gap-2">
-    <!-- Status icon -->
-    <span class="mt-0.5 shrink-0 {iconColor}">{icon}</span>
-    <!-- Criterion text -->
-    <span class="text-sm text-zinc-300">{criterion.text}</span>
+  <div class="flex items-start gap-1.5">
+    <span class="text-sm text-emerald-400 flex-none mt-0.5">✓</span>
+    <span class="text-sm text-zinc-300">{criterionText}</span>
   </div>
-  <!-- Evidence (only when evaluated) -->
-  {criterion.evidence && (
-    <p class="ml-6 text-xs text-zinc-500 font-mono">{criterion.evidence}</p>
-  )}
+  <p class="text-xs font-mono text-zinc-400 bg-zinc-950 px-1.5 py-0.5 rounded ml-5 break-all">
+    {evidence}
+  </p>
 </li>
 ```
-
-**Icon and color per state:**
-
-| State | Icon char | Icon color class |
-|---|---|---|
-| `pending` (no evaluation yet) | `◻` | `text-zinc-600` |
-| `checking` (evaluation in progress) | `○` animated spinner | `text-sky-400` |
-| `passed` | `✅` | `text-emerald-400` |
-| `failed` | `✗` | `text-rose-400` |
-
-**Implementation notes:**
-- During evaluation (`status === 'evaluating'`), all criteria show the `checking` spinner until the evaluation agent emits a verdict for each. Update criterion state individually as the stream resolves them.
-- For the sprint-1 fake data, criteria state is hardcoded per card — no streaming needed.
 
 ---
 
 ### 5.9 `BlockedBanner`
 
-**Purpose:** Prominent in-card-detail section shown when `status === 'blocked'`. Shows the agent's stated reason, a reply textarea, and the CLI attach command.
+Shown inside `CardDetailModal` when `status === 'blocked'`. Uses the amber palette.
 
-**Container (inside `CardDetailModal`, above Acceptance Criteria):**
+**Container:**
 ```
-<div class="mx-6 my-4 bg-amber-950 border border-amber-800 rounded-lg p-4 flex flex-col gap-4">
+<section class="flex flex-col gap-3 p-4 rounded-xl bg-amber-950/40 border border-amber-800">
 ```
 
-**Header:**
+**Blocked reason:**
 ```
-<div class="flex items-center gap-2">
-  <span class="text-amber-400 text-sm">⚠</span>
-  <span class="text-sm font-semibold text-amber-200">Agent needs your input</span>
+<div class="flex flex-col gap-1">
+  <div class="flex items-center gap-1.5">
+    <span class="text-sm text-amber-400">⚠</span>
+    <span class="text-xs font-semibold uppercase tracking-wider text-amber-500">Agent needs your input</span>
+  </div>
+  <p class="text-sm text-amber-200 leading-relaxed">{blockedReason}</p>
 </div>
 ```
 
-**Blocked reason (full text, no truncation):**
-```
-<p class="text-sm text-amber-200 leading-relaxed">{blockedReason}</p>
-```
-
-**Option A — Reply input:**
+**Option A — Reply textarea:**
 ```
 <div class="flex flex-col gap-2">
-  <p class="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Option A — Reply here</p>
-  <textarea
-    class="w-full bg-zinc-950 border border-zinc-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 resize-none outline-none transition-colors"
-    rows={3}
-    placeholder="Reply to the agent..."
-  />
-  <button class="self-end bg-indigo-600 hover:bg-indigo-500 text-white rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-150 cursor-pointer">
+  <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500">Option A — Reply here</span>
+  <textarea rows="3"
+            class="w-full rounded-lg bg-zinc-800 border border-zinc-700 px-3 py-2
+                   text-sm text-zinc-100 placeholder:text-zinc-600
+                   focus:outline-none focus:border-amber-600 focus:ring-1 focus:ring-amber-700
+                   resize-none transition-colors"
+            placeholder="Type your reply to the agent..." />
+  <button class="self-start px-3 py-1.5 rounded-lg text-sm font-semibold
+                 bg-amber-700 text-white hover:bg-amber-600 active:bg-amber-800
+                 transition-colors">
     Send to agent
   </button>
 </div>
 ```
 
-**Option B — CLI command:**
+**Option B — CLI attach command:**
 ```
-<div class="flex flex-col gap-2">
-  <p class="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Option B — Connect via CLI</p>
-  <div class="flex items-center gap-2 bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2">
-    <code class="flex-1 text-xs font-mono text-zinc-300">ant sessions connect {sessionId}</code>
-    <button class="text-xs text-indigo-400 hover:text-indigo-200 transition-colors cursor-pointer shrink-0">Copy</button>
+<div class="flex flex-col gap-1.5">
+  <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500">Option B — Connect via CLI</span>
+  <div class="flex items-center gap-2 rounded-lg bg-zinc-950 border border-zinc-800 px-3 py-2">
+    <code class="text-xs font-mono text-zinc-300 flex-1 break-all">
+      ant sessions connect {sessionId}
+    </code>
+    <button class="flex-none text-xs text-zinc-400 hover:text-zinc-200 border border-zinc-700
+                   hover:border-zinc-500 rounded px-2 py-0.5 transition-colors"
+            onClick={copyToClipboard}>
+      Copy
+    </button>
   </div>
 </div>
 ```
 
-**Implementation notes:**
-- The `Copy` button writes the CLI command string to `navigator.clipboard.writeText(...)`.
-- After a successful copy, change button label to `"Copied!"` for 2 seconds, then revert.
-- This entire banner is conditionally rendered — only when `card.agentStatus === 'blocked'`.
+**"Copy" button after copy success** — swap text to "Copied!" for 2 seconds then revert:
+```
+// Success state (transient, 2s):
+class="flex-none text-xs text-emerald-400 border border-emerald-700 rounded px-2 py-0.5"
+text: "Copied!"
+```
 
 ---
 
 ### 5.10 `AttentionQueueDrawer`
 
-**Purpose:** Right-side drawer listing all blocked/revision/pending-approval cards requiring human action. Accessible from the notification bell in the nav.
+A slide-in side drawer anchored to the right edge. Triggered by clicking the notification bell or a dedicated "Needs Attention" nav item.
 
-**Overlay (click to dismiss):**
+**Backdrop:**
 ```
-<div class="fixed inset-0 bg-black/40 z-40" onClick={close} />
+<div class="fixed inset-0 z-40 bg-black/40 transition-opacity duration-200"
+     onClick={closeDrawer}>
 ```
 
 **Drawer panel:**
 ```
-<aside class="fixed top-0 right-0 h-full w-full max-w-md bg-zinc-900 border-l border-zinc-800 shadow-2xl z-50 flex flex-col">
+<aside class="fixed inset-y-0 right-0 z-50 w-96 flex flex-col bg-zinc-900 border-l border-zinc-800
+              shadow-2xl shadow-black/60 overflow-hidden
+              transition-transform duration-300 ease-out
+              {isOpen ? 'translate-x-0' : 'translate-x-full'}">
 ```
 
 **Drawer header:**
 ```
-<div class="h-12 flex items-center justify-between px-4 border-b border-zinc-800 shrink-0">
-  <span class="text-sm font-semibold text-zinc-100">Needs Attention</span>
-  <div class="flex items-center gap-3">
-    <span class="text-xs text-zinc-500">{totalCount} items</span>
-    <button class="text-zinc-500 hover:text-zinc-100 transition-colors cursor-pointer">✕</button>
+<div class="flex items-center justify-between px-5 pt-5 pb-4 border-b border-zinc-800 flex-none">
+  <div class="flex items-center gap-2">
+    <h2 class="text-base font-semibold text-zinc-100">Needs Attention</h2>
+    <span class="text-xs font-medium bg-red-600 text-white rounded-full px-1.5 py-0.5 tabular-nums">
+      {totalCount}
+    </span>
   </div>
+  <button class="text-zinc-500 hover:text-zinc-300 transition-colors p-1">×</button>
 </div>
 ```
 
-**Scrollable content:**
+**Drawer body (scrollable):**
 ```
-<div class="flex-1 overflow-y-auto px-3 py-3 flex flex-col gap-3">
-  {/* Grouped sections: Blocked, Revision Needed, Pending Approval */}
+<div class="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-5
+            scrollbar-thin scrollbar-track-transparent scrollbar-thumb-zinc-700">
+  <!-- Three groups, each rendered only when non-empty -->
+  <AttentionGroup label="Blocked" items={blockedItems} />
+  <AttentionGroup label="Revision Needed" items={revisionItems} />
+  <AttentionGroup label="Pending Approval" items={approvalItems} />
 </div>
 ```
 
-**Section group header:**
+**`AttentionGroup` section header:**
 ```
-<p class="text-xs font-semibold text-zinc-500 uppercase tracking-wider px-1 mb-1">{groupLabel}</p>
+<div class="flex items-center gap-2 mb-2">
+  <span class="text-xs font-semibold uppercase tracking-wider text-zinc-500">{label}</span>
+  <span class="text-xs text-zinc-600 tabular-nums">({count})</span>
+</div>
 ```
 
-**Each attention item card:**
+**`AttentionGroup` card item:**
 ```
-<div class="bg-zinc-800 border {borderClass} rounded-lg p-4 flex flex-col gap-3">
-  <!-- Header row: state badge + age + URGENT tag -->
+<div class="flex flex-col gap-2 p-3 rounded-xl bg-zinc-800 border border-zinc-700
+            {urgentClasses}">
+  <!-- Urgent label — only when escalated -->
+  <span class="self-start text-[10px] font-bold uppercase tracking-widest text-red-400
+               bg-red-950/60 border border-red-800 rounded px-1.5 py-0.5">
+    Urgent
+  </span>
+
+  <!-- Top row: status badge + time in state -->
   <div class="flex items-center justify-between">
     <StatusBadge status={item.status} />
-    <div class="flex items-center gap-2">
-      {isUrgent && (
-        <span class="text-xs font-bold text-red-400 bg-red-950 border border-red-800 rounded px-1.5 py-0.5">URGENT</span>
-      )}
-      <span class="text-xs text-zinc-500">{age} ago</span>
-    </div>
+    <span class="text-xs text-zinc-500 tabular-nums">{timeInState}</span>
   </div>
 
   <!-- Card title + board/column path -->
-  <div>
-    <p class="text-sm font-medium text-zinc-100">{card.title}</p>
-    <p class="text-xs text-zinc-500 mt-0.5">{board.name} / {column.name}</p>
+  <div class="flex flex-col gap-0.5">
+    <p class="text-sm font-medium text-zinc-100 leading-snug">{cardTitle}</p>
+    <p class="text-xs text-zinc-500">{boardName} / {columnName}</p>
   </div>
 
   <!-- Reason / summary -->
-  <p class="text-sm text-zinc-400 leading-relaxed">{summary}</p>
+  <p class="text-xs text-zinc-400 leading-relaxed line-clamp-2">{reason}</p>
 
-  <!-- Action buttons -->
-  <div class="flex items-center gap-2 justify-end">
-    {/* Per-status action buttons — see below */}
+  <!-- Action buttons — vary by status -->
+  <div class="flex items-center gap-2 pt-0.5">
+    {actionButtons}
   </div>
 </div>
 ```
 
-**Border class per state:**
+**Urgent escalation modifier** (more than 1 hour in blocked or revision-needed state):
+```
+urgentClasses = "border-red-600 ring-1 ring-red-700"
+```
+The "Urgent" label span is only rendered when `isUrgent === true`.
 
-| State | Border class |
+**Action buttons per status:**
+
+| Status | Buttons |
 |---|---|
-| `blocked` (non-urgent) | `border-amber-800` |
-| `blocked` (urgent, > 1 hour) | `border-red-500` and `bg-red-950` replaces `bg-zinc-800` |
-| `evaluation-failed` / revision | `border-rose-800` |
-| `pending-approval` | `border-violet-800` |
+| `blocked` | `Reply` (ghost) + `Connect via CLI` (ghost) |
+| `evaluation-failed` (Revision Needed) | `View Evaluation Report` (ghost) |
+| `pending-approval` | `Request Revision` (destructive ghost) + `Approve` (primary) |
 
-**Action buttons per state:**
+Button classes in the drawer (compact size):
+```
+// Ghost action button:
+class="px-2.5 py-1 rounded-md text-xs font-medium text-zinc-300 border border-zinc-600
+       hover:bg-zinc-700 hover:border-zinc-500 transition-colors"
 
-| State | Buttons |
-|---|---|
-| `blocked` | `[ Reply ]` (primary) + `[ Connect via CLI ]` (secondary) |
-| `evaluation-failed` / revision | `[ View evaluation report ]` (secondary) |
-| `pending-approval` | `[ ✗ Request Revision ]` (destructive) + `[ ✓ Approve ]` (primary) |
+// Primary (Approve):
+class="px-2.5 py-1 rounded-md text-xs font-semibold text-white bg-emerald-700
+       hover:bg-emerald-600 transition-colors"
 
-**Animation:** The drawer slides in from the right. Use a CSS transition on the drawer panel's `translate-x`:
-- Closed: `translate-x-full`
-- Open: `translate-x-0`
-- Transition: `transition-transform duration-300 ease-in-out`
+// Destructive ghost (Request Revision):
+class="px-2.5 py-1 rounded-md text-xs font-medium text-red-400 border border-red-800
+       hover:bg-red-950/60 transition-colors"
+```
 
-Implement with a wrapper: `<aside class="... transform transition-transform duration-300 ease-in-out {isOpen ? 'translate-x-0' : 'translate-x-full'}">`.
-
-**Implementation notes:**
-- Clicking any item in the drawer opens the `CardDetailModal` for that card (the drawer stays open behind the modal).
-- The drawer is triggered by clicking the notification bell in the nav.
-- For sprint-1 fake data, clicking "Reply" or "Approve" from the drawer can open the `CardDetailModal` rather than taking inline action.
+**Empty state** (all groups empty):
+```
+<div class="flex flex-col items-center justify-center flex-1 gap-2 text-zinc-600 py-12">
+  <span class="text-3xl">✓</span>
+  <p class="text-sm">Nothing needs your attention right now.</p>
+</div>
+```
 
 ---
 
 ## 6. Drag and Drop Visual States
 
-Uses `@dnd-kit/core` and `@dnd-kit/sortable`. The following visual transitions must be implemented exactly.
-
 ### 6.1 Card Being Dragged
 
-When a card is picked up (`isDragging === true` from `useSortable`):
-- Apply to the dragged card element: `opacity-80 rotate-1 scale-105 shadow-2xl border-indigo-500 bg-zinc-700 cursor-grabbing z-50`
-- The rotation (`rotate-1` = 1deg) gives a "lifted" feel without being cartoonish
-- The original slot left behind in the column renders as a ghost placeholder:
-  ```
-  <div class="bg-zinc-800/30 border border-dashed border-zinc-700 rounded-lg" style={{height: originalCardHeight}} />
-  ```
-  Height should match the original card height to prevent column layout shift.
+The card lifted from its origin slot. Applied to the element being dragged.
 
-### 6.2 Valid Drop Target Column
+```
+// Classes applied when isDragging === true:
+opacity-60 rotate-2 scale-105 shadow-2xl shadow-black/80 cursor-grabbing ring-2 ring-sky-600 z-50
+```
 
-When a dragged card is hovering over a column (`isOver === true` from `useDroppable`):
-- Add to the column outer container: `ring-2 ring-indigo-500 ring-inset`
-- Add to the column background: transition from `bg-zinc-900` to `bg-zinc-900` (no fill change) — only the ring changes
-- If the column card list is empty and hovered: show a dashed insertion indicator:
-  ```
-  <div class="border-2 border-dashed border-indigo-700 rounded-lg h-16 flex items-center justify-center">
-    <span class="text-xs text-indigo-600">Drop here</span>
-  </div>
-  ```
+Transition applied to card enter/exit drag state:
+```
+transition-transform duration-150 ease-out
+```
 
-### 6.3 Card Dropped (Snap Animation)
+### 6.2 Drop Target Column Highlight
 
-When a card is released and the drop completes:
-1. The drag overlay disappears immediately
-2. The card animates to its new position using `@dnd-kit/sortable`'s built-in `transition` property: `{ duration: 200, easing: 'cubic-bezier(0.25, 1, 0.5, 1)' }`
-3. The column ring (`ring-2 ring-indigo-500`) is removed immediately on drop
-4. No custom success flash — the card settles smoothly into position
+Applied to a `Column` when the dragged card hovers over it and the column accepts the drop.
 
-### 6.4 Invalid Drop (Reverted)
+```
+// Add to column outer container:
+ring-2 ring-inset ring-sky-700 bg-zinc-800/40
+```
 
-If a drop is cancelled or reverted (card moved back to original position):
-- The card snaps back to its origin column using the same transition (200ms ease-out)
-- No error visual is shown on the card — the revert itself is the signal
+Transition:
+```
+transition-colors duration-100
+```
+
+### 6.3 Drop Target Position Ring
+
+Applied to the specific inter-card gap that would receive the drop (position indicator within a column).
+
+```
+// A 2px ring line rendered between cards at the insertion point:
+<div class="h-0.5 w-full rounded-full bg-sky-500 shadow-sm shadow-sky-500/50 mx-1" />
+```
+
+### 6.4 Placeholder Ghost
+
+The empty slot left behind in the origin column as the card is being dragged.
+
+```
+<div class="rounded-lg border-2 border-dashed border-zinc-700 bg-zinc-800/20 flex-none
+            transition-all duration-150" />
+```
+
+The ghost height matches the dragged card's measured height dynamically (`style="height: {draggedHeight}px"`). `h-20` is the fallback default when height cannot be measured.
+
+### 6.5 Snap Transition (Drop Landing)
+
+When a card is dropped, it snaps into its final position. Apply this class to the card for the snap frame:
+
+```
+transition-transform duration-200 ease-out
+```
+
+The card returns to `opacity-100 rotate-0 scale-100 shadow-sm` on drop, animated over 200ms.
+
+### 6.6 Invalid Drop Zone
+
+When hovering over a column that does not accept the card (e.g. terminal column during an active run):
+
+```
+// Applied to the column outer container:
+ring-2 ring-inset ring-red-800 cursor-no-drop
+```
 
 ---
 
-## 7. Responsive Behavior (≥768px — Tablet, PRD X.2)
+## 7. Responsive Behavior
 
-The PRD requires the board to be usable on tablet-sized screens (≥768px) with no horizontal scrolling on a standard iPad viewport (768px wide).
+### 7.1 Breakpoint
 
-**Implementation strategy:** At tablet breakpoint, switch from a multi-column horizontal scroll board to a single-column stacked layout.
+The responsive breakpoint is `md` (768px). Below `md`, the board shows the default horizontal-scroll layout. At `md` and above, the board switches to a stacked collapsible column layout per the cross-cutting requirement X.2 (no horizontal scrolling on tablet).
 
-### 7.1 Breakpoint Logic
+### 7.2 Tablet Layout (md and above)
 
-- **≥1024px (desktop):** Full horizontal board with all columns visible side-by-side. This is the primary layout described in §4.
-- **768px–1023px (tablet):** Columns are displayed as a vertically stacked accordion. No horizontal scroll.
-- **< 768px:** Out of scope per PRD. The board can overflow — no specific accommodation needed.
+The `Board` component switches from `flex-row overflow-x-auto` to a vertical stacked layout. Apply these classes at the `md` breakpoint:
 
-### 7.2 Tablet Column Layout (768px–1023px)
-
-Replace the horizontal flex board with:
+**Board container at md+:**
 ```
-<div class="flex flex-col gap-3 px-3 py-3 overflow-y-auto">
+md:flex-col md:overflow-x-visible md:overflow-y-auto md:px-4 md:gap-3
 ```
 
-Each column becomes full-width:
+Full responsive class string for the Board container:
 ```
-<div class="w-full bg-zinc-900 border border-zinc-800 rounded-xl">
-```
-
-Columns are collapsible at tablet width. The column header becomes a toggle:
-- Collapsed: shows column name, card count badge, and a `▸` chevron — card list is hidden
-- Expanded: shows the full card list — use a `▾` chevron
-
-The "In Progress" and "Review" columns default to expanded at tablet width. "Backlog" and "Done" default to collapsed.
-
-Column header at tablet (clickable):
-```
-<button class="w-full flex items-center justify-between px-3 py-3 text-left cursor-pointer hover:bg-zinc-800 rounded-t-xl transition-colors">
-  <div class="flex items-center gap-2">
-    <span class="text-xs font-semibold text-zinc-400 uppercase tracking-widest">{column.name}</span>
-    <span class="text-xs text-zinc-500 bg-zinc-800 rounded-full px-2 py-0.5">{cards.length}</span>
-  </div>
-  <span class="text-zinc-500 text-xs">{isExpanded ? '▾' : '▸'}</span>
-</button>
+flex flex-row items-start gap-4 overflow-x-auto px-6 pt-6 pb-6 min-h-0 h-full
+scrollbar-thin scrollbar-track-zinc-900 scrollbar-thumb-zinc-700
+md:flex-col md:overflow-x-visible md:overflow-y-auto md:px-4 md:gap-3 md:items-stretch
 ```
 
-The card list inside the column uses `max-h-96 overflow-y-auto` at tablet width to prevent excessively tall columns.
-
-### 7.3 Navigation at Tablet
-
-The nav bar retains its full layout at 768px — no hamburger menu. The board name breadcrumb truncates with `truncate max-w-[140px]` if needed.
-
-The `AttentionQueueDrawer` remains a right-side drawer at tablet width, using its full `max-w-md` width (which is 448px — fits within 768px viewport when the board is behind the overlay).
-
-### 7.4 `CardDetailModal` at Tablet
-
-The modal at tablet width is full-width:
-- Change `max-w-2xl` to `max-w-full mx-3` at `md:` breakpoint or below
-- `max-h-[95vh]`
-
-Use Tailwind responsive prefix `md:` for desktop overrides where needed:
+**Column at md+** — full width, no fixed `w-72`:
 ```
-<div class="bg-zinc-900 ... w-full mx-3 max-h-[95vh] md:max-w-2xl md:mx-auto md:max-h-[90vh]">
+// Responsive column outer container:
+flex flex-col w-72 flex-none bg-zinc-900 rounded-xl border border-zinc-800 overflow-hidden
+md:w-full md:flex-initial
 ```
+
+**Column collapse behavior on tablet:**
+
+Columns are collapsible by tapping/clicking the column header on tablet. All columns start expanded on page load.
+
+- Collapsed state: card list is hidden (`hidden`), only the header row is visible.
+- The column header shows a chevron indicator that rotates based on state:
+
+```
+<!-- Collapsed indicator in header, at md+ only: -->
+<span class="hidden md:block text-zinc-600 text-xs ml-auto transition-transform duration-200
+             {isCollapsed ? 'rotate-0' : 'rotate-180'}">
+  ▾
+</span>
+```
+
+- Card list visibility at md+:
+```
+// Expanded (default):
+<div class="flex flex-col gap-2 px-2 pb-2 overflow-y-auto max-h-[calc(100vh-12rem)]
+            md:max-h-none md:overflow-y-visible">
+
+// Collapsed — add md:hidden to the card list div:
+md:hidden
+```
+
+### 7.3 Mobile (below 768px)
+
+Not in scope for Milestone 1. The board is horizontally scrollable on small screens via the default `overflow-x-auto` behavior, which is acceptable per the PRD scope.
 
 ---
 
 ## 8. Fake Data Visual Goal
 
-The fake seed data must make all status badge states visible at a glance when the board first loads. This is the reference state for the board on first render.
+At first load, the following card and status distribution ensures every badge variant appears within the first viewport without any scrolling. This distribution also serves as the primary visual QA test for the status color system.
 
-### 8.1 Columns (left to right)
+### 8.1 Board: "Sprint 12 Board"
 
-| Column | Type | Cards |
-|---|---|---|
-| Backlog | Inactive | 2 cards |
-| In Progress | Active | 3 cards |
-| Review | Review | 1 card |
-| Revision Needed | Revision | 1 card |
-| Done | Terminal | 2 cards |
+**Column 1 — BACKLOG** (Inactive column type)
 
-### 8.2 Cards by Column and Status
+| Card title | Status | Assignee | Time in column |
+|---|---|---|---|
+| API rate limit docs | `idle` | @lucas | 3d |
 
-**Backlog (2 cards):**
-1. "API rate limit documentation" — `idle`, assigned @lucas
-2. "Onboarding email sequence" — `idle`, assigned @sarah
+**Column 2 — IN PROGRESS** (Active column type)
 
-**In Progress (3 cards):**
-1. "Auth flow redesign" — `running`, assigned @lucas, started 4 min ago — this card is the "hero" example from the wireframes
-2. "Database migration script" — `blocked`, assigned @sarah, blocked 1h 15m ago (qualifies as URGENT in attention queue)
-3. "Payment webhook handler" — `failed` (attempt 2/5, retrying in 38s), assigned @lucas
+| Card title | Status | Assignee | Time in column | Notes |
+|---|---|---|---|---|
+| Auth flow redesign | `running` | @lucas | 2m | Live cursor visible in output panel |
+| DB migration rollback | `blocked` | @sam | 1h 14m | **Urgent** — accent border amber, ring red |
+| Rate limiter edge cases | `failed` | @priya | 22m | Attempt 2/5, retry in 38s |
 
-**Review (1 card):**
-1. "Search indexing service" — `evaluating`, assigned @sarah, evaluation started 2 min ago
+**Column 3 — REVIEW** (Review column type)
 
-**Revision Needed (1 card):**
-1. "Onboarding copy update" — `evaluation-failed` (2 of 3 criteria failed), assigned @lucas
+| Card title | Status | Assignee | Time in column |
+|---|---|---|---|
+| Onboarding copy update | `evaluating` | @lucas | 4m |
+| API docs update | `pending-approval` | @lucas | 8m |
+| Payment webhook handler | `evaluation-failed` | @sam | 31m |
 
-**Done (2 cards):**
-1. "User profile API" — `completed`, assigned @sarah, approved 2 days ago
-2. "CI pipeline setup" — `completed`, assigned @lucas, approved 5 days ago
+**Column 4 — DONE** (Terminal column type)
 
-There is also one card in Review with `pending-approval` status — add it as a second card in the Review column:
-- "Checkout flow refactor" — `pending-approval`, assigned @lucas, evaluation passed 8 min ago, awaiting sign-off
+| Card title | Status | Assignee | Time in column |
+|---|---|---|---|
+| Login page refactor | `completed` | @priya | 2h |
 
-### 8.3 Attention Queue State
+### 8.2 Badge Coverage
 
-When the notification bell is clicked, the drawer shows 3 items:
+All 8 `StatusBadge` variants are simultaneously visible without scrolling:
 
-1. **Blocked — URGENT:** "Database migration script" / Sprint 12 Board / In Progress — blocked 1h 15m ago
-2. **Revision Needed:** "Onboarding copy update" / Content Pipeline / Revision Needed — 22 min ago
-3. **Pending Approval:** "Checkout flow refactor" / Sprint 12 Board / Review — 8 min ago
+`idle` (col 1) · `running` (col 2) · `blocked` (col 2) · `failed` (col 2) · `evaluating` (col 3) · `pending-approval` (col 3) · `evaluation-failed` (col 3) · `completed` (col 4)
 
-The notification bell badge shows `3`.
+### 8.3 Urgent Escalation Visibility
 
-### 8.4 Visual Checkpoint
+"DB migration rollback" in column 2 has been blocked for 1h 14m, triggering the urgent escalation style: `border-red-600 ring-1 ring-red-700` with the `Urgent` label rendered inside the `AttentionQueueDrawer` entry for that card.
 
-After the fake data loads, an engineer reviewing the board should see all 8 status badge variants in use across visible cards without opening any modal:
+### 8.4 Notification Bell and Drawer
 
-- `idle` — 2× in Backlog
-- `running` — 1× in In Progress
-- `blocked` — 1× in In Progress
-- `failed` — 1× in In Progress
-- `evaluating` — 1× in Review
-- `pending-approval` — 1× in Review
-- `evaluation-failed` — 1× in Revision Needed
-- `completed` — 2× in Done
+The notification bell badge shows `3`. Opening the `AttentionQueueDrawer` shows:
 
-This validates the color palette and badge spec in a single viewport.
+- **Blocked (1):** "DB migration rollback" — Sprint 12 Board / In Progress — URGENT
+- **Revision Needed (1):** "Payment webhook handler" — Sprint 12 Board / Review
+- **Pending Approval (1):** "API docs update" — Sprint 12 Board / Review
 
 ---
 
-## Appendix A — Tailwind Class Quick Reference
-
-Frequently combined classes that appear throughout components:
-
-| Pattern | Classes |
-|---|---|
-| Section divider heading | `text-xs font-semibold text-zinc-500 uppercase tracking-wider` |
-| Code/mono snippet inline | `font-mono text-xs text-zinc-300 bg-zinc-950 px-1.5 py-0.5 rounded` |
-| Subtle full-width button | `w-full text-left text-sm text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 rounded-lg px-3 py-2 transition-colors duration-150 cursor-pointer` |
-| Small avatar | `w-5 h-5 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-semibold text-white shrink-0` |
-| Standard avatar (nav) | `w-7 h-7 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-semibold text-white` |
-| Close button | `text-zinc-500 hover:text-zinc-100 transition-colors p-1 rounded cursor-pointer` |
-| Thin horizontal rule | `border-t border-zinc-800` |
-| Rounded badge (count) | `text-xs font-medium text-zinc-500 bg-zinc-800 rounded-full px-2 py-0.5` |
+*End of design spec.*
