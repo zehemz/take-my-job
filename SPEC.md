@@ -294,28 +294,31 @@ for each candidate:
 Retry uses exponential backoff with a global cap:
 
 ```
-delay_ms = min(10_000 * 2^(attempt - 1), MAX_RETRY_BACKOFF_MS)
+retry_number = attempt - 1          // attempt=1 is the initial try, not a retry
+delay_ms = min(10_000 * 2^(retry_number - 1), MAX_RETRY_BACKOFF_MS)
 MAX_RETRY_BACKOFF_MS = 300_000  (5 minutes)
 MAX_ATTEMPTS = 5  (configurable)
 ```
 
-| Attempt | Delay |
-|---|---|
-| 1 (first retry) | 10s |
-| 2 | 20s |
-| 3 | 40s |
-| 4 | 80s |
-| 5+ | 300s (capped) |
+| `attempt` | Retry # | Delay |
+|---|---|---|
+| 2 | 1st retry | 10s |
+| 3 | 2nd retry | 20s |
+| 4 | 3rd retry | 40s |
+| 5 | 4th retry | 80s |
+| 6+ | 5th+ retry | 300s (capped) |
 
-After `MAX_ATTEMPTS` failures, set AgentRun status=failed permanently and do not retry. Surface an error indicator on the card.
+After `MAX_ATTEMPTS` retries (i.e. `attempt > MAX_ATTEMPTS`), set AgentRun status=failed permanently and do not retry. Surface an error indicator on the card.
 
 ### 5.6 Startup Recovery
 
-On application startup, before the first poll tick:
-1. Query all AgentRuns with status `running` or `idle`.
-2. For each: attempt to retrieve the Anthropic session. If terminated, transition to failed/completed per outcome. If still active, re-attach the agent runner.
-3. Query all AgentRuns with status `failed` and `retryAfterMs < now`. Set retryAfterMs to `now` to make them immediately eligible.
-4. Remove stale `claimed` state (all claimed entries from before the restart are now unclaimed).
+On application startup, the orchestrator MUST complete all recovery steps before starting the poll loop. No poll tick may fire until recovery is done.
+
+1. Clear the `claimed` set and `running` map (stale in-memory state from a previous process).
+2. Query all AgentRuns with status `running` or `idle`.
+3. For each: attempt to retrieve the Anthropic session. If terminated, transition to failed/completed per outcome. If still active, re-attach the agent runner and add the card to `claimed` and `running`.
+4. Query all AgentRuns with status `failed` and `retryAfterMs < now`. Set retryAfterMs to `now` to make them immediately eligible.
+5. Start the poll loop.
 
 ---
 
@@ -385,6 +388,8 @@ The agent runner consumes the SSE stream in a loop. Each event type requires a s
 
 **Do NOT break the loop on bare `session.status_idle`.** Break only when `stop_reason.type != "requires_action"`.
 
+**Agent runner dual role:** The agent runner is both the stream consumer and the tool result provider. When it receives an `agent.custom_tool_use` event, it executes the tool logic (e.g. `update_card` validation, database writes) and then sends the result back via `sessions.events.send(sessionId, { type: "user.custom_tool_result", ... })` — all within the same async event loop. The stream consumption resumes after the result is sent.
+
 ### 6.5 The `update_card` Custom Tool
 
 This tool allows the agent to post structured progress updates back to the card. It is the primary mechanism for agent → board communication.
@@ -443,6 +448,8 @@ This tool allows the agent to post structured progress updates back to the card.
 | `blocked` | Store `blocked_reason` in `AgentRun.blockedReason`; set status=blocked; broadcast `card_blocked` SSE event with CLI attach command (see §13); send `{ success: true }` result; session stays live, awaiting human input |
 
 If `status=completed` but any `criteria_results[].passed == false`, the agent runner should **not** mark the run completed. Instead respond with `{ success: false, reason: "Criterion failed: <criterion>" }` so the agent can attempt to fix it.
+
+**Invalid `next_column` handling:** If `status=completed` and `input.next_column` does not match any column name on the card's board, the agent runner MUST reject the call with `{ success: false, reason: "Unknown column: <next_column>. Valid columns: <comma-separated list>" }`. If `next_column` is omitted, the runner moves the card to the first `isTerminalState` column (by position).
 
 ### 6.6 Prompt Rendering
 
@@ -614,6 +621,8 @@ These invariants MUST hold in all conforming implementations.
 
 7. **Output immutability.** `AgentRun.output` is append-only during a session. Previous output is never deleted or overwritten; only new content is appended.
 
+8. **Unrestricted networking is intentional.** Agent sessions use `networking: { type: "unrestricted" }` so agents can install dependencies, call APIs, and run tests. Secrets (API keys, tokens) MUST be passed via session environment variables — never embedded in prompts or card descriptions. Implementations SHOULD log outbound network activity at the session level for auditability.
+
 ---
 
 ## 11. Configuration Reference
@@ -631,6 +640,7 @@ All configuration is via environment variables.
 | `MAX_RETRY_BACKOFF_MS` | `300000` | Max retry delay (5 minutes) |
 | `MAX_TURNS` | `10` | Max agent turns per session before treating as failure |
 | `MAX_STALL_MS` | `3600000` | Max run time before stall detection (1 hour) |
+| `CLI_ATTACH_COMMAND_TEMPLATE` | `ant sessions connect {session_id}` | Template for the CLI attach command; `{session_id}` is replaced at render time |
 
 ---
 
@@ -707,15 +717,15 @@ Any team member with the CLI installed and the API key configured can attach. Th
 
 ### 13.2 The Attach Command
 
-When a session is `running` or `idle`/`blocked`, the card UI displays:
+When a session is `running` or `idle`/`blocked`, the card UI displays the attach command. The exact command is produced by a configurable function:
 
 ```
-ant sessions connect <session_id>
+CLI_ATTACH_COMMAND_TEMPLATE = "ant sessions connect {session_id}"
 ```
 
-> **Note:** Verify the exact subcommand against the Anthropic CLI documentation (`ant --help` or the URL in the Managed Agents docs). The canonical URL is in `shared/live-sources.md` under "Anthropic CLI". The command above is indicative; `ant beta sessions connect` or `ant sessions attach` may be the actual form.
+The template is an environment variable with `{session_id}` as a placeholder. Implementations MUST read the template at startup and substitute the session ID at render time. This allows the command to be updated when the Anthropic CLI surface changes (e.g. `ant beta sessions connect`, `ant sessions attach`) without modifying application code.
 
-The command is:
+The rendered command is:
 - Shown prominently on the card when status is `blocked`
 - Available via a "copy" button on any card with an active `sessionId`
 - Included in the `card_blocked` SSE event payload as `cli_command`
@@ -756,6 +766,8 @@ The endpoint:
 3. Calls `sessions.events.send(sessionId, { type: "user.message", content: [{ type: "text", text }] })`
 4. Sets AgentRun status back to `running`
 
+**Concurrent access note:** A developer may be attached via the CLI and the UI simultaneously — both send `user.message` events to the same session via `sessions.events.send()`. The Anthropic API serializes events per session, so messages arrive in order of receipt. Implementations do not need to coordinate between the two channels, but should be aware that the agent may receive interleaved messages from both sources.
+
 ---
 
 ## Appendix A: Symphony Mapping Reference
@@ -766,7 +778,7 @@ For implementors familiar with Symphony's codebase, this table maps Symphony con
 |---|---|
 | `SymphonyElixir.Orchestrator` GenServer | §5 Orchestrator |
 | `SymphonyElixir.AgentRunner.run/3` | §6 Agent Runner |
-| `SymphonyElixir.Codex.AppServer` | Anthropic `client.beta.sessions.*` |
+| `SymphonyElixir.Codex.AppServer` | Anthropic `client.sessions.*` (see note below) |
 | `SymphonyElixir.Linear.Client` | Database queries on Card/Column tables |
 | `SymphonyElixir.WorkflowStore` | `workflows/` directory + `AgentConfig` table |
 | `WORKFLOW.md` YAML front matter | Environment variables + `AgentConfig` table |
@@ -784,3 +796,5 @@ For implementors familiar with Symphony's codebase, this table maps Symphony con
 | `max_concurrent_agents` | `MAX_CONCURRENT_AGENTS` env var |
 | `max_turns` | `MAX_TURNS` env var |
 | `max_retry_backoff_ms` | `MAX_RETRY_BACKOFF_MS` env var |
+
+> **API version note:** The Managed Agents API may still be under `client.beta.*` in some SDK versions. When the API graduates to GA, update the SDK calls to use the non-beta namespace (e.g. `client.sessions.*` instead of `client.beta.sessions.*`). The spec's behavioral contracts are independent of the SDK namespace.
