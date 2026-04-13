@@ -222,6 +222,65 @@ The Attention Queue surfaces all cards that require a human decision, across all
 | 4.3.1 | Users can search cards by title and description across all boards they have access to | Search is instant (client-side or debounced, <300ms). |
 | 4.3.2 | Users can filter cards by: assignee, role, agent status, column | Filters are combinable. |
 
+#### 4.4 Skill Observability
+
+Every agent invocation emits a structured record of each tool call it makes. This data is stored alongside the AgentRun and surfaced at both the card and board level.
+
+**Definitions:**
+- A **skill invocation** is a single tool call made by an agent: the tool name, the inputs supplied, the output received, and the wall-clock duration.
+- A **skill trace** is the ordered sequence of all skill invocations for one AgentRun.
+
+| # | Requirement | Acceptance Criteria |
+|---|---|---|
+| 4.4.1 | Every AgentRun records a full skill trace: tool name, inputs, outputs, duration, and invocation order | Trace is stored even if the run fails or is cancelled. Inputs and outputs are stored verbatim (truncated at 10 KB per entry). |
+| 4.4.2 | The card history view exposes each AgentRun's skill trace | Trace is collapsed by default; expanding shows each invocation as a numbered row with tool name, duration, and a toggle to reveal full inputs/outputs. |
+| 4.4.3 | The board metrics view shows aggregate skill usage: invocation count and mean duration per tool, across all runs on that board | Filterable by date range, role, and card. |
+| 4.4.4 | Skills that errored or produced empty output are flagged distinctly in the trace | Error entries show the raw error message returned by the tool. |
+| 4.4.5 | Users can see which skills an agent used before it became blocked or failed | The skill trace up to the point of failure is always available even for incomplete runs. |
+| 4.4.6 | Board admins can export the full skill trace for any AgentRun as JSON | Export is available from the card history view. |
+
+---
+
+### Milestone 5 — Learning & Retrospective
+**Shippable as:** Continuous-improvement layer for teams that have completed at least one full card lifecycle.
+
+This milestone closes the feedback loop. Once work has moved through the board — succeeded, failed, or been revised — the system helps the team understand what happened and surfaces actionable improvements to prompts, acceptance criteria, and tool configuration.
+
+#### 5.1 Card Retrospective
+
+A retro is automatically generated when a card reaches a terminal column. It is a structured summary of everything that happened to that card: what was attempted, what the agents did, where things went wrong, and what the final outcome was.
+
+| # | Requirement | Acceptance Criteria |
+|---|---|---|
+| 5.1.1 | When a card reaches a terminal column, a Card Retrospective is generated | Retro is generated automatically within 60 seconds of terminal entry. It is always accessible from the card, permanently. |
+| 5.1.2 | The Card Retrospective contains: outcome summary, per-run breakdown (role, attempt, skills used, pass/fail per criterion), revision count, total wall-clock time, and a plain-English "what went wrong" narrative for any failed or revised runs | Narrative is produced by a dedicated analysis agent that reads the full card history and skill traces. It must cite specific evidence (e.g. skill invocation index, criterion ID, evaluation report excerpt) — vague summaries are not accepted. |
+| 5.1.3 | The retro highlights skills that were invoked but produced no useful output, or that errored, contributing to a failure | These are displayed as "low-signal tools" with a count and examples. |
+| 5.1.4 | The retro identifies acceptance criteria that required the most revision cycles | Criteria that failed evaluation more than once are flagged as "hard criteria" with a suggested rewrite. |
+| 5.1.5 | Users can annotate the retro with a human note | Note is preserved alongside the generated content and included in board-level retro aggregation. |
+
+#### 5.2 Board Retrospective
+
+The board-level retro aggregates across all completed cards to surface systemic patterns.
+
+| # | Requirement | Acceptance Criteria |
+|---|---|---|
+| 5.2.1 | A Board Retrospective view shows aggregate insights across all cards that have reached a terminal state | Accessible from the board header. Regenerates on demand or on a weekly schedule. |
+| 5.2.2 | The view shows: top recurring failure modes (grouped by similarity), most-revised acceptance criteria patterns, skills with highest error rates, and roles with the longest average cycle time | Each insight is ranked by frequency. Clicking an insight drills into the contributing cards. |
+| 5.2.3 | The board retro surfaces suggested improvements to agent role system prompts based on observed failure patterns | Each suggestion is phrased as a diff: "Current prompt says X — consider changing to Y because Z cards failed when the agent did X." Suggestions are never applied automatically. |
+| 5.2.4 | The board retro surfaces suggested new acceptance criteria based on criteria that were commonly added during revision | Shown as: "Cards of type [inferred] frequently added this criterion during revision: [criterion text]. Consider adding it to a board-level template." |
+| 5.2.5 | Admins can mark a board retro insight as "actioned", "dismissed", or "watching" | Status is persisted. Actioned insights are excluded from future retro regenerations unless the pattern re-emerges. |
+
+#### 5.3 Improvement Actions
+
+Retro insights translate directly into board configuration changes.
+
+| # | Requirement | Acceptance Criteria |
+|---|---|---|
+| 5.3.1 | From a retro insight, admins can apply a suggested system prompt change to an agent role in one click | The change opens a diff editor pre-populated with the suggestion. Admin must confirm before saving. |
+| 5.3.2 | From a retro insight, admins can add a suggested acceptance criterion to a reusable criterion library | Library criteria can be attached to future cards at creation time. |
+| 5.3.3 | From a retro insight, admins can disable a specific tool for a given agent role | Disabled tools are excluded from that role's tool set at dispatch time. The change is logged as a board configuration event. |
+| 5.3.4 | All improvement actions taken from a retro are recorded in a "Changes made" log visible on the board retro | Log entry shows: who made the change, what was changed, and which insight prompted it. |
+
 ---
 
 ## Cross-Cutting Requirements
@@ -249,5 +308,8 @@ These are product decisions not yet resolved. They should be answered before imp
 | OQ.2 | Is there a concept of a "board template" (e.g. a pre-configured set of columns and roles for a sprint board vs. a content pipeline)? | M2 |
 | OQ.3 | What is the expected auth provider? (SSO, GitHub OAuth, email+password, or left to the implementer?) | M2 |
 | OQ.4 | Should the Attention Queue (§3.3) send push notifications to mobile? Is a mobile-responsive web experience sufficient? | M3 |
+| OQ.5 | Should skill traces be stored indefinitely or subject to a retention policy? Large boards with high agent throughput will accumulate significant trace data. | M4 |
+| OQ.6 | Who triggers Board Retrospective generation — any board member, or admins only? Is the weekly schedule opt-in or opt-out? | M5 |
+| OQ.7 | Should the retro analysis agent run on the same Anthropic account as the work agents, or is it a separate, read-only integration? | M5 |
 
 > **Resolved:** OQ.3 (sequential agents across columns) — answered by §1.5. Each column type dispatches a specific agent class: Active columns dispatch the card's assigned work agent; Review columns always dispatch the evaluation agent. The card's `role` field governs the work agent only. SPEC.md should be updated to reflect the `isReviewState` column type and evaluation agent dispatch path.
