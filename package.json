@@ -3,12 +3,6 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "vercel-build": "prisma migrate deploy && next build",
-    "start": "next start",
-    "db:migrate": "prisma migrate dev",
-    "db:seed": "tsx prisma/seed.ts",
     "setup-agents": "tsx scripts/setup-agents.ts",
     "test": "vitest run",
     "test:watch": "vitest"
