@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { useKobaniStore } from '@/lib/store';
 import NotificationBell from './NotificationBell';
@@ -20,8 +21,9 @@ export default function TopNav({ boardId, showAttentionBreadcrumb }: Props) {
       <div className="flex items-center flex-1 gap-0.5 min-w-0">
         <Link
           href="/"
-          className="text-lg font-semibold text-zinc-100 tracking-tight hover:text-white transition-colors shrink-0"
+          className="flex items-center gap-2 text-lg font-semibold text-zinc-100 tracking-tight hover:text-white transition-colors shrink-0"
         >
+          <Image src="/logo.png" alt="Kobani" width={26} height={28} className="shrink-0" />
           Kobani
         </Link>
         {board && (
