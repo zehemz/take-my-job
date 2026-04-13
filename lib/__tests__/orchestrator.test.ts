@@ -3,6 +3,7 @@ import { Orchestrator } from '../orchestrator.js'
 import { StubDbQueries } from '../stubs/db-queries.stub.js'
 import { StubAnthropicClient } from '../stubs/anthropic-client.stub.js'
 import { StubBroadcaster } from '../stubs/broadcaster.stub.js'
+import { AgentRunStatus } from '../types.js'
 import type { Card, AgentRun, Column } from '../types.js'
 
 function makeColumn(overrides: Partial<Column> = {}): Column {
@@ -37,7 +38,7 @@ function makeRun(overrides: Partial<AgentRun> = {}): AgentRun {
     columnId: 'col-1',
     role: 'developer',
     sessionId: 'sess-1',
-    status: 'running',
+    status: AgentRunStatus.running,
     output: null,
     criteriaResults: null,
     blockedReason: null,
@@ -181,13 +182,13 @@ describe('Orchestrator', () => {
     it('re-attaches and spawns run with live session', async () => {
       const col = makeColumn({ id: 'col-active', isActiveState: true, isTerminalState: false })
       const card = makeCard({ id: 'card-1', columnId: 'col-active' })
-      const run = makeRun({ id: 'run-1', cardId: 'card-1', sessionId: 'sess-1', status: 'running' })
+      const run = makeRun({ id: 'run-1', cardId: 'card-1', sessionId: 'sess-1', status: AgentRunStatus.running })
 
       db.columns.push(col)
       db.cards.push(card)
       db.agentRuns.push(run)
 
-      anthropic.configureDefaultSession({ status: 'running' })
+      anthropic.configureDefaultSession({ status: AgentRunStatus.running })
 
       await orch.start()
 
@@ -201,7 +202,7 @@ describe('Orchestrator', () => {
     })
 
     it('marks run as completed when session terminated with success', async () => {
-      const run = makeRun({ id: 'run-1', cardId: 'card-1', sessionId: 'sess-1', status: 'running' })
+      const run = makeRun({ id: 'run-1', cardId: 'card-1', sessionId: 'sess-1', status: AgentRunStatus.running })
       db.agentRuns.push(run)
 
       // Default stub already returns terminated + success
@@ -215,7 +216,7 @@ describe('Orchestrator', () => {
     })
 
     it('schedules retry when session terminated with error', async () => {
-      const run = makeRun({ id: 'run-1', cardId: 'card-1', sessionId: 'sess-1', status: 'running', attempt: 1 })
+      const run = makeRun({ id: 'run-1', cardId: 'card-1', sessionId: 'sess-1', status: AgentRunStatus.running, attempt: 1 })
       db.agentRuns.push(run)
 
       anthropic.configureDefaultSession({ status: 'terminated', outcome: 'error' })
@@ -231,7 +232,7 @@ describe('Orchestrator', () => {
     })
 
     it('schedules retry when run has no sessionId', async () => {
-      const run = makeRun({ id: 'run-1', cardId: 'card-1', sessionId: null, status: 'running', attempt: 1 })
+      const run = makeRun({ id: 'run-1', cardId: 'card-1', sessionId: null, status: AgentRunStatus.running, attempt: 1 })
       db.agentRuns.push(run)
 
       await orch.start()
@@ -246,7 +247,7 @@ describe('Orchestrator', () => {
       const run = makeRun({
         id: 'run-1',
         cardId: 'card-1',
-        status: 'failed',
+        status: AgentRunStatus.failed,
         sessionId: null,
         retryAfterMs: BigInt(pastMs),
         attempt: 1,
@@ -263,13 +264,13 @@ describe('Orchestrator', () => {
     it('completes recovery before poll loop fires', async () => {
       const col = makeColumn({ id: 'col-active', isActiveState: true, isTerminalState: false })
       const card = makeCard({ id: 'card-1', columnId: 'col-active' })
-      const run = makeRun({ id: 'run-1', cardId: 'card-1', sessionId: 'sess-1', status: 'running' })
+      const run = makeRun({ id: 'run-1', cardId: 'card-1', sessionId: 'sess-1', status: AgentRunStatus.running })
 
       db.columns.push(col)
       db.cards.push(card)
       db.agentRuns.push(run)
 
-      anthropic.configureDefaultSession({ status: 'running' })
+      anthropic.configureDefaultSession({ status: AgentRunStatus.running })
 
       // After start() resolves, recovery must be complete — poll hasn't fired yet
       await orch.start()

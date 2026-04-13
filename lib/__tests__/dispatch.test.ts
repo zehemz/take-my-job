@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { dispatchPending } from '../orchestrator/dispatch.js'
 import type { OrchestratorState, OrchestratorDeps, SpawnRunner } from '../orchestrator/types.js'
 import type { Card, Column, AgentRun } from '../types.js'
+import { AgentRunStatus } from '../types.js'
 import { StubDbQueries } from '../stubs/db-queries.stub.js'
 import { StubAnthropicClient } from '../stubs/anthropic-client.stub.js'
 import { StubBroadcaster } from '../stubs/broadcaster.stub.js'
@@ -24,8 +25,12 @@ function makeCard(id: string, columnId: string, position = 0): Card {
     boardId: 'board-1',
     columnId,
     title: `Card ${id}`,
+    description: null,
+    acceptanceCriteria: null,
     role: 'backend_engineer',
     position,
+    githubRepoUrl: null,
+    githubBranch: null,
     createdAt: new Date(),
     updatedAt: new Date(),
   }
@@ -49,7 +54,7 @@ describe('dispatchPending', () => {
       running: new Map(),
       claimed: new Set(),
     }
-    spawnRunner = vi.fn()
+    spawnRunner = vi.fn() as unknown as SpawnRunner & ReturnType<typeof vi.fn>
   })
 
   it('dispatches a single eligible card', async () => {
@@ -76,7 +81,7 @@ describe('dispatchPending', () => {
     // Fill running map to MAX_CONCURRENT (5)
     for (let i = 0; i < 5; i++) {
       state.running.set(`run-${i}`, {
-        run: { id: `run-${i}`, cardId: `c-${i}`, columnId: col.id, role: 'backend_engineer', status: 'running', attempt: 1, createdAt: new Date(), updatedAt: new Date() } as AgentRun,
+        run: { id: `run-${i}`, cardId: `c-${i}`, columnId: col.id, role: 'backend_engineer', status: AgentRunStatus.running, attempt: 1, createdAt: new Date(), updatedAt: new Date() } as AgentRun,
         abortController: new AbortController(),
       })
     }
@@ -128,7 +133,7 @@ describe('dispatchPending', () => {
       columnId: col.id,
       role: 'backend_engineer',
       sessionId: null,
-      status: 'failed',
+      status: AgentRunStatus.failed,
       output: null,
       criteriaResults: null,
       blockedReason: null,
@@ -170,7 +175,7 @@ describe('dispatchPending', () => {
       columnId: doneCol.id,
       role: 'backend_engineer',
       sessionId: null,
-      status: 'failed',
+      status: AgentRunStatus.failed,
       output: null,
       criteriaResults: null,
       blockedReason: null,
@@ -210,7 +215,7 @@ describe('dispatchPending', () => {
       columnId: col.id,
       role: 'backend_engineer',
       sessionId: null,
-      status: 'failed',
+      status: AgentRunStatus.failed,
       output: null,
       criteriaResults: null,
       blockedReason: null,

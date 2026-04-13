@@ -61,12 +61,13 @@ export class StubDbQueries implements IDbQueries {
   async updateAgentRunStatus(
     id: string,
     status: AgentRunStatus,
-    extra?: { retryAfterMs?: number; error?: string; criteriaResults?: string; output?: string },
+    extra?: { sessionId?: string; retryAfterMs?: number; error?: string; criteriaResults?: string; output?: string; blockedReason?: string },
   ): Promise<AgentRun> {
     const run = this.agentRuns.find((r) => r.id === id);
     if (!run) throw new Error(`AgentRun ${id} not found`);
     run.status = status;
     run.updatedAt = new Date();
+    if (extra?.sessionId !== undefined) run.sessionId = extra.sessionId;
     if (extra?.retryAfterMs !== undefined) run.retryAfterMs = BigInt(extra.retryAfterMs);
     if (extra?.error !== undefined) run.error = extra.error;
     if (extra?.criteriaResults !== undefined) run.criteriaResults = extra.criteriaResults;

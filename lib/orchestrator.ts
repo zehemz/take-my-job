@@ -1,4 +1,5 @@
 import type { IOrchestrator } from './interfaces.js'
+import { AgentRunStatus } from './types.js'
 import { dispatchPending } from './orchestrator/dispatch.js'
 import { reconcileRunning } from './orchestrator/reconcile.js'
 import { scheduleRetry } from './orchestrator/retry.js'
@@ -51,7 +52,7 @@ export class Orchestrator implements IOrchestrator {
 
       if (session.status === 'terminated') {
         if (session.outcome === 'success') {
-          await this.deps.db.updateAgentRunStatus(run.id, 'completed')
+          await this.deps.db.updateAgentRunStatus(run.id, AgentRunStatus.completed)
         } else {
           await scheduleRetry(run, this.deps.db)
         }
@@ -123,7 +124,7 @@ export class Orchestrator implements IOrchestrator {
     }
 
     // Transition the run to cancelled
-    await this.deps.db.updateAgentRunStatus(entry.run.id, 'cancelled')
+    await this.deps.db.updateAgentRunStatus(entry.run.id, AgentRunStatus.cancelled)
 
     // Clean up in-memory state
     entry.abortController.abort()

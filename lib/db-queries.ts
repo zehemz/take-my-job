@@ -1,10 +1,11 @@
 import { prisma } from "./db";
 import type { IDbQueries } from "./interfaces";
 import type { AgentRun, Card, Column } from "./types";
+import { AgentRunStatus } from "./types";
 
 export const dbQueries: IDbQueries = {
-  async getEligibleCards(maxConcurrent: number, claimedIds: Set<string>): Promise<Card[]> {
-    const claimedArray = Array.from(claimedIds);
+  async getEligibleCards(maxConcurrent: number, claimedIds: string[]): Promise<Card[]> {
+    const claimedArray = claimedIds;
 
     const cards = await prisma.card.findMany({
       where: {
@@ -68,7 +69,7 @@ export const dbQueries: IDbQueries = {
     return run as unknown as AgentRun;
   },
 
-  async updateAgentRunStatus(id: string, status: string, extra?: Partial<AgentRun>): Promise<AgentRun> {
+  async updateAgentRunStatus(id: string, status: AgentRunStatus, extra?: { sessionId?: string; retryAfterMs?: number; error?: string; criteriaResults?: string; output?: string; blockedReason?: string }): Promise<AgentRun> {
     const data: Record<string, unknown> = { status };
     if (extra?.sessionId !== undefined) data.sessionId = extra.sessionId;
     if (extra?.output !== undefined) data.output = extra.output;
