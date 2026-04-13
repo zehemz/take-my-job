@@ -1,9 +1,9 @@
-import type { AgentConfig, AgentRun, BroadcastEvent, Card, Column } from "./types";
+import type { AgentConfig, AgentRun, AgentRunStatus, BroadcastEvent, Card, Column } from "./types.js";
 
 export interface IDbQueries {
-  getEligibleCards(maxConcurrent: number, claimedIds: Set<string>): Promise<Card[]>;
+  getEligibleCards(maxConcurrent: number, claimedIds: string[]): Promise<Card[]>;
   createAgentRun(cardId: string, columnId: string, role: string, attempt: number): Promise<AgentRun>;
-  updateAgentRunStatus(id: string, status: string, extra?: Partial<AgentRun>): Promise<AgentRun>;
+  updateAgentRunStatus(id: string, status: AgentRunStatus, extra?: { retryAfterMs?: number; error?: string; criteriaResults?: string; output?: string }): Promise<AgentRun>;
   appendAgentRunOutput(id: string, chunk: string): Promise<void>;
   getAgentConfig(role: string): Promise<AgentConfig | null>;
   getRunningRuns(): Promise<AgentRun[]>;
@@ -11,6 +11,23 @@ export interface IDbQueries {
   moveCard(cardId: string, newColumnId: string): Promise<Card>;
   getRetryEligibleRuns(): Promise<AgentRun[]>;
   getColumnByName(boardId: string, name: string): Promise<Column | null>;
+}
+
+/** Typed events emitted by the Anthropic Managed Agents SSE stream. */
+export type AgentEvent =
+  | { type: "agent.message"; content: string }
+  | { type: "agent.thinking"; content: string }
+  | { type: "agent.tool_use"; toolName: string; input: unknown }
+  | { type: "agent.custom_tool_use"; toolName: string; toolUseId: string; input: unknown }
+  | { type: "session.status_idle"; stopReason: { type: "end_turn" | "retries_exhausted" | "requires_action"; toolUseId?: string } }
+  | { type: "session.status_terminated"; outcome: "success" | "error"; error?: string }
+  | { type: "session.error"; error: string }
+  | { type: "span.model_request_end"; usage: { inputTokens: number; outputTokens: number } };
+
+export interface SessionInfo {
+  id: string;
+  status: "running" | "idle" | "terminated";
+  outcome?: "success" | "error";
 }
 
 export interface IAnthropicClient {
@@ -28,18 +45,14 @@ export interface IAnthropicClient {
     }>;
   }): Promise<{ id: string }>;
 
-  streamSession(sessionId: string): Promise<AsyncIterable<unknown>>;
+  streamSession(sessionId: string): AsyncIterable<AgentEvent>;
 
   sendMessage(sessionId: string, message: {
     type: "user.message" | "user.custom_tool_result" | "user.interrupt";
     [key: string]: unknown;
   }): Promise<void>;
 
-  retrieveSession(sessionId: string): Promise<{
-    id: string;
-    status: string;
-    stop_reason?: { type: string } | null;
-  }>;
+  retrieveSession(sessionId: string): Promise<SessionInfo>;
 
   interruptSession(sessionId: string): Promise<void>;
 }
