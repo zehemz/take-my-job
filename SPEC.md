@@ -481,11 +481,20 @@ If any criterion cannot be met, call `update_card(blocked)` and explain why.
 This is attempt #{{ run.attempt }}. Previous attempts failed. Resume from the current state.
 {% endif %}
 
+## Board Columns
+
+You are currently in: **{{ card.currentColumn.name }}**
+
+Available columns (use the exact name in `next_column` when calling `update_card(completed)`):
+{% for column in board.columns %}
+- **{{ column.name }}**{% if column.isTerminalState %} — terminal (work is done){% elsif column.isActiveState %} — active (another agent will pick this up){% else %} — inactive{% endif %}
+{% endfor %}
+
 ## Instructions
 
 Complete the task described above. Use the available tools to accomplish your work.
 When you are done, call `update_card(completed)` with your summary, criteria_results for
-every acceptance criterion, and the column to move this card to.
+every acceptance criterion, and the exact column name to move this card to (from the list above).
 Call `update_card(in_progress)` periodically to report progress on long tasks.
 Call `update_card(blocked)` only if you genuinely cannot proceed without human input.
 Do not ask for human input in your messages — if stuck, use update_card(blocked).
