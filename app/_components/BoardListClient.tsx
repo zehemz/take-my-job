@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useKobaniStore } from '@/lib/store';
 import TopNav from './TopNav';
 import NewBoardModal from './NewBoardModal';
-import NewProjectModal from './NewProjectModal';
 
 export default function BoardListClient() {
   const boards = useKobaniStore((s) => s.boards);
@@ -13,7 +12,6 @@ export default function BoardListClient() {
   const cards = useKobaniStore((s) => s.cards);
   const fetchBoards = useKobaniStore((s) => s.fetchBoards);
   const [showNewBoard, setShowNewBoard] = useState(false);
-  const [showNewProject, setShowNewProject] = useState(false);
 
   useEffect(() => {
     fetchBoards();
@@ -28,20 +26,12 @@ export default function BoardListClient() {
             <h1 className="text-xl font-semibold text-zinc-100">All Boards</h1>
             <p className="text-sm text-zinc-500 mt-1">{boards.length} boards</p>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowNewBoard(true)}
-              className="bg-zinc-700 hover:bg-zinc-600 text-zinc-200 text-sm font-medium px-4 py-2 rounded-lg transition-colors cursor-pointer"
-            >
-              + New Board
-            </button>
-            <button
-              onClick={() => setShowNewProject(true)}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors cursor-pointer"
-            >
-              + From Spec
-            </button>
-          </div>
+          <button
+            onClick={() => setShowNewBoard(true)}
+            className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors cursor-pointer"
+          >
+            + New Board
+          </button>
         </div>
 
         <div data-testid="board-list" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -75,7 +65,6 @@ export default function BoardListClient() {
       </div>
 
       {showNewBoard && <NewBoardModal onClose={() => setShowNewBoard(false)} />}
-      {showNewProject && <NewProjectModal onClose={() => setShowNewProject(false)} />}
     </div>
   );
 }
