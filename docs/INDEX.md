@@ -22,6 +22,7 @@
 | [Approval Workflow](./features/approval-workflow/) | 🔵 In Design | ✓ | ✓ | — | — |
 | [Approval Confirmation Step](./features/approval-workflow/APPROVAL_CONFIRMATION_PRD.md) | 🟡 Planned | ✓ | — | — | — |
 | [Agent Management](./features/agent-management/) | 🟠 In Progress | ✓ | — | ✓ | — |
+| [Board-level GitHub Repo](./features/board-github-repo/TECH_SPEC.md) | ✅ Shipped | — | — | ✓ | — |
 
 **Status legend:** ✅ Shipped · 🔵 In Design · 🟠 In Progress · 🟡 Planned · ⛔ Blocked
 

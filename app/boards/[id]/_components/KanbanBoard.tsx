@@ -12,17 +12,10 @@ import {
   useSensors,
 } from '@dnd-kit/core';
 import { useKobaniStore } from '@/lib/store';
-import type { Card } from '@/lib/kanban-types';
+import { VALID_TRANSITIONS } from '@/lib/kanban-types';
+import type { Card, ColumnType } from '@/lib/kanban-types';
 import Column from './Column';
 import KanbanCard from './KanbanCard';
-
-const VALID_TRANSITIONS: Record<string, string[]> = {
-  inactive: ['active'],
-  active: ['active', 'review', 'revision'],
-  review: ['terminal', 'revision'],
-  revision: ['active'],
-  terminal: [],
-};
 
 interface Props {
   boardId: string;
@@ -199,7 +192,7 @@ export default function KanbanBoard({ boardId }: Props) {
       )}
       <div className="flex flex-row flex-nowrap gap-3 px-4 py-4 overflow-x-auto overflow-y-hidden h-full items-start">
         {columns.map((column) => {
-          const allowed = dragSourceColumnType ? (VALID_TRANSITIONS[dragSourceColumnType] ?? []) : null;
+          const allowed = dragSourceColumnType ? (VALID_TRANSITIONS[dragSourceColumnType as ColumnType] ?? []) : null;
           const isValidDropTarget = allowed === null || allowed.includes(column.type);
           return (
             <Column key={column.id} column={column} isValidDropTarget={isValidDropTarget} />
