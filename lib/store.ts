@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import type { Board, Card, Column, ColumnType } from './kanban-types';
-import { initialState } from './seed';
 
 interface KobaniState {
   boards: Board[];
@@ -32,21 +31,38 @@ interface KobaniState {
   closeCardDetail: () => void;
 
   // Attention Queue actions
-  approveCard: (cardId: string) => void;
-  requestRevision: (cardId: string, reason: string) => void;
+  approveCard: (cardId: string) => Promise<void>;
+  requestRevision: (cardId: string, reason: string) => Promise<void>;
   sendRevisionContext: (cardId: string, note: string) => void;
   openAttentionDrawer: () => void;
   closeAttentionDrawer: () => void;
+
+  // Async API actions
+  fetchBoard: (boardId: string) => Promise<void>;
+  fetchBoards: () => Promise<void>;
+  createBoardApi: (name: string) => Promise<string | null>; // returns new board id
+  deleteBoardApi: (id: string) => Promise<boolean>;
+  moveCardApi: (cardId: string, columnId: string, position?: number) => Promise<boolean>;
+  createCardApi: (boardId: string, payload: {
+    title: string;
+    columnId: string;
+    description?: string;
+    acceptanceCriteria?: { id: string; text: string; passed: boolean | null; evidence: string | null }[];
+    role?: string;
+    githubRepo?: string;
+    githubBranch?: string;
+    requiresApproval?: boolean;
+  }) => Promise<unknown>;
 }
 
 function generateId(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 
-export const useKobaniStore = create<KobaniState>()((set) => ({
-  boards: initialState.boards,
-  columns: initialState.columns,
-  cards: initialState.cards,
+export const useKobaniStore = create<KobaniState>()((set, get) => ({
+  boards: [],
+  columns: [],
+  cards: [],
   selectedCardId: null,
   attentionDrawerOpen: false,
 
@@ -124,12 +140,14 @@ export const useKobaniStore = create<KobaniState>()((set) => ({
         agentStatus: 'idle',
         currentAgentRunId: null,
         agentRuns: [],
+        requiresApproval: false,
         revisionContextNote: null,
         approvedBy: null,
         approvedAt: null,
         createdAt: now,
         updatedAt: now,
         movedToColumnAt: now,
+        maxAttempts: 5,
         ...fields,
       };
       return { cards: [...state.cards, newCard] };
@@ -195,41 +213,31 @@ export const useKobaniStore = create<KobaniState>()((set) => ({
   openCardDetail: (cardId) => set({ selectedCardId: cardId }),
   closeCardDetail: () => set({ selectedCardId: null }),
 
-  approveCard: (cardId) =>
-    set((state) => ({
-      cards: state.cards.map((c) => {
-        if (c.id !== cardId) return c;
-        // Move to terminal column of the same board
-        const terminalCol = state.columns.find(
-          (col) => col.boardId === c.boardId && col.type === 'terminal'
-        );
-        return {
-          ...c,
-          agentStatus: 'completed',
-          approvedBy: '@lucas',
-          approvedAt: new Date().toISOString(),
-          columnId: terminalCol ? terminalCol.id : c.columnId,
-          updatedAt: new Date().toISOString(),
-        };
-      }),
-    })),
+  approveCard: async (cardId) => {
+    const card = get().cards.find(c => c.id === cardId);
+    if (!card) return;
+    const res = await fetch(`/api/cards/${cardId}/approve`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+    if (res.ok) {
+      await get().fetchBoard(card.boardId);
+    }
+  },
 
-  requestRevision: (cardId, reason) =>
-    set((state) => ({
-      cards: state.cards.map((c) => {
-        if (c.id !== cardId) return c;
-        const revisionCol = state.columns.find(
-          (col) => col.boardId === c.boardId && col.type === 'revision'
-        );
-        return {
-          ...c,
-          agentStatus: 'evaluation-failed',
-          revisionContextNote: reason,
-          columnId: revisionCol ? revisionCol.id : c.columnId,
-          updatedAt: new Date().toISOString(),
-        };
-      }),
-    })),
+  requestRevision: async (cardId, reason) => {
+    const card = get().cards.find(c => c.id === cardId);
+    if (!card) return;
+    const res = await fetch(`/api/cards/${cardId}/request-revision`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ reason }),
+    });
+    if (res.ok) {
+      await get().fetchBoard(card.boardId);
+    }
+  },
 
   sendRevisionContext: (cardId, note) =>
     set((state) => ({
@@ -250,4 +258,126 @@ export const useKobaniStore = create<KobaniState>()((set) => ({
 
   openAttentionDrawer: () => set({ attentionDrawerOpen: true }),
   closeAttentionDrawer: () => set({ attentionDrawerOpen: false }),
+
+  fetchBoard: async (boardId: string) => {
+    const res = await fetch(`/api/boards/${boardId}`, { credentials: 'include' });
+    if (!res.ok) return;
+    const data = await res.json(); // ApiBoardDetail
+    set((state) => ({
+      boards: [...state.boards.filter(b => b.id !== data.board.id), {
+        id: data.board.id,
+        name: data.board.name,
+        createdAt: data.board.createdAt,
+      }],
+      columns: [...state.columns.filter(c => c.boardId !== boardId), ...data.columns.map((col: any) => ({
+        id: col.id,
+        boardId: col.boardId,
+        name: col.name,
+        position: col.position,
+        type: col.type,
+      }))],
+      cards: [...state.cards.filter(c => c.boardId !== boardId), ...data.cards.map((card: any) => ({
+        id: card.id,
+        columnId: card.columnId,
+        boardId: card.boardId,
+        position: card.position,
+        title: card.title,
+        description: card.description,
+        acceptanceCriteria: card.acceptanceCriteria,
+        role: card.role,
+        assignee: card.role, // derive from role
+        githubRepo: card.githubRepo,
+        githubBranch: card.githubBranch,
+        agentStatus: card.agentStatus,
+        currentAgentRunId: card.currentAgentRunId,
+        agentRuns: card.agentRuns.map((r: any) => ({
+          id: r.id,
+          cardId: r.cardId,
+          role: r.role,
+          status: r.status,
+          attempt: r.attempt,
+          startedAt: r.startedAt,
+          endedAt: r.endedAt,
+          output: r.output,
+          blockedReason: r.blockedReason,
+          retryAfterMs: r.retryAfterMs,
+        })),
+        requiresApproval: card.requiresApproval ?? false,
+        revisionContextNote: card.revisionContextNote,
+        approvedBy: card.approvedBy,
+        approvedAt: card.approvedAt,
+        createdAt: card.createdAt,
+        updatedAt: card.updatedAt,
+        movedToColumnAt: card.movedToColumnAt ?? card.createdAt,
+        maxAttempts: card.maxAttempts ?? 5,
+      }))],
+    }));
+  },
+
+  fetchBoards: async () => {
+    const res = await fetch('/api/boards', { credentials: 'include' });
+    if (!res.ok) return;
+    const data = await res.json();
+    set({ boards: data });
+  },
+
+  createBoardApi: async (name: string) => {
+    const res = await fetch('/api/boards', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ name }),
+    });
+    if (!res.ok) return null;
+    const board = await res.json();
+    set((state) => ({ boards: [board, ...state.boards] }));
+    return board.id;
+  },
+
+  deleteBoardApi: async (id: string) => {
+    const res = await fetch(`/api/boards/${id}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+    if (!res.ok) return false;
+    get().deleteBoard(id);
+    return true;
+  },
+
+  moveCardApi: async (cardId: string, columnId: string, position?: number) => {
+    const res = await fetch(`/api/cards/${cardId}/move`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ columnId, position }),
+    });
+    if (!res.ok) return false;
+    const card = await res.json();
+    get().updateCard(card.id, {
+      columnId: card.columnId,
+      position: card.position,
+      movedToColumnAt: card.movedToColumnAt,
+    });
+    return true;
+  },
+
+  createCardApi: async (boardId: string, payload: {
+    title: string;
+    columnId: string;
+    description?: string;
+    acceptanceCriteria?: { id: string; text: string; passed: boolean | null; evidence: string | null }[];
+    role?: string;
+    githubRepo?: string;
+    githubBranch?: string;
+    requiresApproval?: boolean;
+  }) => {
+    const res = await fetch(`/api/boards/${boardId}/cards`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) return null;
+    return res.json();
+  },
 }));

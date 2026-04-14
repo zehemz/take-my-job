@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   DndContext,
   DragEndEvent,
@@ -16,21 +16,38 @@ import type { Card } from '@/lib/kanban-types';
 import Column from './Column';
 import KanbanCard from './KanbanCard';
 
+const VALID_TRANSITIONS: Record<string, string[]> = {
+  inactive: ['active'],
+  active: ['active', 'review', 'revision'],
+  review: ['terminal', 'revision'],
+  revision: ['active'],
+  terminal: [],
+};
+
 interface Props {
   boardId: string;
 }
 
 export default function KanbanBoard({ boardId }: Props) {
-  const columns = useKobaniStore((s) =>
-    s.columns
-      .filter((c) => c.boardId === boardId)
-      .sort((a, b) => a.position - b.position)
+  // Selecting the full arrays and filtering with useMemo prevents the
+  // .filter().sort() inline selector from returning a new reference on
+  // every useSyncExternalStore call, which would cause an infinite render loop.
+  const fetchBoard = useKobaniStore((s) => s.fetchBoard);
+  const allColumns = useKobaniStore((s) => s.columns);
+  const columns = useMemo(
+    () => allColumns.filter((c) => c.boardId === boardId).sort((a, b) => a.position - b.position),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allColumns, boardId]
   );
   const cards = useKobaniStore((s) => s.cards);
   const moveCard = useKobaniStore((s) => s.moveCard);
   const reorderCard = useKobaniStore((s) => s.reorderCard);
+  const moveCardApi = useKobaniStore((s) => s.moveCardApi);
 
   const [activeCard, setActiveCard] = useState<Card | null>(null);
+  const [dragError, setDragError] = useState<string | null>(null);
+  const [savedCardState, setSavedCardState] = useState<{ id: string; columnId: string; position: number } | null>(null);
+  const [dragSourceColumnType, setDragSourceColumnType] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -38,45 +55,108 @@ export default function KanbanBoard({ boardId }: Props) {
     })
   );
 
+  const ACTIVE_AGENT_STATUSES = new Set(['running', 'evaluating']);
+
   function handleDragStart(event: DragStartEvent) {
     const card = cards.find((c) => c.id === event.active.id);
-    if (card) setActiveCard(card);
+    if (card) {
+      setActiveCard(card);
+      setSavedCardState({ id: card.id, columnId: card.columnId, position: card.position });
+      const sourceColumn = columns.find((col) => col.id === card.columnId);
+      setDragSourceColumnType(sourceColumn?.type ?? null);
+    }
+    setDragError(null);
   }
 
-  function handleDragEnd(event: DragEndEvent) {
+  async function handleDragEnd(event: DragEndEvent) {
     setActiveCard(null);
+    setDragSourceColumnType(null);
     const { active, over } = event;
-    if (!over) return;
 
     const activeId = active.id as string;
+    const activeCardItem = cards.find((c) => c.id === activeId);
+
+    // Block move if card has an active agent run
+    if (activeCardItem && ACTIVE_AGENT_STATUSES.has(activeCardItem.agentStatus)) {
+      if (savedCardState) {
+        moveCard(savedCardState.id, savedCardState.columnId, savedCardState.position);
+      }
+      setSavedCardState(null);
+      setDragError('Cannot move a card while an agent is running.');
+      return;
+    }
+
+    setSavedCardState(null);
+    setDragError(null);
+
+    if (!over) return;
+
     const overId = over.id as string;
 
     // If dropped onto a column droppable
     if (overId.startsWith('column:')) {
       const targetColumnId = overId.replace('column:', '');
-      const activeCard = cards.find((c) => c.id === activeId);
-      if (!activeCard) return;
+      if (!activeCardItem) return;
 
-      if (activeCard.columnId !== targetColumnId) {
+      if (activeCardItem.columnId !== targetColumnId) {
+        const targetColumn = columns.find((col) => col.id === targetColumnId);
+        const sourceColumn = columns.find((col) => col.id === activeCardItem.columnId);
+        const allowedTargets = sourceColumn ? (VALID_TRANSITIONS[sourceColumn.type] ?? []) : [];
+        if (targetColumn && !allowedTargets.includes(targetColumn.type)) {
+          // Invalid column transition — revert
+          if (savedCardState) {
+            moveCard(savedCardState.id, savedCardState.columnId, savedCardState.position);
+          }
+          setDragError(`Cannot move from ${sourceColumn?.type ?? '?'} to ${targetColumn.type}.`);
+          return;
+        }
+
+        // active → review requires agent to have completed with all criteria passing
+        if (sourceColumn?.type === 'active' && targetColumn?.type === 'review' && activeCardItem.agentStatus !== 'completed') {
+          if (savedCardState) {
+            moveCard(savedCardState.id, savedCardState.columnId, savedCardState.position);
+          }
+          setDragError('Card can only move to review after the agent completes with all criteria passing.');
+          return;
+        }
+
         const colCards = cards
           .filter((c) => c.columnId === targetColumnId)
           .sort((a, b) => a.position - b.position);
         moveCard(activeId, targetColumnId, colCards.length);
+        const ok = await moveCardApi(activeId, targetColumnId, colCards.length);
+        if (!ok) {
+          await fetchBoard(boardId);
+        }
       }
       return;
     }
 
     // If dropped onto another card
     const overCard = cards.find((c) => c.id === overId);
-    const activeCardItem = cards.find((c) => c.id === activeId);
     if (!overCard || !activeCardItem) return;
 
     if (activeCardItem.columnId === overCard.columnId) {
       // Same column — reorder
       reorderCard(activeId, overCard.position);
+      moveCardApi(activeId, activeCardItem.columnId, overCard.position);
     } else {
-      // Different column — move to that position
+      // Different column — check transition validity first
+      const targetColumn = columns.find((col) => col.id === overCard.columnId);
+      const sourceColumn = columns.find((col) => col.id === activeCardItem.columnId);
+      const allowedTargets = sourceColumn ? (VALID_TRANSITIONS[sourceColumn.type] ?? []) : [];
+      if (targetColumn && !allowedTargets.includes(targetColumn.type)) {
+        // Invalid transition — revert
+        if (savedCardState) {
+          moveCard(savedCardState.id, savedCardState.columnId, savedCardState.position);
+        }
+        return;
+      }
       moveCard(activeId, overCard.columnId, overCard.position);
+      const ok = await moveCardApi(activeId, overCard.columnId, overCard.position);
+      if (!ok) {
+        await fetchBoard(boardId);
+      }
     }
   }
 
@@ -105,11 +185,21 @@ export default function KanbanBoard({ boardId }: Props) {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onDragOver={handleDragOver}
+      onDragCancel={() => { setActiveCard(null); setDragSourceColumnType(null); }}
     >
+      {dragError && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-zinc-800 border border-zinc-600 text-zinc-200 text-sm px-4 py-2 rounded-lg shadow-lg z-50">
+          {dragError}
+        </div>
+      )}
       <div className="flex flex-row flex-nowrap gap-3 px-4 py-4 overflow-x-auto overflow-y-hidden h-full items-start">
-        {columns.map((column) => (
-          <Column key={column.id} column={column} />
-        ))}
+        {columns.map((column) => {
+          const allowed = dragSourceColumnType ? (VALID_TRANSITIONS[dragSourceColumnType] ?? []) : null;
+          const isValidDropTarget = allowed === null || allowed.includes(column.type);
+          return (
+            <Column key={column.id} column={column} isValidDropTarget={isValidDropTarget} />
+          );
+        })}
       </div>
 
       <DragOverlay>

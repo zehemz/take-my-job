@@ -53,12 +53,15 @@ export interface Card {
   agentStatus: AgentStatus;
   currentAgentRunId: string | null;
   agentRuns: AgentRun[];
+  requiresApproval: boolean;
   revisionContextNote: string | null;
   approvedBy: string | null;
   approvedAt: string | null;
   createdAt: string;
   updatedAt: string;
   movedToColumnAt: string;
+  /** Maximum agent attempts, from MAX_ATTEMPTS env var (passed through API). Defaults to 5. */
+  maxAttempts?: number;
 }
 
 export interface Column {

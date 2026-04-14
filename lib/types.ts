@@ -24,6 +24,7 @@ export interface Column {
   position: number;
   isActiveState: boolean;
   isTerminalState: boolean;
+  columnType: string;
   board?: Board;
   cards?: Card[];
 }
@@ -39,6 +40,7 @@ export interface Card {
   position: number;
   githubRepoUrl: string | null;
   githubBranch: string | null;
+  requiresApproval: boolean;
   createdAt: Date;
   updatedAt: Date;
   board?: Board;

@@ -42,9 +42,9 @@ type Step = 'input' | 'preview';
 
 export default function NewProjectModal({ onClose }: Props) {
   const router = useRouter();
-  const createBoard = useKobaniStore((s) => s.createBoard);
-  const createColumn = useKobaniStore((s) => s.createColumn);
-  const createCard = useKobaniStore((s) => s.createCard);
+  const createBoardApi = useKobaniStore((s) => s.createBoardApi);
+  const fetchBoard = useKobaniStore((s) => s.fetchBoard);
+  const createCardApi = useKobaniStore((s) => s.createCardApi);
 
   const [step, setStep] = useState<Step>('input');
   const [projectName, setProjectName] = useState('');
@@ -75,46 +75,46 @@ export default function NewProjectModal({ onClose }: Props) {
     }
   }
 
-  function handleConfirm() {
-    // Create board
-    createBoard(projectName.trim());
-    const newBoard = useKobaniStore.getState().boards.at(-1)!;
+  async function handleConfirm() {
+    setLoading(true);
+    setError(null);
+    try {
+      // Create board via API (also creates default columns server-side)
+      const boardId = await createBoardApi(projectName.trim());
+      if (!boardId) throw new Error('Failed to create board');
 
-    // Create default columns
-    const colDefs = [
-      { name: 'Backlog', type: 'inactive' as const },
-      { name: 'In Progress', type: 'active' as const },
-      { name: 'Review', type: 'review' as const },
-      { name: 'Revision Needed', type: 'revision' as const },
-      { name: 'Done', type: 'terminal' as const },
-    ];
-    for (const col of colDefs) {
-      createColumn(newBoard.id, col.name, col.type);
+      // Fetch board to get column IDs
+      await fetchBoard(boardId);
+      const backlogCol = useKobaniStore.getState().columns.find(
+        (c) => c.boardId === boardId && c.type === 'inactive'
+      );
+      if (!backlogCol) throw new Error('Backlog column not found');
+
+      // Create all cards in Backlog
+      await Promise.all(
+        drafts.map((draft) =>
+          createCardApi(boardId, {
+            title: draft.title,
+            columnId: backlogCol.id,
+            description: draft.description,
+            role: draft.role,
+            acceptanceCriteria: draft.acceptanceCriteria.map((text, i) => ({
+              id: `ac-${Date.now()}-${i}`,
+              text,
+              passed: null,
+              evidence: null,
+            })),
+          })
+        )
+      );
+
+      onClose();
+      router.push(`/boards/${boardId}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
     }
-
-    // Get the Backlog column (first one created)
-    const state = useKobaniStore.getState();
-    const backlogCol = state.columns.find(
-      (c) => c.boardId === newBoard.id && c.type === 'inactive'
-    )!;
-
-    // Create cards in Backlog
-    for (const draft of drafts) {
-      createCard(backlogCol.id, newBoard.id, {
-        title: draft.title,
-        role: draft.role,
-        description: draft.description,
-        acceptanceCriteria: draft.acceptanceCriteria.map((text, i) => ({
-          id: `ac-${Date.now()}-${i}`,
-          text,
-          passed: null,
-          evidence: null,
-        })),
-      });
-    }
-
-    onClose();
-    router.push(`/boards/${newBoard.id}`);
   }
 
   function removeDraft(i: number) {
@@ -275,21 +275,33 @@ export default function NewProjectModal({ onClose }: Props) {
               >
                 ← Edit spec
               </button>
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="bg-zinc-700 hover:bg-zinc-600 text-zinc-200 rounded-md px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleConfirm}
-                  disabled={drafts.length === 0}
-                  className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-md px-4 py-1.5 text-sm font-medium transition-colors cursor-pointer"
-                >
-                  Create Project ({drafts.length} cards)
-                </button>
+              <div className="flex flex-col items-end gap-2">
+                {error && (
+                  <p className="text-xs text-red-400">{error}</p>
+                )}
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="bg-zinc-700 hover:bg-zinc-600 text-zinc-200 rounded-md px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleConfirm}
+                    disabled={drafts.length === 0 || loading}
+                    className="bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-md px-4 py-1.5 text-sm font-medium transition-colors cursor-pointer flex items-center gap-2"
+                  >
+                    {loading ? (
+                      <>
+                        <span className="inline-block w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Creating…
+                      </>
+                    ) : (
+                      `Create Project (${drafts.length} cards)`
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           </div>

@@ -1,6 +1,6 @@
-import { scheduleRetry } from './retry.js'
-import type { OrchestratorState, OrchestratorDeps } from './types.js'
-import { AgentRunStatus } from '../types.js'
+import { scheduleRetry } from './retry'
+import type { OrchestratorState, OrchestratorDeps } from './types'
+import { AgentRunStatus } from '../types'
 
 const MAX_STALL_MS = parseInt(process.env.MAX_STALL_MS ?? '3600000', 10)
 
@@ -38,6 +38,13 @@ export async function reconcileRunning(
         if (session.status === 'terminated') {
           if (session.outcome === 'success') {
             await deps.db.updateAgentRunStatus(run.id, AgentRunStatus.completed)
+            // Route card to review (if requiresApproval) or terminal
+            const targetColumnType: 'review' | 'terminal' = card.requiresApproval ? 'review' : 'terminal'
+            try {
+              await deps.db.moveCardToColumnType(card.id, card.boardId, targetColumnType)
+            } catch (err) {
+              console.error('[reconcile] failed to route card after completion:', err)
+            }
             state.running.delete(cardId)
             state.claimed.delete(cardId)
           } else {

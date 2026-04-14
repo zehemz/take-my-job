@@ -21,7 +21,8 @@ interface Props {
 }
 
 export default function NewCardModal({ columnId, boardId, onClose }: Props) {
-  const createCard = useKobaniStore((s) => s.createCard);
+  const createCardApi = useKobaniStore((s) => s.createCardApi);
+  const fetchBoard = useKobaniStore((s) => s.fetchBoard);
 
   const [title, setTitle] = useState('');
   const [role, setRole] = useState<AgentRole>('backend-engineer');
@@ -29,41 +30,53 @@ export default function NewCardModal({ columnId, boardId, onClose }: Props) {
   const [criteriaText, setCriteriaText] = useState('');
   const [githubRepo, setGithubRepo] = useState('');
   const [githubBranch, setGithubBranch] = useState('');
+  const [requiresApproval, setRequiresApproval] = useState(true);
+  const [loading, setLoading] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!title.trim() || loading) return;
 
-    const criteria = criteriaText
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((text, i) => ({
-        id: `ac-new-${Date.now()}-${i}`,
-        text,
-        passed: null,
-        evidence: null,
-      }));
+    setLoading(true);
+    try {
+      const criteria = criteriaText
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((text, i) => ({
+          id: `ac-new-${Date.now()}-${i}`,
+          text,
+          passed: null as null,
+          evidence: null as null,
+        }));
 
-    createCard(columnId, boardId, {
-      title: title.trim(),
-      role,
-      description: description.trim(),
-      acceptanceCriteria: criteria,
-      githubRepo: githubRepo.trim() || null,
-      githubBranch: githubBranch.trim() || null,
-      assignee: '@lucas',
-    });
+      const result = await createCardApi(boardId, {
+        title: title.trim(),
+        columnId,
+        role,
+        description: description.trim(),
+        acceptanceCriteria: criteria,
+        githubRepo: githubRepo.trim() || undefined,
+        githubBranch: githubBranch.trim() || undefined,
+        requiresApproval,
+      });
 
-    onClose();
+      if (result) {
+        await fetchBoard(boardId);
+      }
+      onClose();
+    } finally {
+      setLoading(false);
+    }
   }
 
   const modal = (
     <div
       className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
-      onClick={onClose}
+      onClick={loading ? undefined : onClose}
     >
       <div
+        data-testid="new-card-modal"
         className="bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
@@ -85,6 +98,7 @@ export default function NewCardModal({ columnId, boardId, onClose }: Props) {
             <input
               type="text"
               required
+              data-testid="new-card-title-input"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Card title..."
@@ -163,19 +177,41 @@ export default function NewCardModal({ columnId, boardId, onClose }: Props) {
             </div>
           </div>
 
+          <div className="flex flex-col gap-1.5 py-3 border-t border-zinc-800">
+            <label className="flex items-center gap-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={requiresApproval}
+                onChange={(e) => setRequiresApproval(e.target.checked)}
+                className="w-4 h-4 rounded border border-zinc-600 bg-zinc-950 accent-indigo-600 cursor-pointer shrink-0"
+              />
+              <span className="text-sm text-zinc-200 font-medium">
+                Requires human approval before closing
+              </span>
+            </label>
+            <p className="text-xs text-zinc-500 ml-[26px]">
+              {requiresApproval
+                ? 'Agent output will go to review before this card can be closed.'
+                : 'This card will close automatically when all criteria pass.'}
+            </p>
+          </div>
+
           <div className="flex items-center justify-end gap-3 pt-2 border-t border-zinc-800">
             <button
               type="button"
               onClick={onClose}
-              className="bg-zinc-700 hover:bg-zinc-600 text-zinc-200 rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-150 cursor-pointer"
+              disabled={loading}
+              className="bg-zinc-700 hover:bg-zinc-600 text-zinc-200 rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-150 cursor-pointer"
+              data-testid="new-card-submit"
+              disabled={loading}
+              className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-150 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Create Card
+              {loading ? 'Creating…' : 'Create Card'}
             </button>
           </div>
         </form>

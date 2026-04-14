@@ -15,6 +15,7 @@ function makeColumn(overrides?: Partial<Column>): Column {
     position: 1,
     isActiveState: true,
     isTerminalState: false,
+    columnType: 'active',
     ...overrides,
   }
 }
@@ -31,6 +32,7 @@ function makeCard(id: string, columnId: string, position = 0): Card {
     position,
     githubRepoUrl: null,
     githubBranch: null,
+    requiresApproval: false,
     createdAt: new Date(),
     updatedAt: new Date(),
   }

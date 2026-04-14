@@ -82,16 +82,14 @@ describe('scheduleRetry', () => {
     expect(retry).toBeLessThanOrEqual(after + 80_000 + 500)
   })
 
-  it('attempt=5 → retryAfterMs ≈ now+160_000', async () => {
+  it('attempt=5 (=== MAX_ATTEMPTS) → permanently fails, retryAfterMs=null', async () => {
     const run = makeRun(5)
     db.agentRuns[0] = run
-    const before = Date.now()
     await scheduleRetry(run, db)
-    const after = Date.now()
 
-    const retry = Number(run.retryAfterMs!)
-    expect(retry).toBeGreaterThanOrEqual(before + 160_000 - 500)
-    expect(retry).toBeLessThanOrEqual(after + 160_000 + 500)
+    expect(run.status).toBe('failed')
+    expect(run.retryAfterMs).toBeNull()
+    expect(run.error).toContain('Exceeded')
   })
 
   it('attempt=6 → capped at 300_000', async () => {
@@ -118,7 +116,7 @@ describe('scheduleRetry', () => {
     }
   })
 
-  it('attempt > MAX_ATTEMPTS → status=failed, retryAfterMs=null, error contains "Exceeded"', async () => {
+  it('attempt === MAX_ATTEMPTS → status=failed, retryAfterMs=null, error contains "Exceeded"', async () => {
     // Override MAX_ATTEMPTS to 3 for this test
     const origMax = process.env.MAX_ATTEMPTS
     process.env.MAX_ATTEMPTS = '3'
@@ -128,7 +126,7 @@ describe('scheduleRetry', () => {
     vi.resetModules()
     const { scheduleRetry: scheduleRetryFresh } = await import('../orchestrator/retry.js')
 
-    const run = makeRun(4)
+    const run = makeRun(3)
     db.agentRuns[0] = run
     await scheduleRetryFresh(run, db)
 
@@ -144,8 +142,52 @@ describe('scheduleRetry', () => {
     }
   })
 
-  it('retryAfterMs is always set (not null) when retrying', async () => {
-    for (const attempt of [1, 2, 3, 4, 5]) {
+  it('attempt > MAX_ATTEMPTS → also status=failed, retryAfterMs=null, error contains "Exceeded"', async () => {
+    const origMax = process.env.MAX_ATTEMPTS
+    process.env.MAX_ATTEMPTS = '3'
+
+    vi.resetModules()
+    const { scheduleRetry: scheduleRetryFresh } = await import('../orchestrator/retry.js')
+
+    const run = makeRun(4)
+    db.agentRuns[0] = run
+    await scheduleRetryFresh(run, db)
+
+    expect(run.status).toBe('failed')
+    expect(run.retryAfterMs).toBeNull()
+    expect(run.error).toContain('Exceeded')
+
+    if (origMax === undefined) {
+      delete process.env.MAX_ATTEMPTS
+    } else {
+      process.env.MAX_ATTEMPTS = origMax
+    }
+  })
+
+  it('attempt < MAX_ATTEMPTS → schedules retry (retryAfterMs set)', async () => {
+    const origMax = process.env.MAX_ATTEMPTS
+    process.env.MAX_ATTEMPTS = '3'
+
+    vi.resetModules()
+    const { scheduleRetry: scheduleRetryFresh } = await import('../orchestrator/retry.js')
+
+    const run = makeRun(2)
+    db.agentRuns[0] = run
+    await scheduleRetryFresh(run, db)
+
+    expect(run.retryAfterMs).not.toBeNull()
+
+    if (origMax === undefined) {
+      delete process.env.MAX_ATTEMPTS
+    } else {
+      process.env.MAX_ATTEMPTS = origMax
+    }
+  })
+
+  it('retryAfterMs is always set (not null) when retrying (attempts below MAX_ATTEMPTS)', async () => {
+    // With default MAX_ATTEMPTS=5, attempts 1-4 should schedule a retry.
+    // Attempt 5 === MAX_ATTEMPTS so it permanently fails (retryAfterMs=null).
+    for (const attempt of [1, 2, 3, 4]) {
       const run = makeRun(attempt)
       db.agentRuns[0] = run
       await scheduleRetry(run, db)

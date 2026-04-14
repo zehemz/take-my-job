@@ -17,34 +17,40 @@ model Board {
 }
 
 model Column {
-  id              String  @id @default(cuid())
+  id              String     @id @default(cuid())
   boardId         String
   name            String
   position        Int
-  isActiveState   Boolean @default(false)
-  isTerminalState Boolean @default(false)
-  board           Board   @relation(fields: [boardId], references: [id])
+  isActiveState   Boolean    @default(false)
+  isTerminalState Boolean    @default(false)
+  columnType      ColumnType @default(inactive)
+  board           Board      @relation(fields: [boardId], references: [id])
   cards           Card[]
 
   @@unique([boardId, position])
 }
 
 model Card {
-  id                 String     @id @default(cuid())
-  boardId            String
-  columnId           String
-  title              String
-  description        String?
-  acceptanceCriteria String?
-  role               String?
-  position           Int
-  githubRepoUrl      String?
-  githubBranch       String?
-  createdAt          DateTime   @default(now())
-  updatedAt          DateTime   @updatedAt
-  board              Board      @relation(fields: [boardId], references: [id])
-  column             Column     @relation(fields: [columnId], references: [id])
-  agentRuns          AgentRun[]
+  id                  String     @id @default(cuid())
+  boardId             String
+  columnId            String
+  title               String
+  description         String?
+  acceptanceCriteria  String?
+  role                String?
+  position            Int
+  githubRepoUrl       String?
+  githubBranch        String?
+  movedToColumnAt     DateTime?
+  requiresApproval    Boolean    @default(false)
+  revisionContextNote String?
+  approvedBy          String?
+  approvedAt          DateTime?
+  createdAt           DateTime   @default(now())
+  updatedAt           DateTime   @updatedAt
+  board               Board      @relation(fields: [boardId], references: [id])
+  column              Column     @relation(fields: [columnId], references: [id])
+  agentRuns           AgentRun[]
 }
 
 enum AgentRunStatus {
@@ -57,9 +63,18 @@ enum AgentRunStatus {
   cancelled
 }
 
+enum ColumnType {
+  inactive
+  active
+  review
+  revision
+  terminal
+}
+
 model AgentRun {
   id              String         @id @default(cuid())
   cardId          String
+  columnId        String?
   role            String
   sessionId       String?
   status          AgentRunStatus
