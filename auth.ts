@@ -1,8 +1,14 @@
 import NextAuth from 'next-auth';
 import GitHub from 'next-auth/providers/github';
-import { prisma } from '@/lib/db';
 
 const GITHUB_LOGIN_RE = /^[a-z0-9-]{1,39}$/i;
+
+// Lazy-import prisma to avoid loading it in Edge Runtime (middleware).
+// The signIn and jwt callbacks only run server-side, not in the edge middleware.
+async function getPrisma() {
+  const { prisma } = await import('@/lib/db');
+  return prisma;
+}
 
 if (process.env.ALLOWED_GITHUB_USERS?.trim()) {
   console.warn(
@@ -26,6 +32,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (!GITHUB_LOGIN_RE.test(login)) return false;
 
       const username = login.toLowerCase();
+      const prisma = await getPrisma();
 
       // Look up user in DB (invite-only: user must exist)
       const user = await prisma.user.findUnique({
@@ -48,13 +55,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.githubUsername = profile.login as string;
         token.avatarUrl = (profile.avatar_url ?? profile.image) as string;
       }
-      // Refresh admin status
+      // Refresh admin status on token refresh (runs server-side only)
       if (token.githubUsername) {
-        const dbUser = await prisma.user.findUnique({
-          where: { githubUsername: (token.githubUsername as string).toLowerCase() },
-          select: { isAdmin: true },
-        });
-        token.isAdmin = dbUser?.isAdmin ?? false;
+        try {
+          const prisma = await getPrisma();
+          const dbUser = await prisma.user.findUnique({
+            where: { githubUsername: (token.githubUsername as string).toLowerCase() },
+            select: { isAdmin: true },
+          });
+          token.isAdmin = dbUser?.isAdmin ?? false;
+        } catch {
+          // Edge runtime or DB unavailable — keep existing value
+        }
       }
       return token;
     },
