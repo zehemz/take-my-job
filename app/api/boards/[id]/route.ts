@@ -4,6 +4,8 @@ import { mapBoardSummary, mapColumn, mapAgentRun, mapCard, deriveCardAgentStatus
 import { devAuth as auth } from '@/lib/dev-auth';
 import { reconcileNotifications } from '@/lib/notifications';
 import { resolvePermissions, resolveCardEnvironment } from '@/lib/rbac';
+// Eagerly boot the orchestrator when any board route is hit (needed for local dev)
+import '@/lib/orchestrator-instance';
 
 export async function PATCH(
   req: Request,

@@ -446,7 +446,7 @@ export default function CardDetailModal() {
   const esRef = useRef<EventSource | null>(null);
 
   // ── 3. Edit state ─────────────────────────────────────────────────────────
-  type EditingField = 'title' | 'description' | 'criteria' | 'role' | 'githubRepo' | 'githubBranch' | null;
+  type EditingField = 'title' | 'description' | 'criteria' | 'role' | 'env' | 'githubRepo' | 'githubBranch' | null;
   const [editingField, setEditingField] = useState<EditingField>(null);
 
   const [titleDraft, setTitleDraft] = useState('');
