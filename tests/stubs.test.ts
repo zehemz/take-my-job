@@ -121,7 +121,7 @@ describe("anthropic-client stub", () => {
 
   it("streams canned events", async () => {
     const client = new StubAnthropicClient();
-    client.queue.push([{ type: "agent.message", content: "hello" }]);
+    client.queue.push([{ type: "agent.message", content: [{ type: "text", text: "hello" }] }]);
 
     const events: unknown[] = [];
     for await (const event of client.streamSession("sess_1")) {
