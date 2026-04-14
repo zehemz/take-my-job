@@ -34,7 +34,7 @@ function makeCard(overrides: Partial<ApiCard>): ApiCard {
     role: 'backend-engineer',
     githubRepo: null,
     githubBranch: null,
-    environmentId: null,
+    environmentId: 'env_test',
     agentStatus: 'idle',
     currentAgentRunId: null,
     agentRuns: [],

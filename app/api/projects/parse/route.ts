@@ -10,7 +10,7 @@ export interface CardDraft {
   /** Zero-based indices of cards this one depends on. */
   dependsOnIndices: number[];
   /** Anthropic environment ID best suited for this task. */
-  environmentId: string | null;
+  environmentId: string;
 }
 
 interface EnvInfo {
@@ -22,8 +22,8 @@ interface EnvInfo {
 
 function buildSystemPrompt(roles: string[], envs: EnvInfo[]) {
   const envBlock = envs.length > 0
-    ? `\nAvailable environments (each has pre-installed packages):\n${envs.map((e) => `- "${e.id}" (${e.name}): ${e.description || 'no description'}. Packages: ${e.packages.join(', ') || 'none'}`).join('\n')}\n\nFor each card, set "environmentId" to the ID of the environment best suited for that task based on the packages it needs. If no environment is a good fit, set "environmentId" to null.`
-    : '\nNo environments are configured. Set "environmentId" to null for every card.';
+    ? `\nAvailable environments (each has pre-installed packages):\n${envs.map((e) => `- "${e.id}" (${e.name}): ${e.description || 'no description'}. Packages: ${e.packages.join(', ') || 'none'}`).join('\n')}\n\nFor each card, set "environmentId" to the ID of the environment best suited for that task based on the packages it needs. You MUST choose one of the listed environments for every card.`
+    : '\nNo environments are configured. Set "environmentId" to "" for every card.';
 
   return `You are a project manager breaking down a product spec into discrete agent tasks.
 

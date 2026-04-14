@@ -65,22 +65,12 @@ export async function resolvePermissions(
 }
 
 /**
- * Return the environment ID for a card (just the card's own field).
- */
-export function resolveCardEnvironment(
-  _agentRole: string | null,
-  cardEnvironmentId?: string | null,
-): string | null {
-  return cardEnvironmentId ?? null;
-}
-
-/**
  * Check whether a user has access to a specific agent role + environment.
  */
 export async function checkCardAccess(
   githubUsername: string | null | undefined,
   agentRole: string | null,
-  environmentId: string | null
+  environmentId: string
 ): Promise<boolean> {
   const perms = await resolvePermissions(githubUsername);
   if (!perms) return false;
@@ -90,7 +80,7 @@ export async function checkCardAccess(
     if (!perms.allowedAgentRoles.has(agentRole)) return false;
   }
 
-  if (environmentId && perms.allowedEnvironments !== null) {
+  if (perms.allowedEnvironments !== null) {
     if (!perms.allowedEnvironments.has(environmentId)) return false;
   }
 
@@ -102,9 +92,9 @@ export async function checkCardAccess(
  */
 export async function guardCardAccess(
   githubUsername: string | null | undefined,
-  card: { role: string | null; environmentId?: string | null }
+  card: { role: string | null; environmentId: string }
 ): Promise<boolean> {
-  return checkCardAccess(githubUsername, card.role, card.environmentId ?? null);
+  return checkCardAccess(githubUsername, card.role, card.environmentId);
 }
 
 /**
@@ -113,7 +103,7 @@ export async function guardCardAccess(
  */
 export async function requireCardAccess(
   username: string | null | undefined,
-  card: { role: string | null },
+  card: { role: string | null; environmentId: string },
 ): Promise<NextResponse | null> {
   const hasAccess = await guardCardAccess(username, card);
   if (!hasAccess) {

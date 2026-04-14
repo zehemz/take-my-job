@@ -829,13 +829,9 @@ export default function CardDetailModal() {
           </span>
           <span className="flex items-center gap-1">
             Env:{' '}
-            {card.environmentId ? (
-              <span className="text-indigo-400 bg-zinc-800 rounded px-1.5 py-0.5 font-mono" title={card.environmentId}>
-                {envName ?? card.environmentId}
-              </span>
-            ) : (
-              <span className="text-zinc-600 italic">none</span>
-            )}
+            <span className="text-indigo-400 bg-zinc-800 rounded px-1.5 py-0.5 font-mono" title={card.environmentId}>
+              {envName ?? card.environmentId}
+            </span>
           </span>
         </div>
 

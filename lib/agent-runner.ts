@@ -64,7 +64,7 @@ export async function run(
     const session = await anthropicClient.createSession({
       agentId: agentConfig.anthropicAgentId,
       agentVersion: agentConfig.anthropicAgentVersion,
-      environmentId: card.environmentId ?? null,
+      environmentId: card.environmentId,
       title: `${agentRun.role} — ${card.title} (attempt ${agentRun.attempt})`,
       resources,
     });

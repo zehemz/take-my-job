@@ -171,7 +171,7 @@ export function mapCard(
     role: string | null;
     githubRepoUrl: string | null;
     githubBranch: string | null;
-    environmentId?: string | null;
+    environmentId: string;
     requiresApproval: boolean;
     movedToColumnAt: Date | null;
     revisionContextNote: string | null;
@@ -209,7 +209,7 @@ export function mapCard(
     role: (card.role ?? '') as AgentRole,
     githubRepo: card.githubRepoUrl,
     githubBranch: card.githubBranch,
-    environmentId: card.environmentId ?? null,
+    environmentId: card.environmentId,
     requiresApproval: card.requiresApproval,
     agentStatus: effectiveAgentStatus,
     currentAgentRunId: currentRun?.id ?? null,

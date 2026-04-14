@@ -3,6 +3,8 @@ import { KobaniApi } from './helpers/api';
 import type { ApiCard } from '../lib/api-types';
 import { prisma } from '../lib/db';
 
+const TEST_ENV_ID = 'test-env';
+
 /**
  * Card flows — E2E-CARD-*
  * Tests cover creation, detail view, and move via the API.
@@ -48,6 +50,16 @@ test.describe('Cards', () => {
 
     const cardTitle = `E2E Test Card ${Date.now()}`;
     await page.locator('[data-testid="new-card-title-input"]').fill(cardTitle);
+
+    // Environment is required — select the first available option
+    const envSelect = page.locator('[data-testid="new-card-modal"] select').last();
+    const envOptions = envSelect.locator('option:not([disabled])');
+    const optionCount = await envOptions.count();
+    if (optionCount > 0) {
+      const firstValue = await envOptions.first().getAttribute('value');
+      if (firstValue) await envSelect.selectOption(firstValue);
+    }
+
     await page.locator('[data-testid="new-card-submit"]').click();
 
     // Modal closes and card appears
@@ -81,6 +93,7 @@ test.describe('Cards', () => {
       title: `E2E Move Test ${Date.now()}`,
       columnId: columns[0].id,
       role: 'backend-engineer',
+      environmentId: TEST_ENV_ID,
     });
 
     expect(card.columnId).toBe(columns[0].id);
@@ -121,6 +134,7 @@ test.describe('Cards', () => {
       title: `E2E Delete Visible ${Date.now()}`,
       columnId: columns[0].id,
       role: 'backend-engineer',
+      environmentId: TEST_ENV_ID,
     });
 
     try {
@@ -149,6 +163,7 @@ test.describe('Cards', () => {
       title: `E2E Delete Confirm ${Date.now()}`,
       columnId: columns[0].id,
       role: 'backend-engineer',
+      environmentId: TEST_ENV_ID,
     });
 
     try {
@@ -185,6 +200,7 @@ test.describe('Cards', () => {
       title: `E2E Delete Cancel ${Date.now()}`,
       columnId: columns[0].id,
       role: 'backend-engineer',
+      environmentId: TEST_ENV_ID,
     });
 
     try {
@@ -220,6 +236,7 @@ test.describe('Cards', () => {
       title: `E2E Edit Title ${Date.now()}`,
       columnId: columns[0].id,
       role: 'backend-engineer',
+      environmentId: TEST_ENV_ID,
     });
 
     try {
@@ -263,6 +280,7 @@ test.describe('Cards', () => {
       title: `E2E Retry No Runs ${Date.now()}`,
       columnId: columns[0].id,
       role: 'backend-engineer',
+      environmentId: TEST_ENV_ID,
     });
 
     try {
@@ -314,6 +332,7 @@ test.describe('Cards', () => {
       title: `E2E Approve Not Review ${Date.now()}`,
       columnId: inactiveCol.id,
       role: 'backend-engineer',
+      environmentId: TEST_ENV_ID,
     });
 
     try {
@@ -352,6 +371,7 @@ test.describe('Cards', () => {
       title: `E2E Invalid Transition ${Date.now()}`,
       columnId: inactiveCol.id,
       role: 'backend-engineer',
+      environmentId: TEST_ENV_ID,
     });
 
     try {
@@ -382,6 +402,7 @@ test.describe('Cards', () => {
       title: `E2E Requires Approval ${Date.now()}`,
       columnId: inactiveCol.id,
       role: 'backend-engineer',
+      environmentId: TEST_ENV_ID,
       requiresApproval: true,
     });
 
@@ -412,6 +433,7 @@ test.describe('Cards', () => {
       title: `E2E Approval Gate ${Date.now()}`,
       columnId: inactiveCol.id,
       role: 'backend-engineer',
+      environmentId: TEST_ENV_ID,
     });
 
     try {
@@ -444,6 +466,7 @@ test.describe('Cards', () => {
       title: originalTitle,
       columnId: columns[0].id,
       role: 'backend-engineer',
+      environmentId: TEST_ENV_ID,
     });
 
     try {
@@ -502,6 +525,7 @@ test.describe('Cards', () => {
       title: `E2E Delete With Run ${Date.now()}`,
       columnId: columns[0].id,
       role: 'backend-engineer',
+      environmentId: TEST_ENV_ID,
     });
 
     // Seed an agent run so the FK constraint is triggered on delete

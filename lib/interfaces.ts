@@ -47,7 +47,7 @@ export interface IAnthropicClient {
   createSession(config: {
     agentId: string;
     agentVersion: string;
-    environmentId: string | null;
+    environmentId: string;
     title: string;
     resources?: Array<{
       type: "github_repository";

@@ -68,8 +68,8 @@ export interface ApiCard {
   role: AgentRole;
   githubRepo: string | null;
   githubBranch: string | null;
-  /** Anthropic environment this card's agent runs in. Null = platform default. */
-  environmentId: string | null;
+  /** Anthropic environment this card's agent runs in. */
+  environmentId: string;
   /** Derived from the most recent AgentRun for this card. */
   agentStatus: AgentStatus;
   currentAgentRunId: string | null;
@@ -112,8 +112,8 @@ export interface CreateCardRequest {
   githubRepo?: string;
   githubBranch?: string;
   requiresApproval?: boolean;
-  /** Anthropic environment for this card's agent. Omit or null for platform default. */
-  environmentId?: string;
+  /** Anthropic environment for this card's agent. */
+  environmentId: string;
   /** Card IDs this card depends on. Card won't auto-promote until all are done. */
   dependsOn?: string[];
 }
@@ -129,8 +129,8 @@ export interface UpdateCardRequest {
   role?: AgentRole;
   githubRepo?: string;
   githubBranch?: string;
-  /** Anthropic environment for this card's agent. Null clears the environment. */
-  environmentId?: string | null;
+  /** Anthropic environment for this card's agent. */
+  environmentId?: string;
   revisionContextNote?: string;
   approvedBy?: string;
 }

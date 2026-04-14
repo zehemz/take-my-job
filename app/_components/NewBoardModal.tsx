@@ -100,7 +100,6 @@ export default function NewBoardModal({ onClose }: Props) {
           .filter((idx: number) => idx >= 0 && idx < createdCardIds.length)
           .map((idx: number) => createdCardIds[idx]);
 
-        const cardEnvId = draft.environmentId || undefined;
         const result = await createCardApi(boardId, {
           title: draft.title,
           columnId: backlogCol.id,
@@ -112,7 +111,7 @@ export default function NewBoardModal({ onClose }: Props) {
             passed: null,
             evidence: null,
           })),
-          ...(cardEnvId ? { environmentId: cardEnvId } : {}),
+          environmentId: draft.environmentId || environments[0]?.id || '',
           ...(dependsOn.length > 0 ? { dependsOn } : {}),
         });
         createdCardIds.push((result as { id: string }).id);
@@ -307,14 +306,15 @@ export default function NewBoardModal({ onClose }: Props) {
                     {envLoading ? (
                       <span className="text-xs text-zinc-600">Loading...</span>
                     ) : environments.length === 0 ? (
-                      <span className="text-xs text-zinc-600">{draft.environmentId ? 'Custom' : 'None'}</span>
+                      <span className="text-xs text-zinc-600">{draft.environmentId || 'Not set'}</span>
                     ) : (
                       <select
+                        required
                         value={draft.environmentId ?? ''}
-                        onChange={(e) => updateDraft(i, { environmentId: e.target.value || null })}
+                        onChange={(e) => updateDraft(i, { environmentId: e.target.value })}
                         className="text-xs bg-zinc-900 border border-zinc-700 rounded px-1.5 py-0.5 text-zinc-200 outline-none cursor-pointer"
                       >
-                        <option value="">No environment</option>
+                        <option value="" disabled>Select environment…</option>
                         {environments.map((env) => (
                           <option key={env.id} value={env.id}>
                             {env.name}

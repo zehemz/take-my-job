@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useKobaniStore } from '@/lib/store';
 import { useRoles, roleLabel } from '@/lib/useRoles';
-import type { EnvironmentRow, PaginatedResponse } from '@/lib/api-types';
+import type { EnvironmentRow } from '@/lib/api-types';
 
 interface Props {
   columnId: string;
@@ -29,8 +29,8 @@ export default function NewCardModal({ columnId, boardId, onClose }: Props) {
   useEffect(() => {
     fetch('/api/environments')
       .then((res) => res.ok ? res.json() : null)
-      .then((data: PaginatedResponse<EnvironmentRow> | null) => {
-        if (data) setEnvironments(data.items);
+      .then((data: EnvironmentRow[] | null) => {
+        if (data) setEnvironments(data);
       })
       .catch(() => {});
   }, []);
@@ -38,7 +38,7 @@ export default function NewCardModal({ columnId, boardId, onClose }: Props) {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const selectedRole = role || roles[0];
-    if (!title.trim() || !selectedRole || loading) return;
+    if (!title.trim() || !selectedRole || !environmentId || loading) return;
 
     setLoading(true);
     try {
@@ -60,7 +60,7 @@ export default function NewCardModal({ columnId, boardId, onClose }: Props) {
         description: description.trim(),
         acceptanceCriteria: criteria,
         requiresApproval,
-        ...(environmentId ? { environmentId } : {}),
+        environmentId,
       });
 
       if (result) {
@@ -128,26 +128,25 @@ export default function NewCardModal({ columnId, boardId, onClose }: Props) {
             </select>
           </div>
 
-          {environments.length > 0 && (
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-                Environment
-              </label>
-              <select
-                value={environmentId}
-                onChange={(e) => setEnvironmentId(e.target.value)}
-                className="bg-zinc-950 border border-zinc-700 focus:border-indigo-500 rounded-lg px-3 py-2 text-sm text-zinc-100 outline-none cursor-pointer"
-              >
-                <option value="">No environment</option>
-                {environments.map((env) => (
-                  <option key={env.id} value={env.id}>
-                    {env.name}
-                  </option>
-                ))}
-              </select>
-              <p className="text-xs text-zinc-600">Anthropic environment this card's agent will run in</p>
-            </div>
-          )}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+              Environment <span className="text-red-400">*</span>
+            </label>
+            <select
+              required
+              value={environmentId}
+              onChange={(e) => setEnvironmentId(e.target.value)}
+              className="bg-zinc-950 border border-zinc-700 focus:border-indigo-500 rounded-lg px-3 py-2 text-sm text-zinc-100 outline-none cursor-pointer"
+            >
+              <option value="" disabled>Select an environment…</option>
+              {environments.map((env) => (
+                <option key={env.id} value={env.id}>
+                  {env.name}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-zinc-600">Anthropic environment this card's agent will run in</p>
+          </div>
 
           <div className="flex flex-col gap-1.5">
             <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">

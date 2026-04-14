@@ -85,14 +85,13 @@ export async function GET(
   // Resolve RBAC permissions for the current user
   const perms = await resolvePermissions(session.user.githubUsername);
 
-  function canUserInteract(card: { role: string | null; environmentId?: string | null }): boolean {
+  function canUserInteract(card: { role: string | null; environmentId: string }): boolean {
     if (!perms) return false;
     if (perms.isAdmin) return true;
     if (!card.role) return true; // cards with no role are accessible to all
 
     const roleOk = perms.allowedAgentRoles === null || perms.allowedAgentRoles.has(card.role);
-    const envId = card.environmentId ?? null;
-    const envOk = !envId || perms.allowedEnvironments === null || perms.allowedEnvironments.has(envId);
+    const envOk = perms.allowedEnvironments === null || perms.allowedEnvironments.has(card.environmentId);
     return roleOk && envOk;
   }
 

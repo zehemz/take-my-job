@@ -46,7 +46,7 @@ model Card {
   position            Int
   githubRepoUrl       String?
   githubBranch        String?
-  environmentId       String?
+  environmentId       String
   movedToColumnAt     DateTime?
   requiresApproval    Boolean    @default(false)
   revisionContextNote String?
