@@ -3,6 +3,54 @@
 import { useEffect, useState, useCallback } from 'react';
 import type { AdminGroupRow, AdminUserRow } from '@/lib/api-types';
 
+function MemberSearch({
+  nonMembers,
+  onAdd,
+}: {
+  nonMembers: AdminUserRow[];
+  onAdd: (userId: string) => void;
+}) {
+  const [query, setQuery] = useState('');
+  const matches = query.trim()
+    ? nonMembers.filter((u) =>
+        u.githubUsername.toLowerCase().includes(query.toLowerCase())
+      ).slice(0, 5)
+    : [];
+
+  return (
+    <div>
+      <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
+        Add Member
+      </div>
+      <input
+        type="text"
+        placeholder="Search by username…"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-2.5 py-1.5 text-xs text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+      />
+      {matches.length > 0 && (
+        <div className="mt-1.5 space-y-0.5">
+          {matches.map((u) => (
+            <div key={u.id} className="flex items-center justify-between py-1 px-1 rounded hover:bg-zinc-800/50">
+              <span className="font-mono text-xs text-zinc-300">@{u.githubUsername}</span>
+              <button
+                onClick={() => { onAdd(u.id); setQuery(''); }}
+                className="text-[10px] text-indigo-400 hover:text-indigo-300 transition-colors"
+              >
+                Add
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      {query.trim() && matches.length === 0 && (
+        <p className="text-[10px] text-zinc-600 mt-1.5">No matching users found</p>
+      )}
+    </div>
+  );
+}
+
 export default function GroupsTab() {
   const [groups, setGroups] = useState<AdminGroupRow[]>([]);
   const [users, setUsers] = useState<AdminUserRow[]>([]);
@@ -307,26 +355,10 @@ export default function GroupsTab() {
               )}
             </div>
 
-            {nonMembers.length > 0 && (
-              <>
-                <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">
-                  Add Member
-                </div>
-                <div className="space-y-1">
-                  {nonMembers.map((u) => (
-                    <div key={u.id} className="flex items-center justify-between py-1">
-                      <span className="font-mono text-xs text-zinc-500">@{u.githubUsername}</span>
-                      <button
-                        onClick={() => addMember(selectedGroup.id, u.id)}
-                        className="text-[10px] text-indigo-400 hover:text-indigo-300 transition-colors"
-                      >
-                        Add
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
+            <MemberSearch
+              nonMembers={nonMembers}
+              onAdd={(userId) => addMember(selectedGroup.id, userId)}
+            />
           </div>
         )}
       </div>
