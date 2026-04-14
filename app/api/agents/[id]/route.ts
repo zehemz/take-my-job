@@ -17,7 +17,7 @@ export async function DELETE(
 
   let anthropicError: string | null = null
   try {
-    await beta.agents.delete(id)
+    await beta.agents.archive(id)
   } catch (e: any) {
     const status = e?.status ?? e?.statusCode
     if (status !== 404) {
