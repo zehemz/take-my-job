@@ -89,7 +89,7 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
     set((state) => ({
       boards: [
         ...state.boards,
-        { id: `board-${generateId()}`, name, createdAt: new Date().toISOString(), githubRepo: null, workspacePath: null },
+        { id: `board-${generateId()}`, name, createdAt: new Date().toISOString(), githubRepo: null, workspacePath: null, autoMode: false },
       ],
     })),
 
@@ -333,6 +333,7 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
         createdAt: data.board.createdAt,
         githubRepo: data.board.githubRepo ?? null,
         workspacePath: data.board.workspacePath ?? null,
+        autoMode: data.board.autoMode ?? false,
       }],
       columns: [...state.columns.filter(c => c.boardId !== boardId), ...data.columns.map((col: any) => ({
         id: col.id,
@@ -378,6 +379,7 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
         movedToColumnAt: card.movedToColumnAt ?? card.createdAt,
         maxAttempts: card.maxAttempts ?? 5,
         canInteract: card.canInteract ?? true,
+        dependsOn: card.dependsOn ?? [],
       }))],
     }));
   },

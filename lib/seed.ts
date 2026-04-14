@@ -12,9 +12,9 @@ const MINUS_2D = '2026-04-11T10:00:00.000Z';
 
 export const initialState: KobaniStore = {
   boards: [
-    { id: 'board-1', name: 'Sprint 12 Board', createdAt: MINUS_2D, githubRepo: null, workspacePath: null },
-    { id: 'board-2', name: 'Content Pipeline', createdAt: MINUS_2D, githubRepo: null, workspacePath: null },
-    { id: 'board-3', name: 'Platform Docs', createdAt: MINUS_1D, githubRepo: null, workspacePath: null },
+    { id: 'board-1', name: 'Sprint 12 Board', createdAt: MINUS_2D, githubRepo: null, workspacePath: null, autoMode: false },
+    { id: 'board-2', name: 'Content Pipeline', createdAt: MINUS_2D, githubRepo: null, workspacePath: null, autoMode: false },
+    { id: 'board-3', name: 'Platform Docs', createdAt: MINUS_1D, githubRepo: null, workspacePath: null, autoMode: false },
   ],
 
   columns: [

@@ -46,6 +46,7 @@ function makeCard(overrides: Partial<ApiCard>): ApiCard {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
     maxAttempts: 5,
+    dependsOn: [],
     ...overrides,
   }
 }
