@@ -6,8 +6,13 @@ import { run as runAgent } from './agent-runner';
 import type { SpawnRunner } from './orchestrator/types';
 import type { Card, Column } from './types';
 
+// Bump this version string whenever the Orchestrator class gains new methods so
+// Next.js dev-mode HMR doesn't serve a stale globalThis instance without them.
+const ORCHESTRATOR_VERSION = 'v2-unclaim';
+
 const globalForOrchestrator = globalThis as unknown as {
   __kobani_orchestrator: Orchestrator | undefined;
+  __kobani_orchestrator_version: string | undefined;
 };
 
 function createOrchestrator(): Orchestrator {
@@ -15,10 +20,15 @@ function createOrchestrator(): Orchestrator {
     // The orchestrator always fetches cards with column included before calling spawnRunner.
     // Cast to satisfy the agent runner's stricter signature.
     const cardWithColumn = card as Card & { column: Column };
-    // Fire-and-forget — the orchestrator manages the lifecycle
-    runAgent(cardWithColumn, agentRun, { db: dbQueries, anthropicClient, broadcaster }).catch((err) => {
-      console.error('[orchestrator] agent runner error:', err);
-    });
+    // Fire-and-forget — the orchestrator manages the lifecycle.
+    // Release the claim when the run settles so the next poll tick can dispatch retries.
+    runAgent(cardWithColumn, agentRun, { db: dbQueries, anthropicClient, broadcaster })
+      .catch((err) => {
+        console.error('[orchestrator] agent runner error:', err);
+      })
+      .finally(() => {
+        globalForOrchestrator.__kobani_orchestrator?.unclaim(card.id);
+      });
   };
 
   const orchestrator = new Orchestrator(
@@ -33,6 +43,17 @@ function createOrchestrator(): Orchestrator {
   return orchestrator;
 }
 
+// If the cached singleton is from an older version, stop it and recreate.
+if (
+  globalForOrchestrator.__kobani_orchestrator &&
+  globalForOrchestrator.__kobani_orchestrator_version !== ORCHESTRATOR_VERSION
+) {
+  globalForOrchestrator.__kobani_orchestrator.stop();
+  globalForOrchestrator.__kobani_orchestrator = undefined;
+}
+
 export const orchestrator: Orchestrator =
   globalForOrchestrator.__kobani_orchestrator ??
   (globalForOrchestrator.__kobani_orchestrator = createOrchestrator());
+
+globalForOrchestrator.__kobani_orchestrator_version = ORCHESTRATOR_VERSION;

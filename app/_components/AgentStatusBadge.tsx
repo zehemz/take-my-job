@@ -90,7 +90,7 @@ export default function AgentStatusBadge({ status, retryAfterMs }: Props) {
       {cfg.icon}
       {cfg.label}
       {status === 'failed' && retryAfterMs != null && (
-        <span className="ml-0.5">· retry in {Math.ceil(retryAfterMs / 1000)}s</span>
+        <span className="ml-0.5">· retry in {Math.max(0, Math.ceil((retryAfterMs - Date.now()) / 1000))}s</span>
       )}
     </span>
   );

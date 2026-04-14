@@ -121,6 +121,8 @@ export function mapAgentRun(run: {
   blockedReason: string | null;
   retryAfterMs: bigint | null;
   criteriaResults: string | null;
+  sessionId?: string | null;
+  error?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }): ApiAgentRun {
@@ -136,6 +138,8 @@ export function mapAgentRun(run: {
     output: run.output ?? '',
     blockedReason: run.blockedReason,
     retryAfterMs: run.retryAfterMs !== null ? Number(run.retryAfterMs) : null,
+    sessionId: run.sessionId ?? null,
+    error: run.error ?? null,
   };
 }
 

@@ -28,9 +28,21 @@
 
 ---
 
+## Product & Design
+
+- [PRD](./PRD.md) — product requirements, milestones 1–5, personas, open questions
+- [Brand Book](./BRAND.md) — brand identity, name, voice, color, typography
+- [Frontend Design Spec](./design/DESIGN.md) — Tailwind palette, spacing, component states
+- [Text Wireframes](./design/WIREFRAMES.md) — annotated ASCII wireframes for all screens
+
+---
+
 ## Architecture
 
 - [System Overview](./architecture/overview.md) — data flow, services, key constraints
+- [System Spec](./architecture/SPEC.md) — language-agnostic spec: data model, behavioral contracts, orchestration semantics
+- [Frontend Sprint Plan](./architecture/FRONTEND_SPRINT_PLAN.md) — historical sprint plan; captures Zustand + dnd-kit decisions
+- [Hackathon Task Breakdown](./architecture/HACKATHON_TASKS.md) — historical engineer assignments from initial build day
 - [ADR-001 — JWT sessions over DB-backed sessions](./architecture/decisions/ADR-001-jwt-sessions.md)
 - [ADR-002 — Deploy boundary as revocation boundary](./architecture/decisions/ADR-002-deploy-boundary-revocation.md)
 - [ADR-003 — Card creation restricted to inactive columns](./architecture/decisions/ADR-003-card-creation-restricted-to-inactive-columns.md)

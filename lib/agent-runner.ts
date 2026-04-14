@@ -4,6 +4,7 @@ import type { IDbQueries, IAnthropicClient, IBroadcaster } from "./interfaces";
 import { config } from "./config";
 import { renderTurnPrompt } from "./prompt-renderer";
 import { handleEvent } from "./agent-runner/event-handler";
+import { scheduleRetry } from "./orchestrator/retry";
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -161,8 +162,7 @@ export async function run(
     // "completed" and "blocked" are already written by handleUpdateCard
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    await db.updateAgentRunStatus(agentRun.id, AgentRunStatus.failed, {
-      error: message,
-    });
+    await db.updateAgentRunStatus(agentRun.id, AgentRunStatus.failed, { error: message });
+    await scheduleRetry(agentRun, db);
   }
 }

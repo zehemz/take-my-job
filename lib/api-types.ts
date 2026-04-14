@@ -46,6 +46,10 @@ export interface ApiAgentRun {
   output: string;
   blockedReason: string | null;
   retryAfterMs: number | null;
+  /** Anthropic Managed Agents session ID, if the run was backed by one. */
+  sessionId: string | null;
+  /** Internal error message recorded when the run failed. */
+  error: string | null;
 }
 
 export interface ApiCard {

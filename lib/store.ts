@@ -302,6 +302,8 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
           output: r.output,
           blockedReason: r.blockedReason,
           retryAfterMs: r.retryAfterMs,
+          sessionId: r.sessionId ?? null,
+          error: r.error ?? null,
         })),
         requiresApproval: card.requiresApproval ?? false,
         revisionContextNote: card.revisionContextNote,

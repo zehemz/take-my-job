@@ -50,6 +50,8 @@ export interface AgentRun {
   output: string;
   blockedReason: string | null;
   retryAfterMs: number | null;
+  sessionId: string | null;
+  error: string | null;
 }
 
 export interface Card {

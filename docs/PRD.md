@@ -1,6 +1,6 @@
 # Kobani — Product Requirements Document
 
-> This document defines **what** Kobani must do and **for whom**, organized into shippable milestones. It sits above [SPEC.md](./SPEC.md), which defines the technical contracts a conforming implementation must satisfy. When the two conflict, the PRD reflects the product intent and SPEC.md should be updated to match.
+> This document defines **what** Kobani must do and **for whom**, organized into shippable milestones. It sits above [SPEC.md](./architecture/SPEC.md), which defines the technical contracts a conforming implementation must satisfy. When the two conflict, the PRD reflects the product intent and SPEC.md should be updated to match.
 
 ---
 
