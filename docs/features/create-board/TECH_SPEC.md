@@ -19,8 +19,13 @@ The app had no way to create a board from the UI. The only path was seeding the 
 `app/api/boards/route.ts`
 
 - Requires an authenticated session (401 otherwise)
-- Accepts `{ name: string }` — returns 400 if name is empty/missing
-- Creates the board and **5 default columns in a single DB transaction** (via Prisma nested create)
+- Accepts `{ name: string, workspacePath?: string }` — returns 400 if name is empty/missing
+- Creates the board and **6 default columns in a single DB transaction** (via Prisma nested create)
+- If `WORKSPACE_REPO_URL` is configured:
+  - Provisions a folder in the shared workspace repo via the GitHub Contents API
+  - Uses user-provided `workspacePath` or auto-generates one from the board name + ID
+  - Returns 409 if the workspace folder already exists
+  - Saves `githubRepo` and `workspacePath` on the board record
 - Returns the new `ApiBoardSummary` with HTTP 201
 
 **Default columns (always created):**
@@ -51,9 +56,27 @@ Calls `POST /api/boards`, prepends the new board to the `boards` list in Zustand
 - On success: navigates directly to the new board via `router.push(/boards/:id)`
 - Modal uses `createPortal` to render outside the layout tree (consistent with `NewCardModal`)
 
+### Workspace provisioning
+
+`lib/workspace.ts`
+
+When `WORKSPACE_REPO_URL` is set, board creation triggers folder provisioning in a shared GitHub repo:
+
+1. **`slugify(name, id)`** — converts board name to a URL-safe slug with a 6-char ID suffix for uniqueness
+2. **`ensureBoardFolder(boardName, workspacePath)`** — creates a `README.md` at the given path via the GitHub Contents API. Throws if the folder already exists.
+
+Cards created on a board with a workspace repo auto-inherit `githubRepoUrl` and `githubBranch: "main"` (see `app/api/boards/[id]/cards/route.ts`). The agent prompt directs the agent to work inside `/workspace/repo/<workspacePath>/`.
+
+**Environment variables:**
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `WORKSPACE_REPO_URL` | No | GitHub URL of the shared workspace repo (e.g. `https://github.com/org/kobani-boards`) |
+| `GITHUB_TOKEN` | Yes (if workspace enabled) | Fine-grained token with **Contents: Read and write** on the workspace repo |
+
 ### Contract type
 
-`lib/api-types.ts` — added `CreateBoardRequest { name: string }`
+`lib/api-types.ts` — `CreateBoardRequest { name: string, workspacePath?: string }`
 
 ---
 
