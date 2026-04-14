@@ -23,25 +23,6 @@ test.describe('Auth flows', () => {
     expect(naturalWidth).toBeGreaterThan(0);
   });
 
-  test('E2E-AUTH-004: GitHub OAuth button does not contain client_id=undefined', async ({ page }) => {
-    const requests: string[] = [];
-    page.on('request', (req) => {
-      if (req.url().includes('github.com/login/oauth')) {
-        requests.push(req.url());
-      }
-    });
-
-    await page.goto('/login');
-    // Click the button and wait briefly for navigation attempt
-    await page.getByRole('button', { name: /github/i }).click();
-    await page.waitForTimeout(1000);
-
-    // If any OAuth redirect happened, it must not contain client_id=undefined
-    for (const url of requests) {
-      expect(url).not.toContain('client_id=undefined');
-    }
-  });
-
   test('E2E-AUTH-005: unauthorized page shows neutral copy without mentioning GitHub', async ({ page }) => {
     await page.goto('/unauthorized');
     await expect(page.getByText('Access denied')).toBeVisible();

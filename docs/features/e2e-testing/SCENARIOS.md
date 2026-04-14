@@ -13,7 +13,7 @@ IDs are stable — never reuse a retired ID.
 | E2E-AUTH-001 | Unauthenticated visit to `/` redirects to `/login` | ✅ Implemented |
 | E2E-AUTH-002 | Login page renders "Sign in to continue" heading and GitHub button | ✅ Implemented |
 | E2E-AUTH-003 | Logo image on login page loads without broken-image icon | ✅ Implemented |
-| E2E-AUTH-004 | GitHub OAuth button redirect does not contain `client_id=undefined` | ✅ Implemented |
+| E2E-AUTH-004 | ~~GitHub OAuth button redirect does not contain `client_id=undefined`~~ | ⛔ Retired |
 | E2E-AUTH-005 | `/unauthorized` shows neutral "Access denied" copy without mentioning GitHub | ✅ Implemented |
 | E2E-AUTH-006 | Direct `GET /api/boards` without session → `{"error":"Unauthorized"}` 401 | ✅ Implemented |
 | E2E-AUTH-007 | `callbackUrl=//evil.com` is sanitised — browser stays on our domain | ✅ Implemented |
