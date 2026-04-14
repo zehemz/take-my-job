@@ -56,6 +56,7 @@ IDs are stable — never reuse a retired ID.
 | E2E-CARD-014 | Add card button is only visible on inactive columns | ✅ Implemented |
 | E2E-CARD-015 | `POST /api/cards/:id/retry` without session → 401 | ✅ Implemented |
 | E2E-CARD-016 | `POST /api/cards/:id/retry` on card with no agent runs → 400 | ✅ Implemented |
+| E2E-CARD-017 | Delete a card that has agent run history succeeds (no FK constraint 500) | ✅ Implemented |
 
 ---
 

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { mapAgentRun, mapCard, deriveCardAgentStatus } from '@/lib/api-mappers';
 import type { UpdateCardRequest } from '@/lib/api-types';
-import { auth } from '@/auth';
+import { devAuth as auth } from '@/lib/dev-auth';
 
 export async function GET(
   _req: Request,
@@ -71,6 +71,7 @@ export async function DELETE(
   const session = await auth();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
+  await prisma.agentRun.deleteMany({ where: { cardId: params.id } });
   await prisma.card.delete({ where: { id: params.id } });
   return new Response(null, { status: 204 });
 }

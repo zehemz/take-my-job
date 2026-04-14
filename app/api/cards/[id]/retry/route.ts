@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { mapAgentRun, mapCard, deriveCardAgentStatus } from '@/lib/api-mappers';
-import { auth } from '@/auth';
+import { devAuth as auth } from '@/lib/dev-auth';
 
 export async function POST(
   _req: Request,

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { broadcaster } from '@/lib/broadcaster-singleton';
 import type { BroadcastEvent } from '@/lib/types';
-import { auth } from '@/auth';
+import { devAuth as auth } from '@/lib/dev-auth';
 
 export const dynamic = 'force-dynamic';
 

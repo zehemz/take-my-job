@@ -5,6 +5,10 @@ import { config as loadEnv } from 'dotenv';
 loadEnv({ path: '.env', override: false });
 loadEnv({ path: '.env.local', override: false });
 
+// E2E tests must always run with real auth — the test session cookie handles auth,
+// and several tests explicitly assert 401 for unauthenticated requests.
+process.env.DEV_AUTH_BYPASS = 'false';
+
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: false,   // sequential — DB state must be predictable

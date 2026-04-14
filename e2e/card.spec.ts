@@ -1,6 +1,7 @@
 import { test, expect } from './fixtures';
 import { KobaniApi } from './helpers/api';
 import type { ApiCard } from '../lib/api-types';
+import { prisma } from '../lib/db';
 
 /**
  * Card flows — E2E-CARD-*
@@ -439,6 +440,47 @@ test.describe('Cards', () => {
       const updated = await api.getCard(card.id);
       expect(updated.title).toBe(newTitle);
     } finally {
+      await api.deleteCard(card.id).catch(() => { /* already deleted */ });
+    }
+  });
+
+  test('E2E-CARD-017: card with agent run history can be deleted', async ({ authedPage: page, cookieHeader, request }) => {
+    const api = new KobaniApi(request, cookieHeader);
+    const boards = await api.getBoards();
+    if (boards.length === 0) { test.skip(true, 'No boards in DB'); return; }
+
+    const { board, columns } = await api.getBoard(boards[0].id);
+    if (columns.length === 0) { test.skip(true, 'Board has no columns'); return; }
+
+    const card = await api.createCard(board.id, {
+      title: `E2E Delete With Run ${Date.now()}`,
+      columnId: columns[0].id,
+      role: 'backend-engineer',
+    });
+
+    // Seed an agent run so the FK constraint is triggered on delete
+    await prisma.agentRun.create({
+      data: {
+        cardId: card.id,
+        role: 'backend_engineer',
+        status: 'failed',
+        attempt: 1,
+      },
+    });
+
+    try {
+      await page.goto(`/boards/${board.id}`);
+      await expect(page.locator('[data-testid="column"]').first()).toBeVisible({ timeout: 10_000 });
+
+      await page.getByText(card.title).first().click();
+      await expect(page.getByRole('button', { name: 'Delete card' })).toBeVisible({ timeout: 5_000 });
+
+      await page.getByRole('button', { name: 'Delete card' }).click();
+      await expect(page.getByRole('button', { name: 'Delete permanently' })).toBeVisible();
+
+      await page.getByRole('button', { name: 'Delete permanently' }).click();
+      await expect(page.getByText(card.title)).not.toBeVisible({ timeout: 5_000 });
+    } catch {
       await api.deleteCard(card.id).catch(() => { /* already deleted */ });
     }
   });

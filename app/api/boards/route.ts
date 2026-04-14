@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { mapBoardSummary } from '@/lib/api-mappers';
 import type { CreateBoardRequest } from '@/lib/api-types';
-import { auth } from '@/auth';
+import { devAuth as auth } from '@/lib/dev-auth';
 
 export async function GET() {
   const session = await auth();

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { mapAgentRun, mapCard, deriveCardAgentStatus } from '@/lib/api-mappers';
 import type { MoveCardRequest } from '@/lib/api-types';
-import { auth } from '@/auth';
+import { devAuth as auth } from '@/lib/dev-auth';
 import { orchestrator } from '@/lib/orchestrator-instance';
 
 export async function POST(
