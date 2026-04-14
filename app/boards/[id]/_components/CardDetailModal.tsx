@@ -104,46 +104,42 @@ function BlockedBanner({
   }
 
   return (
-    <div className="mx-6 my-4 bg-amber-950 border border-amber-800 rounded-lg p-4 flex flex-col gap-4">
+    <div className="mx-6 my-4 bg-amber-950 border border-amber-800 rounded-lg p-4 flex flex-col gap-3">
       <div className="flex items-center gap-2">
         <span className="text-amber-400 text-sm">⚠</span>
         <span className="text-sm font-semibold text-amber-200">Agent needs your input</span>
       </div>
       <p className="text-sm text-amber-200 leading-relaxed">{blockedReason}</p>
-
-      <div className="flex flex-col gap-2">
-        <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Option A — Reply here</p>
-        <textarea
-          className="w-full bg-zinc-950 border border-zinc-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 resize-none outline-none transition-colors disabled:opacity-60"
-          rows={3}
-          placeholder="Reply to the agent..."
-          value={reply}
-          disabled={sending}
-          onChange={(e) => setReply(e.target.value)}
-        />
-        <button
-          onClick={handleSendReply}
-          disabled={sending || !reply.trim()}
-          className="self-end bg-indigo-600 hover:bg-indigo-500 text-white rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-150 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-        >
-          {sending ? 'Sending…' : 'Send to agent'}
-        </button>
-      </div>
-
-      {cliCommand && (
-        <div className="flex flex-col gap-2">
-          <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Option B — Connect via CLI</p>
-          <div className="flex items-center gap-2 bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2">
-            <code className="flex-1 text-xs font-mono text-zinc-300">{cliCommand}</code>
+      <textarea
+        className="w-full bg-zinc-950 border border-zinc-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 resize-none outline-none transition-colors disabled:opacity-60"
+        rows={3}
+        placeholder="Reply to the agent..."
+        value={reply}
+        disabled={sending}
+        onChange={(e) => setReply(e.target.value)}
+      />
+      <div className="flex items-center justify-between gap-2">
+        {cliCommand ? (
+          <div className="flex items-center gap-2 bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1 min-w-0">
+            <code className="text-xs font-mono text-zinc-500 truncate">{cliCommand}</code>
             <button
               onClick={handleCopy}
-              className="text-xs text-indigo-400 hover:text-indigo-200 transition-colors cursor-pointer shrink-0"
+              className="text-xs text-zinc-500 hover:text-indigo-300 transition-colors cursor-pointer shrink-0"
             >
               {copied ? 'Copied!' : 'Copy'}
             </button>
           </div>
-        </div>
-      )}
+        ) : (
+          <span />
+        )}
+        <button
+          onClick={handleSendReply}
+          disabled={sending || !reply.trim()}
+          className="shrink-0 bg-indigo-600 hover:bg-indigo-500 text-white rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-150 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {sending ? 'Sending…' : 'Send to agent'}
+        </button>
+      </div>
     </div>
   );
 }
