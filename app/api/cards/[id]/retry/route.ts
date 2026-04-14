@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { mapAgentRun, mapCard, deriveCardAgentStatus } from '@/lib/api-mappers';
 import { devAuth as auth } from '@/lib/dev-auth';
 import { orchestrator } from '@/lib/orchestrator-instance';
+import { config } from '@/lib/config';
 
 export async function POST(
   _req: Request,
@@ -42,7 +43,10 @@ export async function POST(
       data: { retryAfterMs: BigInt(Date.now()) },
     });
   } else if (latestRun.status === 'failed') {
-    // Permanently failed — create a fresh run at the next attempt number
+    // Permanently failed (no scheduled retry) — only allow if under the attempt cap.
+    if (latestRun.attempt >= config.MAX_ATTEMPTS) {
+      return NextResponse.json({ error: 'Max retry attempts reached' }, { status: 400 });
+    }
     await prisma.agentRun.create({
       data: {
         cardId: card.id,
