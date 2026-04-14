@@ -78,9 +78,9 @@ IDs are stable — never reuse a retired ID.
 
 | ID | Scenario | Status |
 |----|----------|--------|
-| E2E-BOARD-DELETE-001 | Delete board button visible on board detail page | 🟡 Planned |
-| E2E-BOARD-DELETE-002 | Delete modal: confirm button disabled until board name typed exactly | 🟡 Planned |
-| E2E-BOARD-DELETE-003 | Typing board name and confirming deletes board and redirects to `/` | 🟡 Planned |
+| E2E-BOARD-DELETE-001 | Delete board button visible on board detail page | ✅ Implemented |
+| E2E-BOARD-DELETE-002 | Delete modal: confirm button disabled until board name typed exactly | ✅ Implemented |
+| E2E-BOARD-DELETE-003 | Typing board name and confirming deletes board and redirects to `/` | ✅ Implemented |
 
 ---
 
@@ -108,12 +108,12 @@ IDs are stable — never reuse a retired ID.
 
 | ID | Scenario | Status |
 |----|----------|--------|
-| E2E-AGENT-001 | Authenticated visit to `/agents` renders page heading "Agents" | 🟡 Planned |
-| E2E-AGENT-002 | `/agents` lists one row per `AgentConfig` returned by `GET /api/agents` | 🟡 Planned |
-| E2E-AGENT-003 | `/agents` shows empty-state message when no agents are configured | 🟡 Planned |
-| E2E-AGENT-004 | `GET /api/agents` without session → `{"error":"Unauthorized"}` 401 | 🟡 Planned |
-| E2E-AGENT-005 | Each agent row displays: role, agent ID, version, environment ID, created date | 🟡 Planned |
-| E2E-AGENT-006 | `DELETE /api/agents/:id` without session → 401 | 🟡 Planned |
+| E2E-AGENT-001 | Authenticated visit to `/agents` renders page heading "Agents" | ✅ Implemented |
+| E2E-AGENT-002 | `/agents` lists one row per `AgentConfig` returned by `GET /api/agents` | ✅ Implemented |
+| E2E-AGENT-003 | `/agents` shows empty-state message when no agents are configured | ✅ Implemented |
+| E2E-AGENT-004 | `GET /api/agents` without session → `{"error":"Unauthorized"}` 401 | ✅ Implemented |
+| E2E-AGENT-005 | Each agent row displays: role, agent ID, version, environment ID, created date | ✅ Implemented |
+| E2E-AGENT-006 | `DELETE /api/agents/:id` without session → 401 | ✅ Implemented |
 | E2E-AGENT-007 | Delete button on a row triggers confirmation, then calls DELETE, then row disappears | 🟡 Planned |
 | E2E-AGENT-008 | `DELETE /api/agents/:id` with valid id removes agent from Anthropic and DB | 🟡 Planned |
 
@@ -121,9 +121,9 @@ IDs are stable — never reuse a retired ID.
 
 | ID | Scenario | Status |
 |----|----------|--------|
-| E2E-AGENT-009 | Navigate to `/agents`, click a healthy agent name → lands on `/agents/[id]` showing all fields | 🟡 Planned |
-| E2E-AGENT-010 | Navigate to `/agents/nonexistent-id` → page shows "Agent not found" error message | 🟡 Planned |
-| E2E-AGENT-011 | Back link `← Agents` on detail page returns to `/agents` | 🟡 Planned |
+| E2E-AGENT-009 | Navigate to `/agents`, click a healthy agent name → lands on `/agents/[id]` showing all fields | ✅ Implemented |
+| E2E-AGENT-010 | Navigate to `/agents/nonexistent-id` → page shows "Agent not found" error message | ✅ Implemented |
+| E2E-AGENT-011 | Back link `← Agents` on detail page returns to `/agents` | ✅ Implemented |
 
 ---
 
@@ -157,8 +157,8 @@ IDs are stable — never reuse a retired ID.
 
 | ID | Scenario | Status |
 |----|----------|--------|
-| E2E-ERR-001 | `GET /api/boards/:id` with nonexistent ID → 404 JSON | 🟡 Planned |
-| E2E-ERR-002 | `POST /api/boards/:id/cards` with missing `title` → 400 | 🟡 Planned |
+| E2E-ERR-001 | `GET /api/boards/:id` with nonexistent ID → 404 JSON | ✅ Implemented |
+| E2E-ERR-002 | `POST /api/boards/:id/cards` with missing `title` → 400 | ✅ Implemented |
 | E2E-ERR-003 | Network error during board fetch shows error state in UI | 🟡 Planned |
 
 ---
@@ -167,11 +167,11 @@ IDs are stable — never reuse a retired ID.
 
 | ID | Scenario | Status |
 |----|----------|--------|
-| E2E-SESSION-001 | Navigate to `/sessions` → table renders with Status, Title, Agent, Environment, Card, Role, Created columns | 🟡 Planned |
+| E2E-SESSION-001 | Navigate to `/sessions` → table renders with Status, Title, Agent, Environment, Card, Role, Created columns | ✅ Implemented |
 | E2E-SESSION-002 | Sessions linked to a Kobani card show a clickable board link in the Card column | 🟡 Planned |
 | E2E-SESSION-003 | Sessions not linked to a card show "—" in Card and Role columns | 🟡 Planned |
 | E2E-SESSION-004 | Status badges display correct colour per status (running=blue, idle=zinc, terminated=dim, rescheduling=amber) | 🟡 Planned |
-| E2E-SESSION-005 | `GET /api/sessions` without session → `{"error":"Unauthorized"}` 401 | 🟡 Planned |
+| E2E-SESSION-005 | `GET /api/sessions` without session → `{"error":"Unauthorized"}` 401 | ✅ Implemented |
 
 ---
 

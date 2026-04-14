@@ -75,4 +75,15 @@ export class KobaniApi {
     const res = await this.req.delete(`/api/cards/${id}`, { headers: this.headers() });
     if (res.status() !== 204) throw new Error(`DELETE /api/cards/${id} → ${res.status()}`);
   }
+
+  async createBoard(data: { name: string; workspacePath?: string }): Promise<ApiBoardSummary> {
+    const res = await this.req.post('/api/boards', { headers: this.headers(), data });
+    if (!res.ok()) throw new Error(`POST /api/boards → ${res.status()}: ${await res.text()}`);
+    return res.json();
+  }
+
+  async deleteBoard(id: string): Promise<void> {
+    const res = await this.req.delete(`/api/boards/${id}`, { headers: this.headers() });
+    if (res.status() !== 204) throw new Error(`DELETE /api/boards/${id} → ${res.status()}`);
+  }
 }
