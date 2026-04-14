@@ -166,3 +166,16 @@ export interface AgentRow {
 }
 
 export type AgentListResponse = AgentRow[]
+
+export interface AgentDetail {
+  anthropicAgentId: string;
+  name: string;
+  model: string;
+  anthropicVersion: string;
+  role: string | null;
+  dbId: string | null;
+  syncStatus: 'healthy' | 'unmapped' | 'orphaned';
+  description: string | null;
+  createdAt: string;
+  archivedAt: string | null;
+}

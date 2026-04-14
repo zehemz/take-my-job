@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import type { AgentRow, AgentSyncStatus } from '@/lib/api-types';
 
 function Spinner() {
@@ -146,7 +147,14 @@ export default function AgentConfigTable({ items, onDelete }: Props) {
                   <span className="text-zinc-500 italic">—</span>
                 )}
               </td>
-              <td className="px-4 py-3 text-zinc-100">{item.name}</td>
+              <td className="px-4 py-3">
+                <Link
+                  href={`/agents/${item.anthropicAgentId}`}
+                  className="text-zinc-100 hover:text-white hover:underline transition-colors"
+                >
+                  {item.name}
+                </Link>
+              </td>
               <td className="px-4 py-3">
                 <span className="font-mono text-xs text-zinc-400">{item.model}</span>
               </td>

@@ -117,6 +117,14 @@ IDs are stable — never reuse a retired ID.
 | E2E-AGENT-007 | Delete button on a row triggers confirmation, then calls DELETE, then row disappears | 🟡 Planned |
 | E2E-AGENT-008 | `DELETE /api/agents/:id` with valid id removes agent from Anthropic and DB | 🟡 Planned |
 
+## Agent Details View (`e2e/agents.spec.ts`)
+
+| ID | Scenario | Status |
+|----|----------|--------|
+| E2E-AGENT-009 | Navigate to `/agents`, click a healthy agent name → lands on `/agents/[id]` showing all fields | 🟡 Planned |
+| E2E-AGENT-010 | Navigate to `/agents/nonexistent-id` → page shows "Agent not found" error message | 🟡 Planned |
+| E2E-AGENT-011 | Back link `← Agents` on detail page returns to `/agents` | 🟡 Planned |
+
 ---
 
 ## Error states
