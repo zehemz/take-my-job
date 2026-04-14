@@ -207,7 +207,7 @@ export function mapCard(
     title: card.title,
     description: card.description ?? '',
     acceptanceCriteria: parseAcceptanceCriteria(card.acceptanceCriteria),
-    role: (card.role ?? 'backend-engineer') as AgentRole,
+    role: (card.role ?? '') as AgentRole,
     githubRepo: card.githubRepoUrl,
     githubBranch: card.githubBranch,
     requiresApproval: card.requiresApproval,

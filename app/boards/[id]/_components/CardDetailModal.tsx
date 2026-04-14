@@ -824,6 +824,9 @@ export default function CardDetailModal() {
                     value={roleDraft}
                     onChange={(e) => setRoleDraft(e.target.value)}
                   >
+                    {roles.length === 0 && (
+                      <option value="">No agents configured</option>
+                    )}
                     {roles.map((r) => (
                       <option key={r} value={r}>{roleLabel(r)}</option>
                     ))}

@@ -3,25 +3,30 @@
 import { useEffect, useState } from 'react';
 
 let cachedRoles: string[] | null = null;
+let cacheTime = 0;
+const CACHE_TTL_MS = 30_000; // 30 seconds
 
 export function useRoles(): { roles: string[]; loading: boolean } {
-  const [roles, setRoles] = useState<string[]>(cachedRoles ?? []);
-  const [loading, setLoading] = useState(cachedRoles === null);
+  const isCacheValid = cachedRoles !== null && Date.now() - cacheTime < CACHE_TTL_MS;
+  const [roles, setRoles] = useState<string[]>(isCacheValid ? cachedRoles! : []);
+  const [loading, setLoading] = useState(!isCacheValid);
 
   useEffect(() => {
-    if (cachedRoles) return;
+    if (isCacheValid) return;
     fetch('/api/roles')
       .then((r) => r.json())
       .then((data) => {
         cachedRoles = data.roles ?? [];
+        cacheTime = Date.now();
         setRoles(cachedRoles!);
       })
       .catch(() => {
         cachedRoles = [];
+        cacheTime = Date.now();
         setRoles([]);
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   return { roles, loading };
 }

@@ -88,19 +88,17 @@ export async function GET() {
         }
   })
 
-  // Add orphaned DB records (DB has agentId not returned by Anthropic)
+  // Clean up orphaned DB records (DB has agentId not returned by Anthropic).
+  // These are agents that were deleted from Anthropic but still have a DB config.
+  // Removing them keeps the /api/roles dropdown in sync.
+  const orphanedIds: string[] = [];
   for (const dbRecord of dbRows) {
     if (!anthropicIds.has(dbRecord.anthropicAgentId)) {
-      rows.push({
-        anthropicAgentId: dbRecord.anthropicAgentId,
-        name: dbRecord.role,
-        model: '',
-        anthropicVersion: dbRecord.anthropicAgentVersion,
-        role: dbRecord.role,
-        dbId: dbRecord.id,
-        syncStatus: 'orphaned',
-      })
+      orphanedIds.push(dbRecord.id);
     }
+  }
+  if (orphanedIds.length > 0) {
+    await prisma.agentConfig.deleteMany({ where: { id: { in: orphanedIds } } });
   }
 
   return NextResponse.json(rows)

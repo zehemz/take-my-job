@@ -20,6 +20,16 @@ export async function POST(
     return NextResponse.json({ error: 'title and columnId are required' }, { status: 400 });
   }
 
+  if (!role) {
+    return NextResponse.json({ error: 'role is required' }, { status: 400 });
+  }
+
+  // Validate role exists in AgentConfig
+  const agentConfig = await prisma.agentConfig.findUnique({ where: { role } });
+  if (!agentConfig) {
+    return NextResponse.json({ error: `Unknown agent role: ${role}` }, { status: 400 });
+  }
+
   // Verify board and column belong together
   const column = await prisma.column.findFirst({
     where: { id: columnId, boardId: params.id },
@@ -85,7 +95,7 @@ export async function POST(
       title,
       description: description ?? null,
       acceptanceCriteria: acceptanceCriteria ? JSON.stringify(acceptanceCriteria) : null,
-      role: role ?? null,
+      role,
       position,
       githubRepoUrl: repoUrl,
       githubBranch: branch,

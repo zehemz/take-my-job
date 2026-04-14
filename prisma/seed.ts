@@ -27,6 +27,22 @@ async function main() {
     console.log("Seed: Default Board already exists, skipping.");
   }
 
+  // ── Default agent configs ─────────────────────────────────────────────────
+  // Ensures the roles used in cards and E2E tests exist in the AgentConfig table.
+  const defaultRoles = [
+    { role: "backend-engineer", anthropicAgentId: "placeholder", anthropicAgentVersion: "1", anthropicEnvironmentId: "default" },
+    { role: "qa-engineer",      anthropicAgentId: "placeholder", anthropicAgentVersion: "1", anthropicEnvironmentId: "default" },
+    { role: "content-writer",   anthropicAgentId: "placeholder", anthropicAgentVersion: "1", anthropicEnvironmentId: "default" },
+    { role: "product-spec-writer", anthropicAgentId: "placeholder", anthropicAgentVersion: "1", anthropicEnvironmentId: "default" },
+  ];
+  for (const cfg of defaultRoles) {
+    const existing = await prisma.agentConfig.findUnique({ where: { role: cfg.role } });
+    if (!existing) {
+      await prisma.agentConfig.create({ data: cfg });
+      console.log(`Seed: Created AgentConfig for role "${cfg.role}".`);
+    }
+  }
+
   // ── E2E test user (admin) ────────────────────────────────────────────────
   // The Playwright fixtures sign in as "testuser" (see e2e/fixtures.ts).
   // Without a User row the RBAC layer returns 403 on every authenticated call.
