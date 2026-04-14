@@ -28,21 +28,32 @@ Inspired by [OpenAI Symphony](https://github.com/openai/symphony), substituting 
 
 ## Features
 
+### Core Kanban + AI
 - **Autonomous agent dispatch** — column transitions trigger agent sessions, no manual prompting needed
-- **Multiple agent roles** — Backend Engineer, QA Engineer, and Tech Lead with distinct responsibilities
+- **Multiple agent roles** — Backend Engineer, QA Engineer, Tech Lead, and custom roles with distinct responsibilities
 - **Real-time streaming** — live SSE output from agents directly in the card UI
-- **Drag-and-drop Kanban** — intuitive board with customizable columns (Inactive, Active, Terminal)
+- **Drag-and-drop Kanban** — intuitive board with customizable columns (Inactive, Active, Review, Blocked, Terminal)
 - **Acceptance criteria** — define what "done" looks like; agents verify before completing
+- **Card dependencies** — cards can depend on other cards; won't auto-promote until dependencies complete
 - **Blocked state & human-in-the-loop** — agents signal when they need help; reply through the UI or attach via CLI
 - **Approval workflow** — require human approval before agents can transition cards
-- **Attention queue & notifications** — surface cards that need human attention with real-time alerts
-- **Agent management** — create, configure, and manage agent definitions with built-in tools and MCP servers
-- **GitHub repo mounting** — agents get the repo at `/workspace/repo` for full code access
 - **Retry with exponential backoff** — failed runs auto-retry up to configurable limits
-- **Concurrency control** — global cap on simultaneous agent runs
-- **GitHub OAuth authentication** — secure access with allowlist-based authorization
+
+### Agent & Environment Management
+- **Agent inline editing** — edit name, model, system prompt, tools, and MCP servers from the detail page with version conflict detection
+- **Environment management** — create (with presets), edit networking/packages, and delete Anthropic environments
+- **Per-card environment override** — cards can use a specific environment instead of the board default
+- **GitHub repo mounting** — agents get the repo at `/workspace/repo` for full code access
 - **Session inspection** — view active agent sessions and attach via the `ant` CLI
+
+### Access Control & Collaboration
+- **Role-based access control (RBAC)** — database-backed users and groups with per-agent-role and per-environment permissions
+- **Admin UI** — manage users, groups, and access policies at `/access`
+- **GitHub OAuth authentication** — secure access with invite-only authorization
+- **Attention queue & notifications** — surface cards that need human attention with real-time alerts
+- **Board completion indicator** — dashboard shows completed vs total cards per board
 - **Multiple boards** — create and manage separate boards for different projects or teams
+- **Concurrency control** — global cap on simultaneous agent runs
 
 ## Architecture
 
