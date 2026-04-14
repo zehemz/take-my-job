@@ -17,7 +17,11 @@ function getAllowedUsers(): Set<string> {
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   providers: [
-    GitHub({ authorization: { params: { scope: 'read:user' } } }),
+    GitHub({
+      clientId: process.env.GITHUB_CLIENT_ID,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET,
+      authorization: { params: { scope: 'read:user' } },
+    }),
   ],
   session: { strategy: 'jwt', maxAge: 24 * 60 * 60 }, // 24h — do NOT use 30d default
   callbacks: {
