@@ -1,5 +1,19 @@
 export type ColumnType = 'inactive' | 'active' | 'review' | 'revision' | 'terminal';
 
+/**
+ * Authoritative transition matrix for drag-and-drop and server-side move validation.
+ * Same-type reorders (e.g. active → active) are listed so positional moves within a
+ * column are also permitted.
+ * Source of truth per PRD §5.2 / §6.
+ */
+export const VALID_TRANSITIONS: Record<ColumnType, ColumnType[]> = {
+  inactive: ['active'],
+  active: ['active', 'review'],
+  review: ['terminal', 'revision'],
+  revision: ['active'],
+  terminal: [],
+};
+
 export type AgentStatus =
   | 'idle'
   | 'running'
@@ -76,6 +90,7 @@ export interface Board {
   id: string;
   name: string;
   createdAt: string;
+  githubRepo: string | null;
 }
 
 export interface KobaniStore {

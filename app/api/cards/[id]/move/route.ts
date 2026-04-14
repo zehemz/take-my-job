@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { mapAgentRun, mapCard, deriveCardAgentStatus } from '@/lib/api-mappers';
 import type { MoveCardRequest } from '@/lib/api-types';
+import { VALID_TRANSITIONS } from '@/lib/kanban-types';
 import { devAuth as auth } from '@/lib/dev-auth';
 import { orchestrator } from '@/lib/orchestrator-instance';
 
@@ -33,14 +34,6 @@ export async function POST(
   if (!existingCard) {
     return NextResponse.json({ error: 'Card not found' }, { status: 404 });
   }
-
-  const VALID_TRANSITIONS: Record<string, string[]> = {
-    inactive: ['active'],
-    active: ['active', 'review', 'revision'],
-    review: ['terminal', 'revision'],
-    revision: ['active'],
-    terminal: [],
-  };
 
   const fromType = existingCard.column.columnType;
   const toType = targetColumn.columnType;
