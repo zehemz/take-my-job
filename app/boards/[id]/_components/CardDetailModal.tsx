@@ -543,11 +543,13 @@ export default function CardDetailModal() {
   const isLive = card.agentStatus === 'running' || card.agentStatus === 'evaluating';
   const blockedRun = card.agentRuns.find((r) => r.status === 'blocked');
   const isInRevisionColumn = column.type === 'revision';
+  const isEditable = column.type === 'inactive';
   const liveOutput = sseOutput || currentRun?.output || '';
 
   // ── Edit helpers ───────────────────────────────────────────────────────────
 
   function openEdit(field: EditingField) {
+    if (!isEditable) return;
     setSaveError('');
     setEditingField(field);
     if (field === 'title') setTitleDraft(card.title);
@@ -704,9 +706,9 @@ export default function CardDetailModal() {
               </div>
             ) : (
               <h2
-                className="text-base font-semibold text-zinc-100 cursor-pointer hover:text-zinc-300 transition-colors"
+                className={`text-base font-semibold text-zinc-100 transition-colors ${isEditable ? 'cursor-pointer hover:text-zinc-300' : ''}`}
                 onClick={() => openEdit('title')}
-                title="Click to edit title"
+                title={isEditable ? 'Click to edit title' : undefined}
               >
                 {card.title}
               </h2>
@@ -765,11 +767,11 @@ export default function CardDetailModal() {
                 </span>
               ) : (
                 <span
-                  className="text-zinc-300 bg-zinc-800 rounded px-1.5 py-0.5 font-mono text-xs cursor-pointer hover:bg-zinc-700 transition-colors"
+                  className={`text-zinc-300 bg-zinc-800 rounded px-1.5 py-0.5 font-mono text-xs transition-colors ${isEditable ? 'cursor-pointer hover:bg-zinc-700' : ''}`}
                   onClick={() => openEdit('role')}
-                  title="Click to edit role"
+                  title={isEditable ? 'Click to edit role' : undefined}
                 >
-                  {currentRun.role} ✎
+                  {currentRun.role}{isEditable ? ' ✎' : ''}
                 </span>
               )}
             </span>
@@ -802,21 +804,21 @@ export default function CardDetailModal() {
               </span>
             ) : card.githubRepo ? (
               <span
-                className="flex items-center gap-1 cursor-pointer hover:text-zinc-300 transition-colors"
+                className={`flex items-center gap-1 transition-colors ${isEditable ? 'cursor-pointer hover:text-zinc-300' : ''}`}
                 onClick={() => openEdit('githubRepo')}
-                title="Click to edit repo"
+                title={isEditable ? 'Click to edit repo' : undefined}
               >
                 Repo: <span className="text-zinc-300 font-mono">{card.githubRepo}</span>
-                <span className="text-zinc-600">✎</span>
+                {isEditable && <span className="text-zinc-600">✎</span>}
               </span>
-            ) : (
+            ) : isEditable ? (
               <span
                 className="text-zinc-600 hover:text-zinc-400 cursor-pointer transition-colors"
                 onClick={() => openEdit('githubRepo')}
               >
                 + Add repo
               </span>
-            )}
+            ) : null}
 
             {/* GitHub Branch */}
             {editingField === 'githubBranch' ? (
@@ -839,21 +841,21 @@ export default function CardDetailModal() {
               </span>
             ) : card.githubBranch ? (
               <span
-                className="flex items-center gap-1 cursor-pointer hover:text-zinc-300 transition-colors"
+                className={`flex items-center gap-1 transition-colors ${isEditable ? 'cursor-pointer hover:text-zinc-300' : ''}`}
                 onClick={() => openEdit('githubBranch')}
-                title="Click to edit branch"
+                title={isEditable ? 'Click to edit branch' : undefined}
               >
                 Branch: <span className="text-zinc-300 font-mono">{card.githubBranch}</span>
-                <span className="text-zinc-600">✎</span>
+                {isEditable && <span className="text-zinc-600">✎</span>}
               </span>
-            ) : (
+            ) : isEditable ? (
               <span
                 className="text-zinc-600 hover:text-zinc-400 cursor-pointer transition-colors"
                 onClick={() => openEdit('githubBranch')}
               >
                 + Add branch
               </span>
-            )}
+            ) : null}
           </div>
         )}
 
@@ -878,19 +880,21 @@ export default function CardDetailModal() {
             </div>
           ) : card.description ? (
             <p
-              className="text-sm text-zinc-300 leading-relaxed cursor-pointer hover:text-zinc-200 transition-colors"
+              className={`text-sm text-zinc-300 leading-relaxed transition-colors ${isEditable ? 'cursor-pointer hover:text-zinc-200' : ''}`}
               onClick={() => openEdit('description')}
-              title="Click to edit description"
+              title={isEditable ? 'Click to edit description' : undefined}
             >
               {card.description}
             </p>
-          ) : (
+          ) : isEditable ? (
             <p
               className="text-sm text-zinc-600 cursor-pointer hover:text-zinc-400 transition-colors"
               onClick={() => openEdit('description')}
             >
               No description. Click to add one.
             </p>
+          ) : (
+            <p className="text-sm text-zinc-600">No description.</p>
           )}
         </div>
 
@@ -905,7 +909,7 @@ export default function CardDetailModal() {
             <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
               Acceptance Criteria
             </p>
-            {editingField !== 'criteria' && (
+            {editingField !== 'criteria' && isEditable && (
               <button
                 className="text-zinc-600 hover:text-zinc-400 text-xs cursor-pointer transition-colors"
                 onClick={() => openEdit('criteria')}
