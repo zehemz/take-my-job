@@ -3,18 +3,26 @@
 import { useState, useEffect, useCallback } from 'react';
 import TopNav from '@/app/_components/TopNav';
 import EnvironmentTable from './_components/EnvironmentTable';
-import type { EnvironmentRow } from '@/lib/api-types';
+import type { EnvironmentRow, PaginatedResponse } from '@/lib/api-types';
 
 export default function EnvironmentsPage() {
   const [items, setItems] = useState<EnvironmentRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [nextPage, setNextPage] = useState<string | null>(null);
 
-  const fetchEnvironments = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const fetchEnvironments = useCallback(async (page?: string) => {
+    if (page) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+      setError(null);
+    }
     try {
-      const res = await fetch('/api/environments');
+      const params = new URLSearchParams();
+      if (page) params.set('page', page);
+      const res = await fetch(`/api/environments?${params.toString()}`);
       if (res.status === 401) {
         window.location.href = '/login';
         return;
@@ -22,12 +30,14 @@ export default function EnvironmentsPage() {
       if (!res.ok) {
         throw new Error('Failed to load environments from Anthropic.');
       }
-      const data: EnvironmentRow[] = await res.json();
-      setItems(data);
+      const data: PaginatedResponse<EnvironmentRow> = await res.json();
+      setItems((prev) => page ? [...prev, ...data.items] : data.items);
+      setNextPage(data.nextPage);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load environments from Anthropic.');
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   }, []);
 
@@ -44,7 +54,7 @@ export default function EnvironmentsPage() {
     if (!res.ok) {
       throw new Error('Failed to delete environment.');
     }
-    await fetchEnvironments();
+    setItems((prev) => prev.filter((item) => item.id !== id));
   }
 
   return (
@@ -60,7 +70,20 @@ export default function EnvironmentsPage() {
         ) : error ? (
           <p className="text-sm text-red-400">{error}</p>
         ) : (
-          <EnvironmentTable items={items} onDelete={handleDelete} />
+          <>
+            <EnvironmentTable items={items} onDelete={handleDelete} />
+            {nextPage && (
+              <div className="mt-4 flex justify-center">
+                <button
+                  onClick={() => fetchEnvironments(nextPage)}
+                  disabled={loadingMore}
+                  className="text-sm text-zinc-400 hover:text-zinc-100 transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {loadingMore ? 'Loading…' : 'Load more'}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
