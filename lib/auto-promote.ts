@@ -11,7 +11,7 @@ import { run as runAgent } from './agent-runner';
  * 2. It has NO dependencies, OR all its dependencies are in terminal columns
  *
  * Unlocked cards are moved to the board's first active column (In Progress)
- * and immediately dispatched to an agent runner.
+ * and immediately dispatched to an agent runner if an AgentConfig exists.
  */
 export async function promoteUnlockedCards(boardId: string): Promise<string[]> {
   const board = await prisma.board.findUnique({
@@ -75,11 +75,19 @@ export async function promoteUnlockedCards(boardId: string): Promise<string[]> {
       },
     });
 
-    // Immediately dispatch an agent for this card (don't wait for poll loop)
+    // Immediately dispatch an agent — but only if the config exists.
+    // If no config, the orchestrator poll loop will handle dispatch.
     try {
+      const role = card.role ?? 'backend-engineer';
+      const agentConfig = await dbQueries.getAgentConfig(role);
+      if (!agentConfig) {
+        console.warn(`[auto-promote] no AgentConfig for role "${role}", skipping immediate dispatch for card ${card.id}`);
+        promotedIds.push(card.id);
+        continue;
+      }
+
       const existing = await dbQueries.getActiveRunForCard(card.id);
       if (!existing) {
-        const role = card.role ?? 'backend-engineer';
         const agentRun = await dbQueries.createAgentRun(card.id, activeColumn.id, role, 1);
         const cardWithColumn = await dbQueries.getCard(card.id);
         if (cardWithColumn) {
