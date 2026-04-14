@@ -158,6 +158,17 @@ IDs are stable — never reuse a retired ID.
 | E2E-ENV-003 | Click Cancel → row unchanged | 🟡 Planned |
 | E2E-ENV-004 | Click Yes → spinner shows → row disappears after success | 🟡 Planned |
 
+## Agent Edit (`e2e/agents.spec.ts`)
+
+| ID | Scenario | Status |
+|----|----------|--------|
+| E2E-AGENT-012 | Click pencil icon on Name field → edit mode appears with Save/Cancel | 🟡 Planned |
+| E2E-AGENT-013 | Edit name and click Save → field updates, version increments | 🟡 Planned |
+| E2E-AGENT-014 | Edit model via dropdown and Save → model updates | 🟡 Planned |
+| E2E-AGENT-015 | Edit system prompt → confirmation dialog appears → confirm → saves | 🟡 Planned |
+| E2E-AGENT-016 | Cancel during edit → reverts to original value | 🟡 Planned |
+| E2E-AGENT-017 | Orphaned agent → edit icons not shown, disabled banner visible | 🟡 Planned |
+
 ---
 
 ## How to add a new scenario

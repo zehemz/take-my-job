@@ -225,8 +225,23 @@ export interface AgentDetail {
   dbId: string | null;
   syncStatus: AgentSyncStatus;
   description: string | null;
+  system: string | null;
   createdAt: string;
   archivedAt: string | null;
+}
+
+export interface PatchAgentRequest {
+  name?: string;
+  description?: string | null;
+  model?: string;
+  system?: string | null;
+  role?: string;
+  version: number;
+}
+
+export interface PatchAgentResponse {
+  agent: AgentDetail;
+  newVersion: number;
 }
 
 // ─── Card reply (unblock) ─────────────────────────────────────────────────────
