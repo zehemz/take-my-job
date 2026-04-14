@@ -93,9 +93,9 @@ export default function KanbanBoard({ boardId }: Props) {
       const targetColumnId = overId.replace('column:', '');
       if (!activeCardItem) return;
 
-      if (activeCardItem.columnId !== targetColumnId) {
+      if (savedState?.columnId !== targetColumnId) {
         const targetColumn = columns.find((col) => col.id === targetColumnId);
-        const sourceColumn = columns.find((col) => col.id === activeCardItem.columnId);
+        const sourceColumn = columns.find((col) => col.id === savedState?.columnId);
         const allowedTargets = sourceColumn ? (VALID_TRANSITIONS[sourceColumn.type] ?? []) : [];
         if (targetColumn && !allowedTargets.includes(targetColumn.type)) {
           // Invalid column transition — revert
@@ -131,14 +131,14 @@ export default function KanbanBoard({ boardId }: Props) {
     const overCard = cards.find((c) => c.id === overId);
     if (!overCard || !activeCardItem) return;
 
-    if (activeCardItem.columnId === overCard.columnId) {
+    if (savedState?.columnId === overCard.columnId) {
       // Same column — reorder
       reorderCard(activeId, overCard.position);
-      moveCardApi(activeId, activeCardItem.columnId, overCard.position);
+      moveCardApi(activeId, overCard.columnId, overCard.position);
     } else {
       // Different column — check transition validity first
       const targetColumn = columns.find((col) => col.id === overCard.columnId);
-      const sourceColumn = columns.find((col) => col.id === activeCardItem.columnId);
+      const sourceColumn = columns.find((col) => col.id === savedState?.columnId);
       const allowedTargets = sourceColumn ? (VALID_TRANSITIONS[sourceColumn.type] ?? []) : [];
       if (targetColumn && !allowedTargets.includes(targetColumn.type)) {
         if (savedState) moveCard(savedState.id, savedState.columnId, savedState.position);

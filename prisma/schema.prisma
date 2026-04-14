@@ -8,12 +8,13 @@ datasource db {
 }
 
 model Board {
-  id            String         @id @default(cuid())
-  name          String
-  githubRepo    String?
-  workspacePath String?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  id                     String         @id @default(cuid())
+  name                   String
+  githubRepo             String?
+  workspacePath          String?
+  anthropicEnvironmentId String?
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
   columns              Column[]
   cards                Card[]
   notifications        Notification[]

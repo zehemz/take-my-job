@@ -453,15 +453,13 @@ export default function CardDetailModal() {
   const esRef = useRef<EventSource | null>(null);
 
   // ── 3. Edit state ─────────────────────────────────────────────────────────
-  type EditingField = 'title' | 'description' | 'criteria' | 'role' | 'githubRepo' | 'githubBranch' | null;
+  type EditingField = 'title' | 'description' | 'criteria' | 'role' | null;
   const [editingField, setEditingField] = useState<EditingField>(null);
 
   const [titleDraft, setTitleDraft] = useState('');
   const [descDraft, setDescDraft] = useState('');
   const [criteriaDraft, setCriteriaDraft] = useState('');
   const [roleDraft, setRoleDraft] = useState<AgentRole>('backend-engineer');
-  const [repoDraft, setRepoDraft] = useState('');
-  const [branchDraft, setBranchDraft] = useState('');
 
   const [savingField, setSavingField] = useState<EditingField>(null);
   const [saveError, setSaveError] = useState('');
@@ -605,8 +603,6 @@ export default function CardDetailModal() {
         agentStatus: apiCard.agentStatus,
         currentAgentRunId: apiCard.currentAgentRunId,
         agentRuns: apiCard.agentRuns as AgentRun[],
-        githubRepo: apiCard.githubRepo,
-        githubBranch: apiCard.githubBranch,
         approvedBy: apiCard.approvedBy,
         approvedAt: apiCard.approvedAt,
         requiresApproval: apiCard.requiresApproval ?? storeCard.requiresApproval,
@@ -637,8 +633,6 @@ export default function CardDetailModal() {
       setCriteriaDraft(card.acceptanceCriteria.map((c) => c.text).join('\n'));
     }
     if (field === 'role') setRoleDraft(card.role as AgentRole);
-    if (field === 'githubRepo') setRepoDraft(card.githubRepo ?? '');
-    if (field === 'githubBranch') setBranchDraft(card.githubBranch ?? '');
   }
 
   function cancelEdit() {
@@ -693,14 +687,6 @@ export default function CardDetailModal() {
 
   function saveRole() {
     saveField('role', { role: roleDraft });
-  }
-
-  function saveGithubRepo() {
-    saveField('githubRepo', { githubRepo: repoDraft.trim() || undefined });
-  }
-
-  function saveGithubBranch() {
-    saveField('githubBranch', { githubBranch: branchDraft.trim() || undefined });
   }
 
   // ── Delete helpers ─────────────────────────────────────────────────────────
@@ -874,79 +860,6 @@ export default function CardDetailModal() {
               <SessionIdBadge sessionId={currentRun.sessionId} />
             )}
 
-            {/* GitHub Repo */}
-            {editingField === 'githubRepo' ? (
-              <span className={`flex items-center gap-1 ${isSaving('githubRepo') ? 'opacity-60 pointer-events-none' : ''}`}>
-                <span className="text-zinc-500">Repo:</span>
-                <input
-                  type="text"
-                  className="bg-zinc-950 border border-zinc-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded px-2 py-0.5 text-xs text-zinc-100 font-mono outline-none transition-colors w-40"
-                  value={repoDraft}
-                  onChange={(e) => setRepoDraft(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') saveGithubRepo(); }}
-                  placeholder="owner/repo"
-                  autoFocus
-                />
-                <button onClick={saveGithubRepo} className={SAVE_BTN}>Save</button>
-                <button onClick={cancelEdit} className={CANCEL_BTN}>Cancel</button>
-                {saveError && editingField === 'githubRepo' && (
-                  <span className="text-xs text-red-400">{saveError}</span>
-                )}
-              </span>
-            ) : card.githubRepo ? (
-              <span
-                className={`flex items-center gap-1 transition-colors ${isEditable ? 'cursor-pointer hover:text-zinc-300' : ''}`}
-                onClick={() => openEdit('githubRepo')}
-                title={isEditable ? 'Click to edit repo' : undefined}
-              >
-                Repo: <span className="text-zinc-300 font-mono">{card.githubRepo}</span>
-                {isEditable && <span className="text-zinc-600">✎</span>}
-              </span>
-            ) : isEditable ? (
-              <span
-                className="text-zinc-600 hover:text-zinc-400 cursor-pointer transition-colors"
-                onClick={() => openEdit('githubRepo')}
-              >
-                + Add repo
-              </span>
-            ) : null}
-
-            {/* GitHub Branch */}
-            {editingField === 'githubBranch' ? (
-              <span className={`flex items-center gap-1 ${isSaving('githubBranch') ? 'opacity-60 pointer-events-none' : ''}`}>
-                <span className="text-zinc-500">Branch:</span>
-                <input
-                  type="text"
-                  className="bg-zinc-950 border border-zinc-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded px-2 py-0.5 text-xs text-zinc-100 font-mono outline-none transition-colors w-32"
-                  value={branchDraft}
-                  onChange={(e) => setBranchDraft(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') saveGithubBranch(); }}
-                  placeholder="main"
-                  autoFocus
-                />
-                <button onClick={saveGithubBranch} className={SAVE_BTN}>Save</button>
-                <button onClick={cancelEdit} className={CANCEL_BTN}>Cancel</button>
-                {saveError && editingField === 'githubBranch' && (
-                  <span className="text-xs text-red-400">{saveError}</span>
-                )}
-              </span>
-            ) : card.githubBranch ? (
-              <span
-                className={`flex items-center gap-1 transition-colors ${isEditable ? 'cursor-pointer hover:text-zinc-300' : ''}`}
-                onClick={() => openEdit('githubBranch')}
-                title={isEditable ? 'Click to edit branch' : undefined}
-              >
-                Branch: <span className="text-zinc-300 font-mono">{card.githubBranch}</span>
-                {isEditable && <span className="text-zinc-600">✎</span>}
-              </span>
-            ) : isEditable ? (
-              <span
-                className="text-zinc-600 hover:text-zinc-400 cursor-pointer transition-colors"
-                onClick={() => openEdit('githubBranch')}
-              >
-                + Add branch
-              </span>
-            ) : null}
           </div>
         )}
 
