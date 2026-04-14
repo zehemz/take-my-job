@@ -14,9 +14,10 @@ model Board {
   workspacePath String?
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
-  columns       Column[]
-  cards         Card[]
-  notifications Notification[]
+  columns              Column[]
+  cards                Card[]
+  notifications        Notification[]
+  orchestratorEvents   OrchestratorEvent[]
 }
 
 model Column {
@@ -55,6 +56,7 @@ model Card {
   column              Column         @relation(fields: [columnId], references: [id])
   agentRuns           AgentRun[]
   notifications       Notification[]
+  orchestratorEvents  OrchestratorEvent[]
 }
 
 enum AgentRunStatus {
@@ -92,6 +94,9 @@ model AgentRun {
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
   card            Card           @relation(fields: [cardId], references: [id])
+
+  @@index([cardId, status])
+  @@index([status, retryAfterMs])
 }
 
 model AgentConfig {
@@ -171,4 +176,20 @@ model GroupEnvironmentAccess {
 
   @@unique([groupId, environmentId])
   @@index([groupId])
+}
+
+model OrchestratorEvent {
+  id        String   @id @default(cuid())
+  boardId   String
+  cardId    String
+  runId     String?
+  type      String
+  payload   Json
+  createdAt DateTime @default(now())
+
+  board Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
+  card  Card  @relation(fields: [cardId], references: [id], onDelete: Cascade)
+
+  @@index([cardId, createdAt])
+  @@index([boardId, type, createdAt])
 }
