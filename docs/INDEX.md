@@ -12,7 +12,7 @@
 | [API Layer](./features/api-layer/TECH_SPEC.md) | ✅ Shipped | — | — | ✓ | — |
 | [Auth — GitHub OAuth + Whitelist](./features/auth/) | ✅ Shipped | ✓ | ✓ | ✓ | ✓ |
 | Kanban ↔ DB wiring (Zustand → API) | ✅ Shipped | — | — | — | — |
-| Card creation UI | ✅ Shipped | — | — | — | — |
+| [Card creation UI](./features/card-creation/TECH_SPEC.md) | ✅ Shipped | — | — | ✓ | — |
 | [Create Board UI](./features/create-board/TECH_SPEC.md) | ✅ Shipped | — | — | ✓ | — |
 | [Card Detail View](./features/card-detail/DESIGN.md) | 🔵 In Design | — | ✓ | — | — |
 | [Delete Board](./features/delete-board/TECH_SPEC.md) | 🟠 In Progress | — | — | ✓ | — |
