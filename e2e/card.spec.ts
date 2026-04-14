@@ -241,6 +241,23 @@ test.describe('Cards', () => {
     }
   });
 
+  test('E2E-CARD-014: Add card button is only visible on inactive columns', async ({ authedPage: page, cookieHeader, request }) => {
+    const api = new KobaniApi(request, cookieHeader);
+    const boards = await api.getBoards();
+    if (boards.length === 0) { test.skip(true, 'No boards in DB'); return; }
+
+    const { board, columns } = await api.getBoard(boards[0].id);
+    if (columns.length === 0) { test.skip(true, 'Board has no columns'); return; }
+
+    const inactiveCount = columns.filter((c) => c.type === 'inactive').length;
+
+    await page.goto(`/boards/${board.id}`);
+    await expect(page.locator('[data-testid="column"]').first()).toBeVisible({ timeout: 10_000 });
+
+    const addCardButtons = page.locator('[data-testid="add-card-button"]');
+    await expect(addCardButtons).toHaveCount(inactiveCount);
+  });
+
   test('E2E-CARD-013: save updates title, cancel discards changes', async ({ authedPage: page, cookieHeader, request }) => {
     const api = new KobaniApi(request, cookieHeader);
     const boards = await api.getBoards();

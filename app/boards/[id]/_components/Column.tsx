@@ -80,19 +80,21 @@ export default function Column({ column }: Props) {
           </div>
         </SortableContext>
 
-        {/* Add card button */}
-        <div className="px-2 pb-2 shrink-0">
-          <button
-            onClick={() => setShowNewCard(true)}
-            data-testid="add-card-button"
-            className="w-full text-left text-sm text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 rounded-lg px-3 py-2 transition-colors duration-150 cursor-pointer"
-          >
-            + Add card
-          </button>
-        </div>
+        {/* Add card button — only for inactive columns */}
+        {column.type === 'inactive' && (
+          <div className="px-2 pb-2 shrink-0">
+            <button
+              onClick={() => setShowNewCard(true)}
+              data-testid="add-card-button"
+              className="w-full text-left text-sm text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 rounded-lg px-3 py-2 transition-colors duration-150 cursor-pointer"
+            >
+              + Add card
+            </button>
+          </div>
+        )}
       </div>
 
-      {showNewCard && (
+      {column.type === 'inactive' && showNewCard && (
         <NewCardModal
           columnId={column.id}
           boardId={column.boardId}

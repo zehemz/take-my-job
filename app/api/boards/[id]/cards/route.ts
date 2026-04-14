@@ -26,6 +26,10 @@ export async function POST(
     return NextResponse.json({ error: 'Column not found on this board' }, { status: 404 });
   }
 
+  if (column.columnType !== 'inactive') {
+    return NextResponse.json({ error: 'Cards can only be created in inactive columns' }, { status: 400 });
+  }
+
   // Get max position in column
   const maxPos = await prisma.card.aggregate({
     where: { columnId },

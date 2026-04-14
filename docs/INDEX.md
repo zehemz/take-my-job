@@ -28,6 +28,7 @@
 - [System Overview](./architecture/overview.md) — data flow, services, key constraints
 - [ADR-001 — JWT sessions over DB-backed sessions](./architecture/decisions/ADR-001-jwt-sessions.md)
 - [ADR-002 — Deploy boundary as revocation boundary](./architecture/decisions/ADR-002-deploy-boundary-revocation.md)
+- [ADR-003 — Card creation restricted to inactive columns](./architecture/decisions/ADR-003-card-creation-restricted-to-inactive-columns.md)
 
 ---
 

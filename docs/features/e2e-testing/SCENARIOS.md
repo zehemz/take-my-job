@@ -53,6 +53,7 @@ IDs are stable — never reuse a retired ID.
 | E2E-CARD-011 | Delete confirm cancel returns footer to initial delete button (no deletion) | ✅ Implemented |
 | E2E-CARD-012 | Clicking title in modal enters edit mode and shows Save/Cancel buttons | ✅ Implemented |
 | E2E-CARD-013 | Save updates title (API-persisted); Cancel discards changes | ✅ Implemented |
+| E2E-CARD-014 | Add card button is only visible on inactive columns | ✅ Implemented |
 
 ---
 

@@ -72,6 +72,7 @@ interface Props {
 **Validation:**
 - `title` and `columnId` are required → `400` if missing
 - `columnId` must exist on the board (`boardId` from URL param) → `404` if not found
+- Target column's `columnType` must be `inactive` → `400` if not (see [Constraints](#constraints) below)
 
 **Position:** if `position` is not supplied, the card is appended at `max(position) + 1` in the column.
 
@@ -85,6 +86,38 @@ interface Props {
 - Calls `POST /api/boards/{boardId}/cards`
 - Returns the created `ApiCard` on success, `null` on failure
 - Does **not** optimistically update the store — the component calls `fetchBoard` after creation to get consistent server state
+
+---
+
+## Constraints
+
+### `inactive`-only column rule
+
+Cards may only be created in columns whose `ColumnType` is `inactive`. The
+`inactive` column is the designated entry point for the Kobani agent workflow
+(`inactive → active → review → revision → terminal`). Creating a card in any
+other column would bypass the workflow, leave required fields unpopulated, and
+break orchestrator assumptions.
+
+**Enforcement — UI:**
+`Column.tsx` checks the column's `columnType` before rendering the "+ New Card"
+button. If `columnType !== 'inactive'`, the button is not rendered. Users on
+non-inactive columns must drag an existing card rather than creating one in place.
+
+**Enforcement — API:**
+After confirming the column belongs to the board, `POST /api/boards/[id]/cards`
+reads the column's `columnType`. If it is not `inactive`, the route returns:
+
+```
+HTTP 400 Bad Request
+{ "error": "Cards can only be created in inactive columns." }
+```
+
+This ensures the restriction holds even when the API is called directly,
+bypassing the UI.
+
+See [ADR-003 — Card creation restricted to inactive columns](../../architecture/decisions/ADR-003-card-creation-restricted-to-inactive-columns.md)
+for the full decision record and rationale.
 
 ---
 
