@@ -92,6 +92,16 @@ export interface UpdateCardInput {
   blocked_reason?: string;
 }
 
+export interface OrchestratorEvent {
+  id: string;
+  boardId: string;
+  cardId: string;
+  runId: string | null;
+  type: string;
+  payload: Record<string, unknown>;
+  createdAt: Date;
+}
+
 /** SSE event types broadcast to the UI */
 export type BroadcastEvent =
   | { type: "agent_message"; text: string }
