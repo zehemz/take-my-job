@@ -148,4 +148,22 @@ export interface AgentConfigItem {
   createdAt: string; // ISO-8601
 }
 
-export type AgentConfigListResponse = AgentConfigItem[];
+export type AgentConfigListResponse = AgentConfigItem[]
+
+export type AgentSyncStatus = 'healthy' | 'unmapped' | 'orphaned'
+
+export interface AgentRow {
+  // From Anthropic (live)
+  anthropicAgentId: string
+  name: string
+  model: string
+  anthropicVersion: string
+  environmentId: string | null
+  // From DB (role mapping)
+  role: string | null       // null = unmapped (exists on Anthropic, no DB record)
+  dbId: string | null       // AgentConfig.id, null if unmapped
+  // Derived
+  syncStatus: AgentSyncStatus
+}
+
+export type AgentListResponse = AgentRow[]

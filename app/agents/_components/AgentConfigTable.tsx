@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import type { AgentConfigItem } from '@/lib/api-types';
+import type { AgentRow, AgentSyncStatus } from '@/lib/api-types';
 
 function CopyableCell({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
@@ -36,8 +36,32 @@ function CopyableCell({ value }: { value: string }) {
   );
 }
 
+const syncStatusConfig: Record<AgentSyncStatus, { label: string; className: string }> = {
+  healthy: {
+    label: 'Healthy',
+    className: 'bg-emerald-900 text-emerald-300 border-l-emerald-500',
+  },
+  unmapped: {
+    label: 'Unmapped',
+    className: 'bg-amber-900 text-amber-300 border-l-amber-500',
+  },
+  orphaned: {
+    label: 'Orphaned',
+    className: 'bg-red-900 text-red-300 border-l-red-500',
+  },
+};
+
+function SyncStatusBadge({ status }: { status: AgentSyncStatus }) {
+  const { label, className } = syncStatusConfig[status];
+  return (
+    <span className={`border-l-4 rounded-md px-2 py-0.5 text-xs font-semibold ${className}`}>
+      {label}
+    </span>
+  );
+}
+
 interface Props {
-  items: AgentConfigItem[];
+  items: AgentRow[];
 }
 
 export default function AgentConfigTable({ items }: Props) {
@@ -57,7 +81,16 @@ export default function AgentConfigTable({ items }: Props) {
         <thead>
           <tr className="bg-zinc-900 border-b border-zinc-800">
             <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+              Status
+            </th>
+            <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
               Role
+            </th>
+            <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+              Name
+            </th>
+            <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+              Model
             </th>
             <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
               Agent ID
@@ -65,27 +98,38 @@ export default function AgentConfigTable({ items }: Props) {
             <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
               Version
             </th>
-            <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+            <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider hidden md:table-cell">
               Environment ID
-            </th>
-            <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-              Created
             </th>
           </tr>
         </thead>
         <tbody className="bg-zinc-900 divide-y divide-zinc-800">
           {items.map((item) => (
-            <tr key={item.id} className="hover:bg-zinc-800/50 transition-colors">
-              <td className="px-4 py-3 text-zinc-100">{item.role}</td>
+            <tr key={item.anthropicAgentId} className="hover:bg-zinc-800/50 transition-colors">
+              <td className="px-4 py-3">
+                <SyncStatusBadge status={item.syncStatus} />
+              </td>
+              <td className="px-4 py-3">
+                {item.role != null ? (
+                  <span className="text-zinc-100">{item.role}</span>
+                ) : (
+                  <span className="text-zinc-500 italic">—</span>
+                )}
+              </td>
+              <td className="px-4 py-3 text-zinc-100">{item.name}</td>
+              <td className="px-4 py-3">
+                <span className="font-mono text-xs text-zinc-400">{item.model}</span>
+              </td>
               <td className="px-4 py-3">
                 <CopyableCell value={item.anthropicAgentId} />
               </td>
-              <td className="px-4 py-3 text-zinc-400">{item.anthropicAgentVersion}</td>
-              <td className="px-4 py-3">
-                <CopyableCell value={item.anthropicEnvironmentId} />
-              </td>
-              <td className="px-4 py-3 text-zinc-400">
-                {new Date(item.createdAt).toLocaleDateString()}
+              <td className="px-4 py-3 text-zinc-400">{item.anthropicVersion}</td>
+              <td className="px-4 py-3 hidden md:table-cell">
+                {item.environmentId != null ? (
+                  <CopyableCell value={item.environmentId} />
+                ) : (
+                  <span className="text-zinc-600">—</span>
+                )}
               </td>
             </tr>
           ))}

@@ -10,8 +10,8 @@ Read-only listing of all `AgentConfig` rows. Deferred: create, update, delete.
 
 ### `GET /api/agents`
 
-Returns all agent configurations. No pagination in v1 (roster is small and bounded by the number of
-defined roles).
+Returns agents merged from the live Anthropic API and the local DB role mapping. No pagination in v1
+(roster is small and bounded by the number of defined roles).
 
 **Auth:** `auth()` guard required (existing session check).
 
@@ -19,34 +19,40 @@ defined roles).
 
 ```ts
 // lib/api-types.ts — add:
-export interface AgentConfigItem {
-  id: string;
-  role: string;
+export type AgentSyncState = "healthy" | "unmapped" | "orphaned";
+
+export interface AgentRow {
   anthropicAgentId: string;
-  anthropicAgentVersion: string;
-  anthropicEnvironmentId: string;
-  createdAt: string; // ISO-8601
+  name: string;
+  model: string;
+  version: string;
+  environmentId: string;
+  role: string | null;       // null when unmapped
+  syncState: AgentSyncState;
 }
 
-export type AgentConfigListResponse = AgentConfigItem[];
+export type AgentListResponse = AgentRow[];
 ```
+
+Sync state semantics:
+
+- **`healthy`** — Anthropic agent exists and has a matching DB role mapping.
+- **`unmapped`** — Anthropic agent exists but no `AgentConfig` row maps it to a role.
+- **`orphaned`** — `AgentConfig` row exists but the Anthropic API returned no matching agent.
 
 **Response — `401 Unauthorized`** — unauthenticated request.
 
-**Mapping** (`lib/api-mappers.ts`):
+**Response — `502 Bad Gateway`** — Anthropic API unreachable or returned an error.
+
+**Service layer:** `lib/agents-service.ts`
 
 ```ts
-export function mapAgentConfig(row: AgentConfig): AgentConfigItem {
-  return {
-    id: row.id,
-    role: row.role,
-    anthropicAgentId: row.anthropicAgentId,
-    anthropicAgentVersion: row.anthropicAgentVersion,
-    anthropicEnvironmentId: row.anthropicEnvironmentId,
-    createdAt: row.createdAt.toISOString(),
-  };
-}
+// listAgents() fetches live data from Anthropic and joins with DB role mappings.
+export async function listAgents(): Promise<AgentRow[]>
 ```
+
+The route delegates all merge logic to `listAgents()` and does not call
+`prisma.agentConfig` directly.
 
 **Route file:** `app/api/agents/route.ts`
 
@@ -55,8 +61,13 @@ export async function GET() {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const rows = await prisma.agentConfig.findMany({ orderBy: { createdAt: "asc" } });
-  return NextResponse.json(rows.map(mapAgentConfig));
+  try {
+    const agents = await listAgents();
+    return NextResponse.json(agents);
+  } catch (err) {
+    // Anthropic API unreachable or returned an error
+    return NextResponse.json({ error: "Failed to reach Anthropic API" }, { status: 502 });
+  }
 }
 ```
 
@@ -98,7 +109,7 @@ Add "Agents" link to the top-level nav (wherever boards link lives).
 ## Data flow
 
 ```
-Browser → GET /api/agents → auth() → prisma.agentConfig.findMany() → mapAgentConfig[] → JSON
+Browser → GET /api/agents → auth() → listAgents() → [Anthropic API + prisma.agentConfig] → AgentRow[] → JSON
 ```
 
 No Zustand store needed — this is a read-only admin view. Fetch directly in the server component or

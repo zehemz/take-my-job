@@ -1,29 +1,17 @@
-import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { prisma } from '@/lib/db'
-import { devAuth as auth } from '@/lib/dev-auth'
 import type { AgentRow } from '@/lib/api-types'
 
-export async function GET() {
-  const session = await auth()
-  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  // The managed agents API is available at runtime but not yet typed in SDK 0.52.x
+export async function listAgents(): Promise<AgentRow[]> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const beta = (new Anthropic()).beta as any
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let anthropicAgents: any[]
-  try {
-    const result = await beta.agents.list()
-    anthropicAgents = (result.data ?? []) as any[]
-  } catch (e: any) {
-    return NextResponse.json(
-      { error: 'Failed to fetch agents from Anthropic', details: e.message },
-      { status: 502 },
-    )
-  }
+  const result = await beta.agents.list()
+  anthropicAgents = (result.data ?? []) as any[]
 
-  // Only show agents that belong to this project
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const kobaniAgents = anthropicAgents.filter((a: any) =>
     typeof a.name === 'string' && a.name.startsWith('kobani-'),
   )
@@ -31,6 +19,7 @@ export async function GET() {
   const dbRows = await prisma.agentConfig.findMany()
   const dbMap = new Map(dbRows.map((row) => [row.anthropicAgentId, row]))
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rows: AgentRow[] = kobaniAgents.map((a: any): AgentRow => {
     const dbRecord = dbMap.get(a.id)
     return dbRecord
@@ -56,7 +45,6 @@ export async function GET() {
         }
   })
 
-  // Add orphaned DB records (DB has agentId not returned by Anthropic)
   const anthropicIds = new Set(kobaniAgents.map((a: any) => a.id))
   for (const dbRecord of dbRows) {
     if (!anthropicIds.has(dbRecord.anthropicAgentId)) {
@@ -73,5 +61,5 @@ export async function GET() {
     }
   }
 
-  return NextResponse.json(rows)
+  return rows
 }
