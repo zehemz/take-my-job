@@ -214,6 +214,19 @@ export interface MarkNotificationsReadRequest {
   notificationIds: string[]; // empty array = mark ALL read
 }
 
+// ─── Agent tools & MCP ──────────────────────────────────────────────────────
+
+export interface AgentToolConfig {
+  name: 'bash' | 'edit' | 'read' | 'write' | 'glob' | 'grep' | 'web_fetch' | 'web_search';
+  enabled: boolean;
+  permissionPolicy: 'always_allow' | 'always_ask';
+}
+
+export interface AgentMCPServer {
+  name: string;
+  url: string;
+}
+
 // ─── Agent detail ────────────────────────────────────────────────────────────
 
 export interface AgentDetail {
@@ -228,6 +241,8 @@ export interface AgentDetail {
   system: string | null;
   createdAt: string;
   archivedAt: string | null;
+  tools: AgentToolConfig[];
+  mcpServers: AgentMCPServer[];
 }
 
 export interface PatchAgentRequest {
@@ -236,6 +251,8 @@ export interface PatchAgentRequest {
   model?: string;
   system?: string | null;
   role?: string;
+  tools?: AgentToolConfig[];
+  mcpServers?: AgentMCPServer[];
   version: number;
 }
 
