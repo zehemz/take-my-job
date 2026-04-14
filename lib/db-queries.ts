@@ -37,15 +37,18 @@ export const dbQueries: IDbQueries = {
       });
       if (futureRetry) continue;
 
+      // Only block dispatch if the card was completed *during its current stint*
+      // in this column. A card returned via revision may have old completed runs
+      // from prior stints — those should not prevent a fresh dispatch.
       const completedInColumn = await prisma.agentRun.findFirst({
         where: {
           cardId: card.id,
           status: "completed",
+          ...(card.movedToColumnAt
+            ? { createdAt: { gte: card.movedToColumnAt } }
+            : {}),
         },
       });
-      // If there's a completed run, the card was already handled
-      // (the spec says no completed run whose columnId matches current column,
-      //  but AgentRun doesn't have columnId in our schema — we check by existence)
       if (completedInColumn) continue;
 
       eligible.push(card as unknown as Card);
@@ -56,11 +59,10 @@ export const dbQueries: IDbQueries = {
   },
 
   async createAgentRun(cardId: string, columnId: string, role: string, attempt: number): Promise<AgentRun> {
-    // Note: our Prisma schema doesn't have columnId on AgentRun.
-    // We store it as metadata if needed, but create the run with what we have.
     const run = await prisma.agentRun.create({
       data: {
         cardId,
+        columnId,
         role,
         status: "pending",
         attempt,
@@ -162,5 +164,16 @@ export const dbQueries: IDbQueries = {
       where: { id: cardId },
       data: { columnId: col.id, movedToColumnAt: new Date() },
     });
+  },
+
+  async getActiveRunForCard(cardId: string): Promise<AgentRun | null> {
+    const run = await prisma.agentRun.findFirst({
+      where: {
+        cardId,
+        status: { in: ["running", "idle", "blocked"] },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+    return run as unknown as AgentRun | null;
   },
 };
