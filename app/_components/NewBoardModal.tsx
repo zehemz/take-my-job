@@ -53,6 +53,7 @@ export default function NewBoardModal({ onClose }: Props) {
   const [environmentId, setEnvironmentId] = useState('');
   const [environments, setEnvironments] = useState<EnvironmentRow[]>([]);
   const [envLoading, setEnvLoading] = useState(true);
+  const [autoMode, setAutoMode] = useState(false);
   const [spec, setSpec] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -75,7 +76,7 @@ export default function NewBoardModal({ onClose }: Props) {
       setLoading(true);
       setError(null);
       try {
-        const id = await createBoardApi(name.trim(), workspacePath.trim() || undefined, environmentId || undefined);
+        const id = await createBoardApi(name.trim(), workspacePath.trim() || undefined, environmentId || undefined, autoMode);
         if (id) router.push(`/boards/${id}`);
         onClose();
       } catch (err) {
@@ -110,7 +111,7 @@ export default function NewBoardModal({ onClose }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const boardId = await createBoardApi(name.trim(), workspacePath.trim() || undefined, environmentId || undefined);
+      const boardId = await createBoardApi(name.trim(), workspacePath.trim() || undefined, environmentId || undefined, autoMode);
       if (!boardId) throw new Error('Failed to create board');
 
       await fetchBoard(boardId);
@@ -119,22 +120,28 @@ export default function NewBoardModal({ onClose }: Props) {
       );
       if (!backlogCol) throw new Error('Backlog column not found');
 
-      await Promise.all(
-        drafts.map((draft) =>
-          createCardApi(boardId, {
-            title: draft.title,
-            columnId: backlogCol.id,
-            description: draft.description,
-            role: draft.role,
-            acceptanceCriteria: draft.acceptanceCriteria.map((text, i) => ({
-              id: `ac-${Date.now()}-${i}`,
-              text,
-              passed: null,
-              evidence: null,
-            })),
-          })
-        )
-      );
+      // Create cards sequentially to resolve dependsOn indices to real IDs
+      const createdCardIds: string[] = [];
+      for (const draft of drafts) {
+        const dependsOn = (draft.dependsOnIndices ?? [])
+          .filter((idx: number) => idx >= 0 && idx < createdCardIds.length)
+          .map((idx: number) => createdCardIds[idx]);
+
+        const result = await createCardApi(boardId, {
+          title: draft.title,
+          columnId: backlogCol.id,
+          description: draft.description,
+          role: draft.role,
+          acceptanceCriteria: draft.acceptanceCriteria.map((text, i) => ({
+            id: `ac-${Date.now()}-${i}`,
+            text,
+            passed: null,
+            evidence: null,
+          })),
+          ...(dependsOn.length > 0 ? { dependsOn } : {}),
+        });
+        createdCardIds.push((result as { id: string }).id);
+      }
 
       onClose();
       router.push(`/boards/${boardId}`);
@@ -243,6 +250,26 @@ export default function NewBoardModal({ onClose }: Props) {
               </p>
             </div>
 
+            <div className="flex items-center justify-between py-1">
+              <div className="flex flex-col gap-0.5">
+                <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Auto Mode</label>
+                <p className="text-xs text-zinc-600">
+                  Automatically start cards when their dependencies are resolved.
+                </p>
+              </div>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={autoMode}
+                onClick={() => setAutoMode(!autoMode)}
+                className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors ${autoMode ? 'bg-indigo-600' : 'bg-zinc-700'}`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform ${autoMode ? 'translate-x-4' : 'translate-x-0'}`}
+                />
+              </button>
+            </div>
+
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
                 Spec <span className="text-zinc-600 font-normal normal-case">(optional)</span>
@@ -322,6 +349,11 @@ export default function NewBoardModal({ onClose }: Props) {
                       ✕
                     </button>
                   </div>
+                  {draft.dependsOnIndices && draft.dependsOnIndices.length > 0 && (
+                    <p className="text-xs text-zinc-500">
+                      Depends on: {draft.dependsOnIndices.map((idx: number) => drafts[idx]?.title ?? `#${idx}`).join(', ')}
+                    </p>
+                  )}
                   {draft.description && (
                     <p className="text-xs text-zinc-400 leading-relaxed">{draft.description}</p>
                   )}

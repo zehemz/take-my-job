@@ -16,6 +16,7 @@ export interface ApiBoardSummary {
   githubRepo: string | null;
   workspacePath: string | null;
   environmentId: string | null;
+  autoMode: boolean;
   createdAt: string;
   columnCount: number;
   cardCount: number;
@@ -81,6 +82,8 @@ export interface ApiCard {
   updatedAt: string;  // ISO 8601
   /** Maximum agent attempts allowed, sourced from MAX_ATTEMPTS env var. */
   maxAttempts: number;
+  /** IDs of cards this card depends on. Empty if no dependencies. */
+  dependsOn: string[];
 }
 
 export interface ApiBoardDetail {
@@ -95,6 +98,7 @@ export interface CreateBoardRequest {
   name: string;
   workspacePath?: string;
   environmentId?: string;
+  autoMode?: boolean;
 }
 
 export interface CreateCardRequest {
@@ -107,6 +111,8 @@ export interface CreateCardRequest {
   githubRepo?: string;
   githubBranch?: string;
   requiresApproval?: boolean;
+  /** Card IDs this card depends on. Card won't auto-promote until all are done. */
+  dependsOn?: string[];
 }
 
 export interface RequestRevisionRequest {

@@ -42,6 +42,7 @@ export async function POST(req: Request) {
     }
   }
 
+  const autoMode = body.autoMode ?? false;
   const environmentId = body.environmentId?.trim() || undefined;
 
   if (environmentId) {
@@ -57,6 +58,7 @@ export async function POST(req: Request) {
   const board = await prisma.board.create({
     data: {
       name,
+      autoMode,
       ...(environmentId ? { anthropicEnvironmentId: environmentId } : {}),
       ...(workspacePath ? { githubRepo: config.WORKSPACE_REPO_URL, workspacePath } : {}),
       columns: {

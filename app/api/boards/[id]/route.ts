@@ -5,6 +5,33 @@ import { devAuth as auth } from '@/lib/dev-auth';
 import { reconcileNotifications } from '@/lib/notifications';
 import { resolvePermissions, resolveCardEnvironment } from '@/lib/rbac';
 
+export async function PATCH(
+  req: Request,
+  { params }: { params: { id: string } },
+) {
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const board = await prisma.board.findUnique({ where: { id: params.id } });
+  if (!board) return NextResponse.json({ error: 'Board not found' }, { status: 404 });
+
+  const body = await req.json();
+  const data: Record<string, unknown> = {};
+  if (typeof body.autoMode === 'boolean') data.autoMode = body.autoMode;
+
+  if (Object.keys(data).length === 0) {
+    return NextResponse.json({ error: 'No valid fields to update' }, { status: 400 });
+  }
+
+  const updated = await prisma.board.update({
+    where: { id: params.id },
+    data,
+    include: { _count: { select: { columns: true, cards: true } } },
+  });
+
+  return NextResponse.json(mapBoardSummary(updated));
+}
+
 export async function DELETE(
   _req: Request,
   { params }: { params: { id: string } },
@@ -47,6 +74,7 @@ export async function GET(
       include: {
         agentRuns: { orderBy: { createdAt: 'asc' } },
         column: { select: { columnType: true } },
+        dependsOn: { select: { id: true } },
       },
       orderBy: [{ position: 'asc' }],
     }),

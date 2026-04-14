@@ -13,6 +13,7 @@ export interface Board {
   name: string;
   githubRepo: string | null;
   workspacePath: string | null;
+  autoMode: boolean;
   createdAt: Date;
   updatedAt: Date;
   columns?: Column[];

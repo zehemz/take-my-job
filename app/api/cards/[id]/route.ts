@@ -17,6 +17,7 @@ export async function GET(
     include: {
       agentRuns: { orderBy: { createdAt: 'asc' } },
       column: { select: { columnType: true } },
+      dependsOn: { select: { id: true } },
     },
   });
   if (!card) return NextResponse.json({ error: 'Card not found' }, { status: 404 });
@@ -89,6 +90,7 @@ export async function PATCH(
     include: {
       agentRuns: { orderBy: { createdAt: 'asc' } },
       column: { select: { columnType: true } },
+      dependsOn: { select: { id: true } },
     },
   });
 

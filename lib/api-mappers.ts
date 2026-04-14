@@ -86,6 +86,7 @@ export function mapBoardSummary(board: {
   githubRepo?: string | null;
   workspacePath?: string | null;
   anthropicEnvironmentId?: string | null;
+  autoMode?: boolean;
   createdAt: Date;
   _count?: { columns: number; cards: number };
 }): ApiBoardSummary {
@@ -95,6 +96,7 @@ export function mapBoardSummary(board: {
     githubRepo: board.githubRepo ?? null,
     workspacePath: board.workspacePath ?? null,
     environmentId: board.anthropicEnvironmentId ?? null,
+    autoMode: board.autoMode ?? false,
     createdAt: board.createdAt.toISOString(),
     columnCount: board._count?.columns ?? 0,
     cardCount: board._count?.cards ?? 0,
@@ -178,6 +180,7 @@ export function mapCard(
     approvedAt: Date | null;
     createdAt: Date;
     updatedAt: Date;
+    dependsOn?: Array<{ id: string }>;
   },
   mappedRuns: ApiAgentRun[],
   agentStatus: AgentStatus,
@@ -219,6 +222,7 @@ export function mapCard(
     createdAt: card.createdAt.toISOString(),
     updatedAt: card.updatedAt.toISOString(),
     maxAttempts: MAX_ATTEMPTS,
+    dependsOn: (card.dependsOn ?? []).map((d) => d.id),
   };
 }
 

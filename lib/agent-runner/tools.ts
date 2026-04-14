@@ -2,6 +2,7 @@ import type { Card, Column, AgentRun, UpdateCardInput } from "../types";
 import { AgentRunStatus } from "../types";
 import type { IDbQueries } from "../interfaces";
 import { renderCliCommand } from "../config";
+import { promoteUnlockedCards } from "../auto-promote";
 
 // ---------------------------------------------------------------------------
 // Context
@@ -116,6 +117,11 @@ export async function handleUpdateCard(
         type: "status_change",
         payload: { status: AgentRunStatus.completed },
       });
+
+      // Auto-promote cards whose dependencies are now satisfied
+      promoteUnlockedCards(card.boardId).catch((err) =>
+        console.error('[auto-promote] error after card completion:', err)
+      );
 
       return { success: true, shouldExitLoop: true };
     }

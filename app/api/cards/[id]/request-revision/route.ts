@@ -67,6 +67,7 @@ export async function POST(
     include: {
       agentRuns: { orderBy: { createdAt: 'asc' } },
       column: { select: { columnType: true } },
+      dependsOn: { select: { id: true } },
     },
   });
 

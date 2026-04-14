@@ -16,6 +16,8 @@ export interface CardDraft {
   role: AgentRole;
   description: string;
   acceptanceCriteria: string[];
+  /** Zero-based indices of cards this one depends on. */
+  dependsOnIndices: number[];
 }
 
 const SYSTEM_PROMPT = `You are a project manager breaking down a product spec into discrete agent tasks.
@@ -27,6 +29,7 @@ Rules:
 - Choose the most appropriate role from: ${AGENT_ROLES.join(', ')}
 - Description should explain what the agent needs to do (2-4 sentences)
 - acceptanceCriteria: 2-5 specific, testable criteria (each one line, no bullet prefix)
+- dependsOnIndices: array of zero-based indices of other cards that must complete before this one can start. Use [] if the card has no dependencies. Example: if card 2 depends on cards 0 and 1, set "dependsOnIndices": [0, 1]
 - Decompose the spec into logical units of work — not too coarse (one card per feature area), not too granular (no card per function)
 - Order cards so dependencies come first
 - Output ONLY valid JSON, no markdown fences, no commentary`;
@@ -78,6 +81,9 @@ export async function POST(req: NextRequest) {
         description: typeof item.description === 'string' ? item.description : '',
         acceptanceCriteria: Array.isArray(item.acceptanceCriteria)
           ? item.acceptanceCriteria.map(String)
+          : [],
+        dependsOnIndices: Array.isArray(item.dependsOnIndices)
+          ? item.dependsOnIndices.filter((idx: unknown) => typeof idx === 'number')
           : [],
       };
     });

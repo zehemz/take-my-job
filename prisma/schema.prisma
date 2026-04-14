@@ -13,6 +13,7 @@ model Board {
   githubRepo             String?
   workspacePath          String?
   anthropicEnvironmentId String?
+  autoMode               Boolean        @default(false)
   createdAt              DateTime       @default(now())
   updatedAt              DateTime       @updatedAt
   columns              Column[]
@@ -58,6 +59,8 @@ model Card {
   agentRuns           AgentRun[]
   notifications       Notification[]
   orchestratorEvents  OrchestratorEvent[]
+  dependsOn           Card[]         @relation("CardDependency")
+  dependedOnBy        Card[]         @relation("CardDependency")
 }
 
 enum AgentRunStatus {

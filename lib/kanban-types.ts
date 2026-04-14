@@ -98,6 +98,7 @@ export interface Board {
   createdAt: string;
   githubRepo: string | null;
   workspacePath: string | null;
+  autoMode: boolean;
   columnCount?: number;
   cardCount?: number;
 }
