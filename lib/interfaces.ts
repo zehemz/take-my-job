@@ -15,7 +15,7 @@ export interface IDbQueries {
   getBoardColumns(boardId: string): Promise<Column[]>;
   moveCardToColumnType(cardId: string, boardId: string, targetColumnType: 'review' | 'terminal' | 'blocked'): Promise<void>;
   getActiveRunForCard(cardId: string): Promise<AgentRun | null>;
-  claimAndCreateAgentRun(cardId: string, columnId: string, role: string, attempt: number): Promise<AgentRun | null>;
+  claimAndCreateAgentRun(cardId: string, columnId: string, role: string, attempt: number, maxConcurrent?: number): Promise<AgentRun | null>;
   countActiveRuns(): Promise<number>;
   getActiveRuns(): Promise<Array<AgentRun & { card: Card & { column: Column } }>>;
   insertOrchestratorEvent(event: { boardId: string; cardId: string; runId?: string; type: string; payload: Record<string, unknown> }): Promise<void>;

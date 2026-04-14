@@ -194,13 +194,21 @@ export const dbQueries: IDbQueries = {
     return run as unknown as AgentRun | null;
   },
 
-  async claimAndCreateAgentRun(cardId: string, columnId: string, role: string, attempt: number): Promise<AgentRun | null> {
+  async claimAndCreateAgentRun(cardId: string, columnId: string, role: string, attempt: number, maxConcurrent?: number): Promise<AgentRun | null> {
     return prisma.$transaction(async (tx) => {
       const locked: Array<{ id: string }> = await tx.$queryRawUnsafe(
         `SELECT id FROM "Card" WHERE id = $1 FOR UPDATE SKIP LOCKED`,
         cardId,
       );
       if (locked.length === 0) return null;
+
+      // Global slot check inside transaction to prevent race conditions
+      if (maxConcurrent !== undefined) {
+        const activeCount = await tx.agentRun.count({
+          where: { status: { in: ["running", "idle", "pending"] } },
+        });
+        if (activeCount >= maxConcurrent) return null;
+      }
 
       const blockingRun = await tx.agentRun.findFirst({
         where: { cardId, status: { in: ["running", "idle", "pending", "completed", "blocked"] } },
