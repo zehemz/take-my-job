@@ -1,4 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
+import { config as loadEnv } from 'dotenv';
+
+// Load .env.local so tests have the same secrets as the dev server
+loadEnv({ path: '.env.local', override: false });
 
 export default defineConfig({
   testDir: './e2e',
