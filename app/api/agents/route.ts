@@ -37,7 +37,7 @@ export async function GET() {
       ? {
           anthropicAgentId: a.id,
           name: a.name,
-          model: a.model ?? '',
+          model: typeof a.model === 'object' ? (a.model?.id ?? '') : (a.model ?? ''),
           anthropicVersion: String(a.version ?? ''),
           environmentId: a.environment_id ?? null,
           role: dbRecord.role,
@@ -47,7 +47,7 @@ export async function GET() {
       : {
           anthropicAgentId: a.id,
           name: a.name,
-          model: a.model ?? '',
+          model: typeof a.model === 'object' ? (a.model?.id ?? '') : (a.model ?? ''),
           anthropicVersion: String(a.version ?? ''),
           environmentId: a.environment_id ?? null,
           role: null,
