@@ -2,11 +2,15 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { mapCard } from '@/lib/api-mappers';
 import type { CreateCardRequest } from '@/lib/api-types';
+import { auth } from '@/auth';
 
 export async function POST(
   req: Request,
   { params }: { params: { id: string } },
 ) {
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const body: CreateCardRequest = await req.json();
   const { title, columnId, description, acceptanceCriteria, role, githubRepo, githubBranch } = body;
 

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import AuthSessionProvider from '@/app/_components/session-provider';
 
 export const metadata: Metadata = {
   title: 'Kobani',
@@ -14,7 +15,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="bg-zinc-950 min-h-screen flex flex-col">
-        {children}
+        <AuthSessionProvider>
+          {children}
+        </AuthSessionProvider>
       </body>
     </html>
   );

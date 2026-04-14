@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { mapBoardSummary, mapColumn, mapAgentRun, mapCard, deriveCardAgentStatus } from '@/lib/api-mappers';
+import { auth } from '@/auth';
 
 export async function GET(
   _req: Request,
   { params }: { params: { id: string } },
 ) {
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const board = await prisma.board.findUnique({ where: { id: params.id } });
   if (!board) return NextResponse.json({ error: 'Board not found' }, { status: 404 });
 

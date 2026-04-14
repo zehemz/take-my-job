@@ -2,11 +2,15 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { mapAgentRun, mapCard, deriveCardAgentStatus } from '@/lib/api-mappers';
 import type { UpdateCardRequest } from '@/lib/api-types';
+import { auth } from '@/auth';
 
 export async function GET(
   _req: Request,
   { params }: { params: { id: string } },
 ) {
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const card = await prisma.card.findUnique({
     where: { id: params.id },
     include: { agentRuns: { orderBy: { createdAt: 'asc' } } },
@@ -22,6 +26,9 @@ export async function PATCH(
   req: Request,
   { params }: { params: { id: string } },
 ) {
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const body: UpdateCardRequest = await req.json();
 
   const card = await prisma.card.update({
@@ -39,7 +46,7 @@ export async function PATCH(
         revisionContextNote: body.revisionContextNote,
       }),
       ...(body.approvedBy !== undefined && {
-        approvedBy: body.approvedBy,
+        approvedBy: session.user.githubUsername, // NEVER trust the client-supplied value
         approvedAt: new Date(),
       }),
     },
@@ -55,6 +62,9 @@ export async function DELETE(
   _req: Request,
   { params }: { params: { id: string } },
 ) {
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   await prisma.card.delete({ where: { id: params.id } });
   return new Response(null, { status: 204 });
 }

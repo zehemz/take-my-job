@@ -1,5 +1,7 @@
+import { NextResponse } from 'next/server';
 import { broadcaster } from '@/lib/broadcaster-singleton';
 import type { BroadcastEvent } from '@/lib/types';
+import { auth } from '@/auth';
 
 export const dynamic = 'force-dynamic';
 
@@ -7,6 +9,9 @@ export async function GET(
   req: Request,
   { params }: { params: { cardId: string } },
 ) {
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
   const { cardId } = params;
   const encoder = new TextEncoder();
 
