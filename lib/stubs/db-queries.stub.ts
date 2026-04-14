@@ -119,6 +119,10 @@ export class StubDbQueries implements IDbQueries {
     return this.columns.find((c) => c.boardId === boardId && c.name === name) ?? null;
   }
 
+  async getBoard(id: string): Promise<Board | null> {
+    return this.boards.find((b) => b.id === id) ?? null;
+  }
+
   async getBoardColumns(boardId: string): Promise<Column[]> {
     return this.columns.filter((c) => c.boardId === boardId).sort((a, b) => a.position - b.position);
   }

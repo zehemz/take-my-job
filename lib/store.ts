@@ -53,7 +53,7 @@ interface KobaniState {
   // Async API actions
   fetchBoard: (boardId: string) => Promise<void>;
   fetchBoards: () => Promise<void>;
-  createBoardApi: (name: string, githubRepo?: string) => Promise<string | null>; // returns new board id
+  createBoardApi: (name: string, workspacePath?: string) => Promise<string | null>; // returns new board id
   deleteBoardApi: (id: string) => Promise<boolean>;
   moveCardApi: (cardId: string, columnId: string, position?: number) => Promise<boolean>;
   createCardApi: (boardId: string, payload: {
@@ -87,7 +87,7 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
     set((state) => ({
       boards: [
         ...state.boards,
-        { id: `board-${generateId()}`, name, createdAt: new Date().toISOString(), githubRepo: null },
+        { id: `board-${generateId()}`, name, createdAt: new Date().toISOString(), githubRepo: null, workspacePath: null },
       ],
     })),
 
@@ -330,6 +330,7 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
         name: data.board.name,
         createdAt: data.board.createdAt,
         githubRepo: data.board.githubRepo ?? null,
+        workspacePath: data.board.workspacePath ?? null,
       }],
       columns: [...state.columns.filter(c => c.boardId !== boardId), ...data.columns.map((col: any) => ({
         id: col.id,
@@ -386,14 +387,17 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
     set({ boards: data });
   },
 
-  createBoardApi: async (name: string, githubRepo?: string) => {
+  createBoardApi: async (name: string, workspacePath?: string) => {
     const res = await fetch('/api/boards', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ name, ...(githubRepo ? { githubRepo } : {}) }),
+      body: JSON.stringify({ name, ...(workspacePath ? { workspacePath } : {}) }),
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      const data = await res.json().catch(() => null);
+      throw new Error(data?.error ?? 'Failed to create board');
+    }
     const board = await res.json();
     set((state) => ({ boards: [board, ...state.boards] }));
     return board.id;

@@ -8,6 +8,7 @@ export interface IDbQueries {
   getAgentConfig(role: string): Promise<AgentConfig | null>;
   getRunningRuns(): Promise<AgentRun[]>;
   getCard(id: string): Promise<(Card & { column: Column }) | null>;
+  getBoard(id: string): Promise<import("./types").Board | null>;
   moveCard(cardId: string, newColumnId: string): Promise<Card>;
   getRetryEligibleRuns(): Promise<AgentRun[]>;
   getColumnByName(boardId: string, name: string): Promise<Column | null>;

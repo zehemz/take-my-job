@@ -50,6 +50,17 @@ export async function POST(
   });
   const position = body.position ?? (maxPos._max.position ?? -1) + 1;
 
+  // Inherit repo from board if not explicitly provided
+  let repoUrl = githubRepo ?? null;
+  let branch = githubBranch ?? null;
+  if (!repoUrl) {
+    const board = await prisma.board.findUnique({ where: { id: params.id }, select: { githubRepo: true } });
+    if (board?.githubRepo) {
+      repoUrl = board.githubRepo;
+      branch = branch ?? 'main';
+    }
+  }
+
   const card = await prisma.card.create({
     data: {
       boardId: params.id,
@@ -59,8 +70,8 @@ export async function POST(
       acceptanceCriteria: acceptanceCriteria ? JSON.stringify(acceptanceCriteria) : null,
       role: role ?? null,
       position,
-      githubRepoUrl: githubRepo ?? null,
-      githubBranch: githubBranch ?? null,
+      githubRepoUrl: repoUrl,
+      githubBranch: branch,
       requiresApproval: requiresApproval ?? false,
     },
     include: {

@@ -29,6 +29,7 @@ export const config = {
   MAX_TURNS: intEnv("MAX_TURNS", 10, 1),
   MAX_STALL_MS: intEnv("MAX_STALL_MS", 3600000, 60000),
   CLI_ATTACH_COMMAND_TEMPLATE: optionalEnv("CLI_ATTACH_COMMAND_TEMPLATE", "ant sessions connect {session_id}")!,
+  WORKSPACE_REPO_URL: optionalEnv("WORKSPACE_REPO_URL"),
 } as const;
 
 export function renderCliCommand(sessionId: string): string {

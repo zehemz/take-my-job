@@ -11,6 +11,8 @@ export enum AgentRunStatus {
 export interface Board {
   id: string;
   name: string;
+  githubRepo: string | null;
+  workspacePath: string | null;
   createdAt: Date;
   updatedAt: Date;
   columns?: Column[];

@@ -23,7 +23,7 @@
 | [Approval Confirmation Step](./features/approval-workflow/APPROVAL_CONFIRMATION_TECH_SPEC.md) | ✅ Shipped | ✓ | ✓ | ✓ | — |
 | [Agent Management](./features/agent-management/) | ✅ Shipped | ✓ | ✓ | ✓ | — |
 | [Agent Details View](./features/agent-details/TECH_SPEC.md) | ✅ Shipped | — | — | ✓ | — |
-| Board-level GitHub Repo | ✅ Shipped | — | — | — | — |
+| [Board-level GitHub Repo](./features/create-board/TECH_SPEC.md) | ✅ Shipped | — | — | ✓ | — |
 | [Blocked Column + Human Reply](./features/blocked-column/TECH_SPEC.md) | ✅ Shipped | — | — | ✓ | — |
 | [Sessions List](./features/sessions/TECH_SPEC.md) | ✅ Shipped | — | — | ✓ | — |
 | [Attention Queue](./features/attention-queue/TECH_SPEC.md) | ✅ Shipped | — | — | ✓ | — |

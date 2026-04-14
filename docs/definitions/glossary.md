@@ -7,11 +7,13 @@ Domain terms used across specs, code, and conversations. If a term appears in
 
 ## Entities
 
-**Board** — top-level container. Has a name, owns columns and cards.
+**Board** — top-level container. Has a name, owns columns and cards. Optionally linked to a **workspace repo** via `githubRepo` (repo URL) and `workspacePath` (subfolder within the repo).
 
 **Column** — a swimlane on the board. Has a `ColumnType` that determines how the orchestrator treats cards inside it.
 
-**Card** — a unit of work. Has a title, description, acceptance criteria, assigned role, and optional GitHub repo/branch. Moves between columns as agents complete work.
+**Card** — a unit of work. Has a title, description, acceptance criteria, assigned role, and optional GitHub repo/branch (auto-inherited from the board's workspace repo if configured). Moves between columns as agents complete work.
+
+**Workspace Repo** — a shared GitHub repository (`WORKSPACE_REPO_URL`) where each board gets its own subfolder. Agents mount this repo and work inside their board's folder, pushing directly to `main`. Folders are provisioned via the GitHub Contents API at board creation time (`lib/workspace.ts`).
 
 **AgentRun** — a single execution of an AI agent against a card. A card can have multiple runs (retries, re-triggers). The most recent run determines the card's `agentStatus`.
 
