@@ -55,7 +55,7 @@ export default function KanbanBoard({ boardId }: Props) {
     })
   );
 
-  const ACTIVE_AGENT_STATUSES = new Set(['idle', 'running', 'evaluating']);
+  const ACTIVE_AGENT_STATUSES = new Set(['running', 'evaluating']);
 
   function handleDragStart(event: DragStartEvent) {
     const card = cards.find((c) => c.id === event.active.id);
