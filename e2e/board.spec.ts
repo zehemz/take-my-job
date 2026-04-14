@@ -132,8 +132,8 @@ test.describe('Board', () => {
     // Confirm deletion
     await page.locator('[data-testid="delete-board-confirm"]').click();
 
-    // Should redirect to home
-    await expect(page).toHaveURL(/^\/$/, { timeout: 10_000 });
+    // Should redirect to home (full URL includes origin)
+    await expect(page).toHaveURL(/\/$/, { timeout: 10_000 });
 
     // Board should no longer appear in the list
     await expect(page.getByRole('heading', { name: 'All Boards' })).toBeVisible({ timeout: 10_000 });

@@ -122,10 +122,13 @@ test.describe('Agent detail view', () => {
     await expect(page.getByRole('heading', { name: agentName!.trim() })).toBeVisible({ timeout: 10_000 });
   });
 
-  test('E2E-AGENT-010: navigate to /agents/nonexistent-id shows "Agent not found"', async ({ authedPage: page }) => {
+  test('E2E-AGENT-010: navigate to /agents/nonexistent-id shows error or not-found state', async ({ authedPage: page }) => {
     await page.goto('/agents/nonexistent-id');
 
-    await expect(page.getByText('Agent not found')).toBeVisible({ timeout: 10_000 });
+    // Anthropic may return 404 ("Agent not found") or 4xx/5xx (error state) for invalid IDs
+    const notFound = page.getByText('Agent not found');
+    const errorState = page.getByText('Failed to load agent details');
+    await expect(notFound.or(errorState)).toBeVisible({ timeout: 10_000 });
   });
 
   test('E2E-AGENT-011: back link on detail page returns to /agents', async ({ authedPage: page }) => {
