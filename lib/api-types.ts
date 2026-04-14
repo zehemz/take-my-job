@@ -161,7 +161,7 @@ export interface AgentConfigItem {
   role: string;
   anthropicAgentId: string;
   anthropicAgentVersion: string;
-  anthropicEnvironmentId: string;
+  anthropicEnvironmentId: string | null;
   createdAt: string; // ISO-8601
 }
 
