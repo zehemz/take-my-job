@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   DndContext,
   DragEndEvent,
@@ -21,10 +21,14 @@ interface Props {
 }
 
 export default function KanbanBoard({ boardId }: Props) {
-  const columns = useKobaniStore((s) =>
-    s.columns
-      .filter((c) => c.boardId === boardId)
-      .sort((a, b) => a.position - b.position)
+  // Selecting the full arrays and filtering with useMemo prevents the
+  // .filter().sort() inline selector from returning a new reference on
+  // every useSyncExternalStore call, which would cause an infinite render loop.
+  const allColumns = useKobaniStore((s) => s.columns);
+  const columns = useMemo(
+    () => allColumns.filter((c) => c.boardId === boardId).sort((a, b) => a.position - b.position),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allColumns, boardId]
   );
   const cards = useKobaniStore((s) => s.cards);
   const moveCard = useKobaniStore((s) => s.moveCard);

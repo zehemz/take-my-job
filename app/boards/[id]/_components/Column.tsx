@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { useKobaniStore } from '@/lib/store';
@@ -21,10 +21,14 @@ interface Props {
 }
 
 export default function Column({ column }: Props) {
-  const cards = useKobaniStore((s) =>
-    s.cards
-      .filter((c) => c.columnId === column.id)
-      .sort((a, b) => a.position - b.position)
+  // Select full array, derive column-filtered list with useMemo.
+  // Inline .filter().sort() selector creates new refs on every useSyncExternalStore
+  // call → triggers infinite re-render loop in React 18 + Zustand 5.
+  const allCards = useKobaniStore((s) => s.cards);
+  const cards = useMemo(
+    () => allCards.filter((c) => c.columnId === column.id).sort((a, b) => a.position - b.position),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allCards, column.id]
   );
   const [showNewCard, setShowNewCard] = useState(false);
 
@@ -32,7 +36,7 @@ export default function Column({ column }: Props) {
   const { isOver, setNodeRef } = useDroppable({ id: droppableId });
 
   const typeCfg = COLUMN_TYPE_LABEL[column.type] ?? COLUMN_TYPE_LABEL.inactive;
-  const cardIds = cards.map((c) => c.id);
+  const cardIds = useMemo(() => cards.map((c) => c.id), [cards]);
 
   return (
     <>
