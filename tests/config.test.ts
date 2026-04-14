@@ -14,12 +14,14 @@ describe("config", () => {
 
   it("renderCliCommand replaces {session_id} placeholder", async () => {
     process.env.ANTHROPIC_API_KEY = "test-key";
+    process.env.GITHUB_TOKEN = "test-token";
     const { renderCliCommand } = await import("../lib/config.js");
     expect(renderCliCommand("sess_abc123")).toBe("ant sessions connect sess_abc123");
   });
 
   it("intEnv returns default when env var is not set", async () => {
     process.env.ANTHROPIC_API_KEY = "test-key";
+    process.env.GITHUB_TOKEN = "test-token";
     // Clear POLL_INTERVAL_MS to test default
     delete process.env.POLL_INTERVAL_MS;
     const { config } = await import("../lib/config.js");
@@ -28,6 +30,7 @@ describe("config", () => {
 
   it("intEnv throws on non-integer value", async () => {
     process.env.ANTHROPIC_API_KEY = "test-key";
+    process.env.GITHUB_TOKEN = "test-token";
     process.env.POLL_INTERVAL_MS = "not-a-number";
     // Since the module is cached, we test the helper logic indirectly
     // by verifying the config module exports expected defaults
