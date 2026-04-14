@@ -129,6 +129,18 @@ IDs are stable — never reuse a retired ID.
 
 ---
 
+## Sessions List (`e2e/sessions.spec.ts`)
+
+| ID | Scenario | Status |
+|----|----------|--------|
+| E2E-SESSION-001 | Navigate to `/sessions` → table renders with Status, Title, Agent, Environment, Card, Role, Created columns | 🟡 Planned |
+| E2E-SESSION-002 | Sessions linked to a Kobani card show a clickable board link in the Card column | 🟡 Planned |
+| E2E-SESSION-003 | Sessions not linked to a card show "—" in Card and Role columns | 🟡 Planned |
+| E2E-SESSION-004 | Status badges display correct colour per status (running=blue, idle=zinc, terminated=dim, rescheduling=amber) | 🟡 Planned |
+| E2E-SESSION-005 | `GET /api/sessions` without session → `{"error":"Unauthorized"}` 401 | 🟡 Planned |
+
+---
+
 ## How to add a new scenario
 
 1. Pick the next available ID in the relevant group (never reuse a retired one).
