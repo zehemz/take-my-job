@@ -109,7 +109,7 @@ model AgentConfig {
   role                   String   @unique
   anthropicAgentId       String
   anthropicAgentVersion  String
-  anthropicEnvironmentId String
+  anthropicEnvironmentId String?
   createdAt              DateTime @default(now())
 }
 

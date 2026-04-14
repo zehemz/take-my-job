@@ -16,7 +16,7 @@ export const anthropicClient: IAnthropicClient = {
         id: config.agentId,
         version: config.agentVersion,
       },
-      environment_id: config.environmentId,
+      ...(config.environmentId ? { environment_id: config.environmentId } : {}),
       title: config.title,
       resources: config.resources?.map((r) => ({
         type: "github_repository",
