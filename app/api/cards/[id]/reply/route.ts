@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { mapAgentRun, mapCard, deriveCardAgentStatus } from '@/lib/api-mappers';
+import { toCardResponse } from '@/lib/api-mappers';
 import { devAuth as auth } from '@/lib/dev-auth';
-import { guardCardAccess } from '@/lib/rbac';
+import { requireCardAccess } from '@/lib/rbac';
 import { anthropicClient } from '@/lib/anthropic-client';
 import { orchestrator } from '@/lib/orchestrator-instance';
+import { getCardForApi } from '@/lib/db-queries';
 import type { CardReplyRequest } from '@/lib/api-types';
 import type { AgentRun } from '@/lib/types';
 
@@ -29,14 +30,8 @@ export async function POST(
   });
   if (!card) return NextResponse.json({ error: 'Card not found' }, { status: 404 });
 
-  // RBAC check
-  const hasAccess = await guardCardAccess(session.user.githubUsername, card);
-  if (!hasAccess) {
-    return NextResponse.json(
-      { error: 'Forbidden: no access to this agent role/environment' },
-      { status: 403 },
-    );
-  }
+  const forbidden = await requireCardAccess(session.user.githubUsername, card);
+  if (forbidden) return forbidden;
 
   if (card.column.columnType !== 'blocked') {
     return NextResponse.json({ error: 'Card is not blocked' }, { status: 400 });
@@ -76,18 +71,9 @@ export async function POST(
   // 3. Re-attach event loop so agent output is streamed and card is moved on completion
   await orchestrator.notifyCardUnblocked(card.id, updatedRun as unknown as AgentRun);
 
-  // Return updated card
-  const updated = await prisma.card.findUnique({
-    where: { id: params.id },
-    include: {
-      agentRuns: { orderBy: { createdAt: 'asc' } },
-      column: { select: { columnType: true } },
-      dependsOn: { select: { id: true } },
-    },
-  });
+  // Return updated card (use getCardForApi for the asc-ordered response query)
+  const updated = await getCardForApi(params.id);
   if (!updated) return NextResponse.json({ error: 'Card not found' }, { status: 404 });
 
-  const mappedRuns = updated.agentRuns.map(mapAgentRun);
-  const agentStatus = deriveCardAgentStatus(updated.agentRuns);
-  return NextResponse.json(mapCard(updated, mappedRuns, agentStatus, updated.column.columnType));
+  return NextResponse.json(toCardResponse(updated));
 }

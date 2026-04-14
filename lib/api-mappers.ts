@@ -226,6 +226,24 @@ export function mapCard(
   };
 }
 
+// ─── Convenience: full card → API response ───────────────────────────────────
+
+/**
+ * One-shot helper that maps a card (with included agentRuns + column) to an
+ * ApiCard response object.  Used by every API route that returns a card.
+ */
+export function toCardResponse(
+  card: Parameters<typeof mapCard>[0] & {
+    agentRuns: Array<Parameters<typeof mapAgentRun>[0]>;
+    column: { columnType: string };
+  },
+  canInteract?: boolean,
+): ApiCard {
+  const mappedRuns = card.agentRuns.map(mapAgentRun);
+  const agentStatus = deriveCardAgentStatus(card.agentRuns);
+  return mapCard(card, mappedRuns, agentStatus, card.column.columnType, canInteract);
+}
+
 // ─── AgentConfig mapping ──────────────────────────────────────────────────────
 
 export function mapAgentConfig(row: AgentConfig): AgentConfigItem {

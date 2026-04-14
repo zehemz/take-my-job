@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { waitUntil } from '@vercel/functions';
 import { prisma } from '@/lib/db';
-import { mapAgentRun, mapCard, deriveCardAgentStatus } from '@/lib/api-mappers';
+import { deriveCardAgentStatus, toCardResponse } from '@/lib/api-mappers';
 import type { MoveCardRequest } from '@/lib/api-types';
 import { VALID_TRANSITIONS } from '@/lib/kanban-types';
 import { devAuth as auth } from '@/lib/dev-auth';
-import { guardCardAccess } from '@/lib/rbac';
+import { requireCardAccess } from '@/lib/rbac';
 import { orchestrator } from '@/lib/orchestrator-instance';
 import { run as runAgent } from '@/lib/agent-runner';
 import { dbQueries } from '@/lib/db-queries';
@@ -49,14 +49,8 @@ export async function POST(
     );
   }
 
-  // RBAC check
-  const hasAccess = await guardCardAccess(session.user.githubUsername, existingCard);
-  if (!hasAccess) {
-    return NextResponse.json(
-      { error: 'Forbidden: no access to this agent role/environment' },
-      { status: 403 },
-    );
-  }
+  const forbidden = await requireCardAccess(session.user.githubUsername, existingCard);
+  if (forbidden) return forbidden;
 
   const fromType = existingCard.column.columnType;
   const toType = targetColumn.columnType;
@@ -131,7 +125,5 @@ export async function POST(
     );
   }
 
-  const mappedRuns = card.agentRuns.map(mapAgentRun);
-  const agentStatus = deriveCardAgentStatus(card.agentRuns);
-  return NextResponse.json(mapCard(card, mappedRuns, agentStatus, card.column.columnType));
+  return NextResponse.json(toCardResponse(card));
 }
