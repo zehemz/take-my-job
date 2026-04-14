@@ -14,7 +14,7 @@ export const anthropicClient: IAnthropicClient = {
       agent: {
         type: "agent",
         id: config.agentId,
-        version: config.agentVersion,
+        version: Number(config.agentVersion),
       },
       ...(config.environmentId ? { environment_id: config.environmentId } : {}),
       title: config.title,
