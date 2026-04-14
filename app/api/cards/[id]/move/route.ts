@@ -10,7 +10,6 @@ import { orchestrator } from '@/lib/orchestrator-instance';
 import { run as runAgent } from '@/lib/agent-runner';
 import { dbQueries } from '@/lib/db-queries';
 import { anthropicClient } from '@/lib/anthropic-client';
-import { broadcaster } from '@/lib/broadcaster-singleton';
 
 export async function POST(
   req: Request,
@@ -112,7 +111,7 @@ export async function POST(
       const cardWithColumn = await dbQueries.getCard(params.id);
       if (cardWithColumn) {
         waitUntil(
-          runAgent(cardWithColumn, agentRun, { db: dbQueries, anthropicClient, broadcaster })
+          runAgent(cardWithColumn, agentRun, { db: dbQueries, anthropicClient })
             .catch((err) => console.error('[move] agent runner error:', err)),
         );
       }
