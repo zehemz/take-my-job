@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { StubDbQueries } from "../lib/stubs/db-queries.stub.js";
 import { StubAnthropicClient } from "../lib/stubs/anthropic-client.stub.js";
-import { StubBroadcaster } from "../lib/stubs/broadcaster.stub.js";
 import { StubOrchestrator } from "../lib/stubs/orchestrator.stub.js";
 import { AgentRunStatus } from "../lib/types.js";
 import type { Card, Column } from "../lib/types.js";
@@ -141,39 +140,6 @@ describe("anthropic-client stub", () => {
 
     await client.interruptSession(session.id);
     expect(client.interruptedSessions).toContain(session.id);
-  });
-});
-
-describe("broadcaster stub", () => {
-  it("records emitted events", () => {
-    const broadcaster = new StubBroadcaster();
-    broadcaster.emit("card_1", { type: "agent_message", text: "hello" });
-
-    expect(broadcaster.emitted).toHaveLength(1);
-    expect(broadcaster.emitted[0].cardId).toBe("card_1");
-  });
-
-  it("delivers events to subscribers", () => {
-    const broadcaster = new StubBroadcaster();
-    const received: unknown[] = [];
-    broadcaster.subscribe("card_1", (e) => received.push(e));
-
-    broadcaster.emit("card_1", { type: "agent_message", text: "hi" });
-    broadcaster.emit("card_2", { type: "agent_message", text: "ignored" });
-
-    expect(received).toHaveLength(1);
-  });
-
-  it("unsubscribe stops delivery", () => {
-    const broadcaster = new StubBroadcaster();
-    const received: unknown[] = [];
-    const unsub = broadcaster.subscribe("card_1", (e) => received.push(e));
-
-    broadcaster.emit("card_1", { type: "agent_message", text: "first" });
-    unsub();
-    broadcaster.emit("card_1", { type: "agent_message", text: "second" });
-
-    expect(received).toHaveLength(1);
   });
 });
 

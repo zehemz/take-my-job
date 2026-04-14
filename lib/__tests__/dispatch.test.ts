@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { dispatchPending } from '../orchestrator/dispatch.js'
-import type { OrchestratorState, OrchestratorDeps, SpawnRunner } from '../orchestrator/types.js'
+import type { OrchestratorDeps, SpawnRunner } from '../orchestrator/types.js'
 import type { Card, Column, AgentRun } from '../types.js'
 import { AgentRunStatus } from '../types.js'
 import { StubDbQueries } from '../stubs/db-queries.stub.js'
 import { StubAnthropicClient } from '../stubs/anthropic-client.stub.js'
-import { StubBroadcaster } from '../stubs/broadcaster.stub.js'
+
 
 function makeColumn(overrides?: Partial<Column>): Column {
   return {
@@ -41,7 +41,6 @@ function makeCard(id: string, columnId: string, position = 0): Card {
 describe('dispatchPending', () => {
   let db: StubDbQueries
   let deps: OrchestratorDeps
-  let state: OrchestratorState
   let spawnRunner: SpawnRunner & ReturnType<typeof vi.fn>
 
   beforeEach(() => {
@@ -50,11 +49,6 @@ describe('dispatchPending', () => {
     deps = {
       db,
       anthropic: new StubAnthropicClient(),
-      broadcaster: new StubBroadcaster(),
-    }
-    state = {
-      running: new Map(),
-      claimed: new Set(),
     }
     spawnRunner = vi.fn() as unknown as SpawnRunner & ReturnType<typeof vi.fn>
   })
@@ -65,12 +59,11 @@ describe('dispatchPending', () => {
     db.columns.push(col)
     db.cards.push(card)
 
-    await dispatchPending(state, deps, spawnRunner)
+    await dispatchPending(deps, spawnRunner)
 
     expect(db.agentRuns).toHaveLength(1)
     expect(db.agentRuns[0].cardId).toBe('card-1')
     expect(db.agentRuns[0].attempt).toBe(1)
-    expect(state.claimed.has('card-1')).toBe(true)
     expect(spawnRunner).toHaveBeenCalledOnce()
     expect(spawnRunner).toHaveBeenCalledWith(card, db.agentRuns[0])
   })
@@ -78,33 +71,44 @@ describe('dispatchPending', () => {
   it('does not dispatch when concurrency cap is reached', async () => {
     const col = makeColumn()
     db.columns.push(col)
-    db.cards.push(makeCard('card-1', col.id))
+    db.cards.push(makeCard('card-new', col.id))
 
-    // Fill running map to MAX_CONCURRENT (5)
+    // Seed 5 running runs to hit MAX_CONCURRENT
     for (let i = 0; i < 5; i++) {
-      state.running.set(`run-${i}`, {
-        run: { id: `run-${i}`, cardId: `c-${i}`, columnId: col.id, role: 'backend_engineer', status: AgentRunStatus.running, attempt: 1, createdAt: new Date(), updatedAt: new Date() } as AgentRun,
-        abortController: new AbortController(),
+      db.agentRuns.push({
+        id: `run-${i}`, cardId: `c-${i}`, columnId: col.id, role: 'backend_engineer',
+        sessionId: null, status: AgentRunStatus.running, output: null, criteriaResults: null,
+        blockedReason: null, attempt: 1, retryAfterMs: null, error: null,
+        createdAt: new Date(), updatedAt: new Date(),
       })
     }
 
-    await dispatchPending(state, deps, spawnRunner)
+    await dispatchPending(deps, spawnRunner)
 
-    expect(db.agentRuns).toHaveLength(0)
+    // No new runs created (only the 5 we seeded)
+    expect(db.agentRuns).toHaveLength(5)
     expect(spawnRunner).not.toHaveBeenCalled()
   })
 
-  it('excludes already-claimed cards', async () => {
+  it('skips card that already has a pending run (claim-or-skip)', async () => {
     const col = makeColumn()
     const card = makeCard('card-1', col.id)
     db.columns.push(col)
     db.cards.push(card)
 
-    state.claimed.add('card-1')
+    // Seed a pending run — getEligibleCards returns the card,
+    // but claimAndCreateAgentRun returns null (pending run blocks it)
+    db.agentRuns.push({
+      id: 'existing-run', cardId: 'card-1', columnId: col.id, role: 'backend_engineer',
+      sessionId: null, status: AgentRunStatus.pending, output: null, criteriaResults: null,
+      blockedReason: null, attempt: 1, retryAfterMs: null, error: null,
+      createdAt: new Date(), updatedAt: new Date(),
+    })
 
-    await dispatchPending(state, deps, spawnRunner)
+    await dispatchPending(deps, spawnRunner)
 
-    expect(db.agentRuns).toHaveLength(0)
+    // Only the pre-existing run; no new run created
+    expect(db.agentRuns).toHaveLength(1)
     expect(spawnRunner).not.toHaveBeenCalled()
   })
 
@@ -115,10 +119,10 @@ describe('dispatchPending', () => {
     db.cards.push(makeCard('card-2', col.id, 1))
     db.cards.push(makeCard('card-3', col.id, 2))
 
-    await dispatchPending(state, deps, spawnRunner)
+    await dispatchPending(deps, spawnRunner)
 
     expect(db.agentRuns).toHaveLength(3)
-    expect(state.claimed).toEqual(new Set(['card-1', 'card-2', 'card-3']))
+    expect(db.agentRuns.map(r => r.cardId)).toEqual(['card-1', 'card-2', 'card-3'])
     expect(spawnRunner).toHaveBeenCalledTimes(3)
   })
 
@@ -147,23 +151,18 @@ describe('dispatchPending', () => {
     }
     db.agentRuns.push(failedRun)
 
-    await dispatchPending(state, deps, spawnRunner)
+    await dispatchPending(deps, spawnRunner)
 
-    // The card is eligible for fresh dispatch AND retry.
-    // Fresh dispatch happens first, claiming card-r.
-    // Retry loop then skips because card-r is already claimed.
-    // So we expect exactly 1 run created (fresh) + the original failed run.
+    // Fresh dispatch picks up card-r (no active run), claims it.
+    // Retry loop then skips because card-r now has a pending run.
     expect(db.agentRuns).toHaveLength(2)
-    // The fresh dispatch creates a run with attempt=1
     const createdRun = db.agentRuns[1]
     expect(createdRun.cardId).toBe('card-r')
     expect(createdRun.attempt).toBe(1)
-    expect(state.claimed.has('card-r')).toBe(true)
     expect(spawnRunner).toHaveBeenCalledOnce()
   })
 
   it('dispatches retry-eligible run when card is not in fresh eligible set', async () => {
-    // Card is in a non-active column so it won't be picked by fresh dispatch
     const activeCol = makeColumn({ id: 'col-active' })
     const doneCol = makeColumn({ id: 'col-done', isActiveState: false, isTerminalState: true, name: 'Done' })
     db.columns.push(activeCol, doneCol)
@@ -189,7 +188,7 @@ describe('dispatchPending', () => {
     }
     db.agentRuns.push(failedRun)
 
-    await dispatchPending(state, deps, spawnRunner)
+    await dispatchPending(deps, spawnRunner)
 
     // Fresh dispatch finds nothing (card not in active column).
     // Retry picks it up with attempt+1=3.
@@ -197,20 +196,27 @@ describe('dispatchPending', () => {
     const retryRun = db.agentRuns[1]
     expect(retryRun.cardId).toBe('card-r')
     expect(retryRun.attempt).toBe(3)
-    expect(state.claimed.has('card-r')).toBe(true)
     expect(spawnRunner).toHaveBeenCalledOnce()
-    // getCard returns card+column, so spawnRunner receives the enriched object
     const calledCard = spawnRunner.mock.calls[0][0]
     expect(calledCard.id).toBe('card-r')
     expect(calledCard.column).toBeDefined()
     expect(spawnRunner.mock.calls[0][1]).toBe(retryRun)
   })
 
-  it('skips retry-eligible run when card is already claimed', async () => {
+  it('skips retry-eligible run when card already has an active run', async () => {
     const col = makeColumn()
     db.columns.push(col)
     db.cards.push(makeCard('card-r', col.id))
 
+    // Active (running) run for card-r — blocks both fresh dispatch and retry claim
+    db.agentRuns.push({
+      id: 'active-run', cardId: 'card-r', columnId: col.id, role: 'backend_engineer',
+      sessionId: 'sess-1', status: AgentRunStatus.running, output: null, criteriaResults: null,
+      blockedReason: null, attempt: 1, retryAfterMs: null, error: null,
+      createdAt: new Date(), updatedAt: new Date(),
+    })
+
+    // Failed retry-eligible run for same card
     const failedRun: AgentRun = {
       id: 'prev-run',
       cardId: 'card-r',
@@ -229,14 +235,11 @@ describe('dispatchPending', () => {
     }
     db.agentRuns.push(failedRun)
 
-    // Pre-claim the card
-    state.claimed.add('card-r')
+    await dispatchPending(deps, spawnRunner)
 
-    await dispatchPending(state, deps, spawnRunner)
-
-    // Fresh dispatch excludes claimed. Retry also skips claimed.
-    // Only the original failed run remains; no new runs created.
-    expect(db.agentRuns).toHaveLength(1)
+    // Fresh: getEligibleCards excludes card-r (has running run).
+    // Retry: claimAndCreateAgentRun returns null (has running run).
+    expect(db.agentRuns).toHaveLength(2) // no new runs
     expect(spawnRunner).not.toHaveBeenCalled()
   })
 
@@ -249,24 +252,19 @@ describe('dispatchPending', () => {
       throw new Error('spawn boom')
     })
 
-    // dispatchPending calls spawnRunner synchronously and does not catch,
-    // so it will actually throw. Let's verify the behavior:
-    // Looking at the code, spawnRunner is called without try/catch,
-    // so an exception will propagate. The test verifies the call happens.
-    await expect(dispatchPending(state, deps, spawnRunner)).rejects.toThrow('spawn boom')
+    await expect(dispatchPending(deps, spawnRunner)).rejects.toThrow('spawn boom')
     expect(spawnRunner).toHaveBeenCalledOnce()
-    expect(state.claimed.has('card-1')).toBe(true)
+    // Run was created in DB before the throw
+    expect(db.agentRuns).toHaveLength(1)
   })
 
   it('does nothing when no eligible cards exist', async () => {
     const col = makeColumn()
     db.columns.push(col)
-    // No cards
 
-    await dispatchPending(state, deps, spawnRunner)
+    await dispatchPending(deps, spawnRunner)
 
     expect(db.agentRuns).toHaveLength(0)
     expect(spawnRunner).not.toHaveBeenCalled()
-    expect(state.claimed.size).toBe(0)
   })
 })

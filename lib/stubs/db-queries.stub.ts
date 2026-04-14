@@ -1,5 +1,5 @@
 import type { IDbQueries } from "../interfaces.js";
-import type { AgentConfig, AgentRun, AgentRunStatus, Board, Card, Column } from "../types.js";
+import type { AgentConfig, AgentRun, AgentRunStatus, Board, Card, Column, OrchestratorEvent } from "../types.js";
 import { AgentRunStatus as Status } from "../types.js";
 
 let idCounter = 0;
@@ -142,5 +142,61 @@ export class StubDbQueries implements IDbQueries {
       .filter((r) => r.cardId === cardId && activeStatuses.has(r.status as AgentRunStatus))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     return runs[0] ?? null;
+  }
+
+  orchestratorEvents: OrchestratorEvent[] = [];
+
+  async claimAndCreateAgentRun(cardId: string, columnId: string, role: string, attempt: number): Promise<AgentRun | null> {
+    const hasActive = this.agentRuns.some(
+      (r) => r.cardId === cardId && (r.status === Status.running || r.status === Status.idle || r.status === Status.pending),
+    );
+    if (hasActive) return null;
+    return this.createAgentRun(cardId, columnId, role, attempt);
+  }
+
+  async countActiveRuns(): Promise<number> {
+    return this.agentRuns.filter(
+      (r) => r.status === Status.running || r.status === Status.idle || r.status === Status.pending,
+    ).length;
+  }
+
+  async getActiveRuns(): Promise<Array<AgentRun & { card: Card & { column: Column } }>> {
+    const result: Array<AgentRun & { card: Card & { column: Column } }> = [];
+    for (const run of this.agentRuns) {
+      if (run.status !== Status.running && run.status !== Status.idle && run.status !== Status.blocked) continue;
+      const card = this.cards.find((c) => c.id === run.cardId);
+      if (!card) continue;
+      const column = this.columns.find((c) => c.id === card.columnId);
+      if (!column) continue;
+      result.push({ ...run, card: { ...card, column } });
+    }
+    return result;
+  }
+
+  async insertOrchestratorEvent(event: { boardId: string; cardId: string; runId?: string; type: string; payload: Record<string, unknown> }): Promise<void> {
+    const now = new Date();
+    this.orchestratorEvents.push({
+      id: nextId(),
+      boardId: event.boardId,
+      cardId: event.cardId,
+      runId: event.runId ?? null,
+      type: event.type,
+      payload: event.payload,
+      createdAt: now,
+    });
+  }
+
+  async getOrchestratorEventsSince(since: Date, types: string[]): Promise<OrchestratorEvent[]> {
+    const typeSet = new Set(types);
+    return this.orchestratorEvents.filter(
+      (e) => e.createdAt > since && typeSet.has(e.type),
+    );
+  }
+
+  async getCardEventsSince(cardId: string, since: Date): Promise<OrchestratorEvent[]> {
+    const excluded = new Set(["card_moved", "card_unblocked"]);
+    return this.orchestratorEvents.filter(
+      (e) => e.cardId === cardId && e.createdAt > since && !excluded.has(e.type),
+    );
   }
 }

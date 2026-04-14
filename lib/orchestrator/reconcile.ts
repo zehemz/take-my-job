@@ -1,68 +1,52 @@
 import { scheduleRetry } from './retry'
-import type { OrchestratorState, OrchestratorDeps } from './types'
+import type { OrchestratorDeps } from './types'
 import { AgentRunStatus } from '../types'
 
 const MAX_STALL_MS = parseInt(process.env.MAX_STALL_MS ?? '3600000', 10)
 
 export async function reconcileRunning(
-  state: OrchestratorState,
   deps: OrchestratorDeps
 ): Promise<void> {
+  const activeRuns = await deps.db.getActiveRuns()
+
   // CRITICAL: all checks in parallel, never serial
   await Promise.all(
-    [...state.running.entries()].map(async ([cardId, { run, abortController }]) => {
-      // 1. Fetch card's current column
-      const card = await deps.db.getCard(cardId)
-      if (!card) {
-        // Card deleted — cancel
-        await deps.anthropic.interruptSession(run.sessionId!)
-        await deps.db.updateAgentRunStatus(run.id, AgentRunStatus.cancelled)
-        state.running.delete(cardId)
-        state.claimed.delete(cardId)
-        return
-      }
+    activeRuns.map(async (run) => {
+      const card = run.card
 
-      // 2. If run is blocked — move card to blocked column, clean up without interrupting session
+      // 1. If run is blocked — move card to blocked column
       if (run.status === AgentRunStatus.blocked) {
         try {
           await deps.db.moveCardToColumnType(card.id, card.boardId, 'blocked')
         } catch (err) {
           console.error('[reconcile] failed to move blocked card:', err)
         }
-        state.running.delete(cardId)
-        state.claimed.delete(cardId)
         return
       }
 
-      // 3. If column is terminal or inactive → cancel
+      // 2. If column is terminal or inactive → cancel
       if (card.column.isTerminalState || !card.column.isActiveState) {
-        abortController.abort()
-        await deps.anthropic.interruptSession(run.sessionId!)
+        if (run.sessionId) {
+          await deps.anthropic.interruptSession(run.sessionId)
+        }
         await deps.db.updateAgentRunStatus(run.id, AgentRunStatus.cancelled)
-        state.running.delete(cardId)
-        state.claimed.delete(cardId)
         return
       }
 
-      // 4. Check session status
+      // 3. Check session status
       if (run.sessionId) {
         const session = await deps.anthropic.retrieveSession(run.sessionId)
         if (session.status === 'terminated') {
           if (session.outcome === 'success') {
             await deps.db.updateAgentRunStatus(run.id, AgentRunStatus.completed)
-            // Route card to review (if requiresApproval) or terminal
             const targetColumnType: 'review' | 'terminal' = card.requiresApproval ? 'review' : 'terminal'
             try {
               await deps.db.moveCardToColumnType(card.id, card.boardId, targetColumnType)
             } catch (err) {
               console.error('[reconcile] failed to route card after completion:', err)
             }
-            state.running.delete(cardId)
-            state.claimed.delete(cardId)
           } else {
             await scheduleRetry(run, deps.db)
-            state.running.delete(cardId)
-            state.claimed.delete(cardId)
           }
           return
         }
@@ -72,10 +56,10 @@ export async function reconcileRunning(
       // 4. Stall detection
       const stalledMs = Date.now() - run.updatedAt.getTime()
       if (stalledMs > MAX_STALL_MS) {
-        await deps.anthropic.interruptSession(run.sessionId!)
+        if (run.sessionId) {
+          await deps.anthropic.interruptSession(run.sessionId)
+        }
         await scheduleRetry(run, deps.db)
-        state.running.delete(cardId)
-        state.claimed.delete(cardId)
       }
     })
   )

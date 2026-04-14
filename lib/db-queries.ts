@@ -1,6 +1,6 @@
 import { prisma } from "./db";
 import type { IDbQueries } from "./interfaces";
-import type { AgentRun, Card, Column } from "./types";
+import type { AgentRun, Card, Column, OrchestratorEvent } from "./types";
 import { AgentRunStatus } from "./types";
 
 export const dbQueries: IDbQueries = {
@@ -180,5 +180,76 @@ export const dbQueries: IDbQueries = {
       orderBy: { createdAt: "desc" },
     });
     return run as unknown as AgentRun | null;
+  },
+
+  async claimAndCreateAgentRun(cardId: string, columnId: string, role: string, attempt: number): Promise<AgentRun | null> {
+    return prisma.$transaction(async (tx) => {
+      // Lock the card row — skip if another process already locked it
+      const locked: Array<{ id: string }> = await tx.$queryRawUnsafe(
+        `SELECT id FROM "Card" WHERE id = $1 FOR UPDATE SKIP LOCKED`,
+        cardId,
+      );
+      if (locked.length === 0) return null;
+
+      // Guard: if the card already has an active run, bail out
+      const activeRun = await tx.agentRun.findFirst({
+        where: { cardId, status: { in: ["running", "idle", "pending"] } },
+      });
+      if (activeRun) return null;
+
+      const run = await tx.agentRun.create({
+        data: { cardId, columnId, role, status: "pending", attempt },
+      });
+      return run as unknown as AgentRun;
+    });
+  },
+
+  async countActiveRuns(): Promise<number> {
+    return prisma.agentRun.count({
+      where: { status: { in: ["running", "idle", "pending"] } },
+    });
+  },
+
+  async getActiveRuns(): Promise<Array<AgentRun & { card: Card & { column: Column } }>> {
+    const runs = await prisma.agentRun.findMany({
+      where: { status: { in: ["running", "idle"] } },
+      include: { card: { include: { column: true } } },
+    });
+    return runs as unknown as Array<AgentRun & { card: Card & { column: Column } }>;
+  },
+
+  async insertOrchestratorEvent(event: { boardId: string; cardId: string; runId?: string; type: string; payload: Record<string, unknown> }): Promise<void> {
+    await prisma.orchestratorEvent.create({
+      data: {
+        boardId: event.boardId,
+        cardId: event.cardId,
+        runId: event.runId ?? null,
+        type: event.type,
+        payload: event.payload as unknown as import("@prisma/client").Prisma.InputJsonValue,
+      },
+    });
+  },
+
+  async getOrchestratorEventsSince(since: Date, types: string[]): Promise<OrchestratorEvent[]> {
+    const events = await prisma.orchestratorEvent.findMany({
+      where: {
+        createdAt: { gt: since },
+        type: { in: types },
+      },
+      orderBy: { createdAt: "asc" },
+    });
+    return events as unknown as OrchestratorEvent[];
+  },
+
+  async getCardEventsSince(cardId: string, since: Date): Promise<OrchestratorEvent[]> {
+    const events = await prisma.orchestratorEvent.findMany({
+      where: {
+        cardId,
+        createdAt: { gt: since },
+        type: { notIn: ["card_moved", "card_unblocked"] },
+      },
+      orderBy: { createdAt: "asc" },
+    });
+    return events as unknown as OrchestratorEvent[];
   },
 };

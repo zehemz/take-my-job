@@ -1,6 +1,6 @@
 import type { Card, Column, AgentRun } from "./types";
 import { AgentRunStatus } from "./types";
-import type { IDbQueries, IAnthropicClient, IBroadcaster, AgentEvent } from "./interfaces";
+import type { IDbQueries, IAnthropicClient, AgentEvent } from "./interfaces";
 import { config } from "./config";
 import { renderTurnPrompt } from "./prompt-renderer";
 import { handleEvent } from "./agent-runner/event-handler";
@@ -13,7 +13,6 @@ import { scheduleRetry } from "./orchestrator/retry";
 export interface AgentRunnerDeps {
   db: IDbQueries;
   anthropicClient: IAnthropicClient;
-  broadcaster: IBroadcaster;
 }
 
 /**
@@ -27,7 +26,6 @@ export async function run(
   card: Card & { column: Column },
   agentRun: AgentRun,
   deps: AgentRunnerDeps,
-  signal?: AbortSignal
 ): Promise<void> {
   const { db, anthropicClient } = deps;
 
@@ -97,7 +95,7 @@ export async function run(
       }),
     ]);
 
-    await runEventLoop(stream, card, currentRun, sessionId, boardColumns, deps, signal);
+    await runEventLoop(stream, card, currentRun, sessionId, boardColumns, deps);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     await deps.db.updateAgentRunStatus(agentRun.id, AgentRunStatus.failed, { error: message });
@@ -117,13 +115,12 @@ export async function resumeBlocked(
   card: Card & { column: Column },
   agentRun: AgentRun,
   deps: AgentRunnerDeps,
-  signal?: AbortSignal
 ): Promise<void> {
   const sessionId = agentRun.sessionId!;
   try {
     const boardColumns = await deps.db.getBoardColumns(card.boardId);
     const stream = await deps.anthropicClient.streamSession(sessionId);
-    await runEventLoop(stream, card, agentRun, sessionId, boardColumns, deps, signal);
+    await runEventLoop(stream, card, agentRun, sessionId, boardColumns, deps);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
     await deps.db.updateAgentRunStatus(agentRun.id, AgentRunStatus.failed, {
@@ -143,9 +140,8 @@ async function runEventLoop(
   sessionId: string,
   boardColumns: Column[],
   deps: AgentRunnerDeps,
-  signal?: AbortSignal
 ): Promise<void> {
-  const { db, anthropicClient, broadcaster } = deps;
+  const { db, anthropicClient } = deps;
 
   const tokenUsage = { inputTokens: 0, outputTokens: 0 };
   const turnCount = { value: 0 };
@@ -153,18 +149,11 @@ async function runEventLoop(
   let finalError: string | undefined;
 
   outerLoop: for await (const event of stream) {
-    if (signal?.aborted) {
-      await anthropicClient.interruptSession(sessionId);
-      await db.updateAgentRunStatus(currentRun.id, AgentRunStatus.cancelled);
-      return;
-    }
-
     const result = await handleEvent(event, {
       card,
       run: currentRun,
       boardColumns,
       db,
-      broadcaster,
       anthropicClient,
       sessionId,
       tokenUsage,

@@ -1,4 +1,4 @@
-import type { AgentConfig, AgentRun, AgentRunStatus, BroadcastEvent, Card, Column } from "./types.js";
+import type { AgentConfig, AgentRun, AgentRunStatus, Card, Column, OrchestratorEvent } from "./types.js";
 
 export interface IDbQueries {
   getEligibleCards(maxConcurrent: number, claimedIds: string[]): Promise<Card[]>;
@@ -15,6 +15,12 @@ export interface IDbQueries {
   getBoardColumns(boardId: string): Promise<Column[]>;
   moveCardToColumnType(cardId: string, boardId: string, targetColumnType: 'review' | 'terminal' | 'blocked'): Promise<void>;
   getActiveRunForCard(cardId: string): Promise<AgentRun | null>;
+  claimAndCreateAgentRun(cardId: string, columnId: string, role: string, attempt: number): Promise<AgentRun | null>;
+  countActiveRuns(): Promise<number>;
+  getActiveRuns(): Promise<Array<AgentRun & { card: Card & { column: Column } }>>;
+  insertOrchestratorEvent(event: { boardId: string; cardId: string; runId?: string; type: string; payload: Record<string, unknown> }): Promise<void>;
+  getOrchestratorEventsSince(since: Date, types: string[]): Promise<OrchestratorEvent[]>;
+  getCardEventsSince(cardId: string, since: Date): Promise<OrchestratorEvent[]>;
 }
 
 /** Typed events emitted by the Anthropic Managed Agents SSE stream. */
@@ -59,11 +65,6 @@ export interface IAnthropicClient {
   retrieveSession(sessionId: string): Promise<SessionInfo>;
 
   interruptSession(sessionId: string): Promise<void>;
-}
-
-export interface IBroadcaster {
-  emit(cardId: string, event: BroadcastEvent): void;
-  subscribe(cardId: string, handler: (event: BroadcastEvent) => void): () => void;
 }
 
 export interface IOrchestrator {

@@ -2,9 +2,9 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import { Orchestrator } from '../orchestrator.js'
 import { StubDbQueries } from '../stubs/db-queries.stub.js'
 import { StubAnthropicClient } from '../stubs/anthropic-client.stub.js'
-import { StubBroadcaster } from '../stubs/broadcaster.stub.js'
 import { AgentRunStatus } from '../types.js'
 import type { Card, AgentRun, Column } from '../types.js'
+import type { SpawnRunner, SpawnResumeRunner } from '../orchestrator/types.js'
 
 function makeColumn(overrides: Partial<Column> = {}): Column {
   return {
@@ -61,9 +61,10 @@ function makeRun(overrides: Partial<AgentRun> = {}): AgentRun {
 describe('Orchestrator', () => {
   let db: StubDbQueries
   let anthropic: StubAnthropicClient
-  let broadcaster: StubBroadcaster
   let spawned: Array<{ card: Card; run: AgentRun }>
-  let spawnRunner: (card: Card, run: AgentRun) => void
+  let resumeSpawned: Array<{ card: Card & { column: Column }; run: AgentRun }>
+  let spawnRunner: SpawnRunner
+  let spawnResumeRunner: SpawnResumeRunner
   let orch: Orchestrator
 
   beforeEach(() => {
@@ -71,12 +72,15 @@ describe('Orchestrator', () => {
     StubDbQueries.resetIdCounter()
     db = new StubDbQueries()
     anthropic = new StubAnthropicClient()
-    broadcaster = new StubBroadcaster()
     spawned = []
+    resumeSpawned = []
     spawnRunner = (card: Card, run: AgentRun) => {
       spawned.push({ card, run })
     }
-    orch = new Orchestrator({ db, anthropic, broadcaster }, spawnRunner, () => {})
+    spawnResumeRunner = (card: Card & { column: Column }, run: AgentRun) => {
+      resumeSpawned.push({ card, run })
+    }
+    orch = new Orchestrator({ db, anthropic }, spawnRunner, spawnResumeRunner)
   })
 
   afterEach(() => {
@@ -87,99 +91,58 @@ describe('Orchestrator', () => {
   // ── notifyCardMoved ──────────────────────────────────────────
 
   describe('notifyCardMoved', () => {
-    it('interrupts and cancels when card moves to terminal column', async () => {
-      const col = makeColumn({ id: 'col-done', isTerminalState: true, isActiveState: false })
-      const card = makeCard({ id: 'card-1', columnId: 'col-done' })
-      const run = makeRun({ id: 'run-1', cardId: 'card-1', sessionId: 'sess-1' })
+    it('inserts card_moved event when card exists', async () => {
+      const col = makeColumn({ id: 'col-active' })
+      const card = makeCard({ id: 'card-1', columnId: 'col-active' })
 
       db.columns.push(col)
       db.cards.push(card)
-      db.agentRuns.push(run)
 
-      const state = (orch as any).state
-      state.running.set('card-1', { run, abortController: new AbortController() })
-      state.claimed.add('card-1')
+      await orch.notifyCardMoved('card-1', 'col-active')
 
-      await orch.notifyCardMoved('card-1', 'col-done')
-
-      expect(anthropic.interruptedSessions).toContain('sess-1')
-      expect(run.status).toBe('cancelled')
-      expect(state.running.has('card-1')).toBe(false)
-      expect(state.claimed.has('card-1')).toBe(false)
+      expect(db.orchestratorEvents).toHaveLength(1)
+      expect(db.orchestratorEvents[0].type).toBe('card_moved')
+      expect(db.orchestratorEvents[0].cardId).toBe('card-1')
+      expect(db.orchestratorEvents[0].boardId).toBe('board-1')
+      expect(db.orchestratorEvents[0].payload).toEqual({ newColumnId: 'col-active' })
     })
 
-    it('interrupts and cancels when card moves to inactive (non-terminal) column', async () => {
-      const col = makeColumn({ id: 'col-backlog', isTerminalState: false, isActiveState: false })
-      const card = makeCard({ id: 'card-1', columnId: 'col-backlog' })
-      const run = makeRun({ id: 'run-1', cardId: 'card-1', sessionId: 'sess-1' })
-
-      db.columns.push(col)
-      db.cards.push(card)
-      db.agentRuns.push(run)
-
-      const state = (orch as any).state
-      state.running.set('card-1', { run, abortController: new AbortController() })
-      state.claimed.add('card-1')
-
-      await orch.notifyCardMoved('card-1', 'col-backlog')
-
-      expect(anthropic.interruptedSessions).toContain('sess-1')
-      expect(run.status).toBe('cancelled')
-      expect(state.running.has('card-1')).toBe(false)
-      expect(state.claimed.has('card-1')).toBe(false)
-    })
-
-    it('does nothing when card moves to active column', async () => {
-      const col = makeColumn({ id: 'col-wip', isTerminalState: false, isActiveState: true })
-      const card = makeCard({ id: 'card-1', columnId: 'col-wip' })
-      const run = makeRun({ id: 'run-1', cardId: 'card-1', sessionId: 'sess-1' })
-
-      db.columns.push(col)
-      db.cards.push(card)
-      db.agentRuns.push(run)
-
-      const state = (orch as any).state
-      state.running.set('card-1', { run, abortController: new AbortController() })
-      state.claimed.add('card-1')
-
-      await orch.notifyCardMoved('card-1', 'col-wip')
-
-      expect(anthropic.interruptedSessions).toEqual([])
-      expect(run.status).toBe('running')
-      expect(state.running.has('card-1')).toBe(true)
-      expect(state.claimed.has('card-1')).toBe(true)
-    })
-
-    it('does not error when card is not in running map', async () => {
-      const col = makeColumn({ id: 'col-done', isTerminalState: true, isActiveState: false })
-      const card = makeCard({ id: 'card-1', columnId: 'col-done' })
-
-      db.columns.push(col)
-      db.cards.push(card)
-
+    it('does nothing when card not found', async () => {
       await expect(orch.notifyCardMoved('card-1', 'col-done')).resolves.toBeUndefined()
-      expect(anthropic.interruptedSessions).toEqual([])
+      expect(db.orchestratorEvents).toHaveLength(0)
     })
+  })
 
-    it('cancels run but does not call interruptSession when sessionId is null', async () => {
-      const col = makeColumn({ id: 'col-done', isTerminalState: true, isActiveState: false })
-      const card = makeCard({ id: 'card-1', columnId: 'col-done' })
-      const run = makeRun({ id: 'run-1', cardId: 'card-1', sessionId: null })
+  // ── notifyCardUnblocked ─────────────────────────────────────
+
+  describe('notifyCardUnblocked', () => {
+    it('inserts card_unblocked event and calls spawnResumeRunner', async () => {
+      const col = makeColumn({ id: 'col-active' })
+      const card = makeCard({ id: 'card-1', columnId: 'col-active' })
+      const run = makeRun({ id: 'run-1', cardId: 'card-1' })
 
       db.columns.push(col)
       db.cards.push(card)
-      db.agentRuns.push(run)
 
-      const state = (orch as any).state
-      state.running.set('card-1', { run, abortController: new AbortController() })
-      state.claimed.add('card-1')
+      await orch.notifyCardUnblocked('card-1', run)
 
-      await orch.notifyCardMoved('card-1', 'col-done')
+      expect(db.orchestratorEvents).toHaveLength(1)
+      expect(db.orchestratorEvents[0].type).toBe('card_unblocked')
+      expect(db.orchestratorEvents[0].cardId).toBe('card-1')
+      expect(db.orchestratorEvents[0].runId).toBe('run-1')
 
-      expect(anthropic.interruptedSessions).toEqual([])
-      expect(run.status).toBe('cancelled')
-      expect(state.running.has('card-1')).toBe(false)
-      expect(state.claimed.has('card-1')).toBe(false)
+      expect(resumeSpawned).toHaveLength(1)
+      expect(resumeSpawned[0].card.id).toBe('card-1')
+      expect(resumeSpawned[0].run.id).toBe('run-1')
+    })
+
+    it('does nothing when card not found', async () => {
+      const run = makeRun()
+
+      await orch.notifyCardUnblocked('nonexistent', run)
+
+      expect(db.orchestratorEvents).toHaveLength(0)
+      expect(resumeSpawned).toHaveLength(0)
     })
   })
 
@@ -195,17 +158,13 @@ describe('Orchestrator', () => {
       db.cards.push(card)
       db.agentRuns.push(run)
 
-      anthropic.configureDefaultSession({ status: AgentRunStatus.running })
+      anthropic.configureDefaultSession({ status: 'running' })
 
       await orch.start()
 
       expect(spawned).toHaveLength(1)
       expect(spawned[0].card.id).toBe('card-1')
       expect(spawned[0].run.id).toBe('run-1')
-
-      const state = (orch as any).state
-      expect(state.claimed.has('card-1')).toBe(true)
-      expect(state.running.has('card-1')).toBe(true)
     })
 
     it('marks run as completed when session terminated with success', async () => {
@@ -217,9 +176,6 @@ describe('Orchestrator', () => {
 
       expect(run.status).toBe('completed')
       expect(spawned).toHaveLength(0)
-
-      const state = (orch as any).state
-      expect(state.running.has('card-1')).toBe(false)
     })
 
     it('schedules retry when session terminated with error', async () => {
@@ -233,9 +189,6 @@ describe('Orchestrator', () => {
       expect(run.status).toBe('failed')
       expect(run.retryAfterMs).not.toBeNull()
       expect(spawned).toHaveLength(0)
-
-      const state = (orch as any).state
-      expect(state.running.has('card-1')).toBe(false)
     })
 
     it('schedules retry when run has no sessionId', async () => {
@@ -247,6 +200,21 @@ describe('Orchestrator', () => {
       expect(run.status).toBe('failed')
       expect(run.retryAfterMs).not.toBeNull()
       expect(spawned).toHaveLength(0)
+    })
+
+    it('skips blocked runs during recovery', async () => {
+      const col = makeColumn({ id: 'col-active' })
+      const card = makeCard({ id: 'card-1', columnId: 'col-active' })
+      const run = makeRun({ id: 'run-1', cardId: 'card-1', sessionId: 'sess-1', status: AgentRunStatus.blocked })
+
+      db.columns.push(col)
+      db.cards.push(card)
+      db.agentRuns.push(run)
+
+      await orch.start()
+
+      expect(spawned).toHaveLength(0)
+      expect(run.status).toBe('blocked')
     })
 
     it('resets retryAfterMs for retry-eligible runs', async () => {
@@ -277,14 +245,11 @@ describe('Orchestrator', () => {
       db.cards.push(card)
       db.agentRuns.push(run)
 
-      anthropic.configureDefaultSession({ status: AgentRunStatus.running })
+      anthropic.configureDefaultSession({ status: 'running' })
 
       // After start() resolves, recovery must be complete — poll hasn't fired yet
       await orch.start()
 
-      const state = (orch as any).state
-      expect(state.running.has('card-1')).toBe(true)
-      expect(state.claimed.has('card-1')).toBe(true)
       expect(spawned).toHaveLength(1)
     })
   })

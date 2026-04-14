@@ -1,5 +1,5 @@
 import type { Card, Column, AgentRun, UpdateCardInput } from "../types";
-import type { IDbQueries, IBroadcaster, IAnthropicClient } from "../interfaces";
+import type { IDbQueries, IAnthropicClient } from "../interfaces";
 import { handleUpdateCard } from "./tools";
 
 // ---------------------------------------------------------------------------
@@ -11,7 +11,6 @@ export interface EventHandlerContext {
   run: AgentRun;
   boardColumns: Column[];
   db: IDbQueries;
-  broadcaster: IBroadcaster;
   anthropicClient: IAnthropicClient;
   sessionId: string;
   tokenUsage: { inputTokens: number; outputTokens: number };
@@ -41,7 +40,6 @@ export async function handleEvent(
     run,
     boardColumns,
     db,
-    broadcaster,
     anthropicClient,
     sessionId,
     tokenUsage,
@@ -59,27 +57,36 @@ export async function handleEvent(
       if (text) {
         await db.appendAgentRunOutput(run.id, text);
       }
-      broadcaster.emit(card.id, { type: "agent_message", text });
+      await db.insertOrchestratorEvent({
+        boardId: card.boardId,
+        cardId: card.id,
+        runId: run.id,
+        type: "agent_message",
+        payload: { text },
+      });
       return { exitLoop: false };
     }
 
     // -----------------------------------------------------------------------
     case "agent.thinking": {
-      // SDK: thinking event is a progress signal with no content
-      broadcaster.emit(card.id, {
+      await db.insertOrchestratorEvent({
+        boardId: card.boardId,
+        cardId: card.id,
+        runId: run.id,
         type: "agent_thinking",
-        thinking: "",
+        payload: { thinking: "" },
       });
       return { exitLoop: false };
     }
 
     // -----------------------------------------------------------------------
     case "agent.tool_use": {
-      // SDK: tool name is `name`, not `tool_name`
-      broadcaster.emit(card.id, {
+      await db.insertOrchestratorEvent({
+        boardId: card.boardId,
+        cardId: card.id,
+        runId: run.id,
         type: "tool_use",
-        tool_name: e.name as string,
-        input: e.input,
+        payload: { tool_name: e.name as string, input: e.input },
       });
       return { exitLoop: false };
     }
@@ -96,7 +103,6 @@ export async function handleEvent(
           run,
           boardColumns,
           db,
-          broadcaster,
           sessionId,
         });
 

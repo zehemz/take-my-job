@@ -1,4 +1,4 @@
-import type { OrchestratorState, OrchestratorDeps, SpawnRunner } from './types'
+import type { OrchestratorDeps, SpawnRunner } from './types'
 
 const MAX_CONCURRENT = parseInt(process.env.MAX_CONCURRENT_AGENTS ?? '5', 10)
 const MAX_ATTEMPTS = parseInt(process.env.MAX_ATTEMPTS ?? '5', 10)
@@ -6,28 +6,28 @@ const MAX_ATTEMPTS = parseInt(process.env.MAX_ATTEMPTS ?? '5', 10)
 /**
  * Dispatch eligible cards and retry-eligible runs to agent runners.
  *
- * Called once per orchestrator tick, after reconciliation.
- * Spawns are fire-and-forget — the orchestrator poll loop does NOT await them.
+ * Stateless: queries the DB for the active run count and eligible cards
+ * each tick. Uses claimAndCreateAgentRun for atomic claim-or-skip.
  */
 export async function dispatchPending(
-  state: OrchestratorState,
   deps: OrchestratorDeps,
   spawnRunner: SpawnRunner,
 ): Promise<void> {
   // ── 1. Fresh card dispatch ──────────────────────────────────
-  const available = MAX_CONCURRENT - state.running.size
+  const activeCount = await deps.db.countActiveRuns()
+  const available = MAX_CONCURRENT - activeCount
   if (available <= 0) return
 
-  const candidates = await deps.db.getEligibleCards(available, [...state.claimed])
+  const candidates = await deps.db.getEligibleCards(available, [])
 
   for (const card of candidates) {
-    const run = await deps.db.createAgentRun(
+    const run = await deps.db.claimAndCreateAgentRun(
       card.id,
       card.columnId,
       card.role ?? 'backend-engineer',
       1,
     )
-    state.claimed.add(card.id)
+    if (!run) continue // another process claimed it
     spawnRunner(card, run) // non-blocking
   }
 
@@ -35,21 +35,21 @@ export async function dispatchPending(
   const retryRuns = await deps.db.getRetryEligibleRuns()
 
   for (const prevRun of retryRuns) {
-    if (state.claimed.has(prevRun.cardId)) continue
-    if (state.running.size >= MAX_CONCURRENT) break
-    // Guard: never exceed the attempt cap, even if retryAfterMs was set unexpectedly.
+    const currentActive = await deps.db.countActiveRuns()
+    if (currentActive >= MAX_CONCURRENT) break
+    // Guard: never exceed the attempt cap
     if (prevRun.attempt >= MAX_ATTEMPTS) continue
 
     const card = await deps.db.getCard(prevRun.cardId)
     if (!card) continue
 
-    const run = await deps.db.createAgentRun(
+    const run = await deps.db.claimAndCreateAgentRun(
       prevRun.cardId,
       prevRun.columnId,
       prevRun.role,
       prevRun.attempt + 1,
     )
-    state.claimed.add(prevRun.cardId)
+    if (!run) continue // another process claimed it
     spawnRunner(card, run) // non-blocking
   }
 }
