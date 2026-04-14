@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import TopNav from '@/app/_components/TopNav';
 import type { AgentDetail, AgentSyncStatus, AgentToolConfig, AgentMCPServer, PatchAgentResponse } from '@/lib/api-types';
+import { useRoles, roleLabel } from '@/lib/useRoles';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -14,14 +15,7 @@ const AVAILABLE_MODELS = [
   { value: 'claude-haiku-4-5', label: 'Claude Haiku 4.5' },
 ] as const;
 
-const AVAILABLE_ROLES = [
-  { value: 'backend-engineer', label: 'Backend Engineer' },
-  { value: 'qa-engineer', label: 'QA Engineer' },
-  { value: 'tech-lead', label: 'Tech Lead' },
-  { value: 'content-writer', label: 'Content Writer' },
-  { value: 'product-spec-writer', label: 'Product Spec Writer' },
-  { value: 'designer', label: 'Designer' },
-] as const;
+// Roles are fetched dynamically from AgentConfig via useRoles hook
 
 const SYSTEM_PROMPT_MAX = 100_000;
 
@@ -735,6 +729,7 @@ function MCPServersEditor({
 export default function AgentDetailPage() {
   const params = useParams();
   const id = params.id as string;
+  const { roles: availableRoles } = useRoles();
 
   const [agent, setAgent] = useState<AgentDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -875,7 +870,7 @@ export default function AgentDetailPage() {
                 <EditableSelect
                   label="Role"
                   value={agent.role}
-                  options={AVAILABLE_ROLES}
+                  options={availableRoles.map((r) => ({ value: r, label: roleLabel(r) }))}
                   onSave={async (v) => { await patchAgent('role', v); }}
                   disabled={isOrphaned}
                 />

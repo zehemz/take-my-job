@@ -26,13 +26,8 @@ export type AgentStatus =
   | 'pending-approval'
   | 'completed';
 
-export type AgentRole =
-  | 'backend-engineer'
-  | 'qa-engineer'
-  | 'tech-lead'
-  | 'content-writer'
-  | 'product-spec-writer'
-  | 'designer';
+/** Agent roles are defined dynamically via AgentConfig records in the database. */
+export type AgentRole = string;
 
 export interface AcceptanceCriterion {
   id: string;
