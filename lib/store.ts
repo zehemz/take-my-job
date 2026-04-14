@@ -233,26 +233,34 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
   approveCard: async (cardId) => {
     const card = get().cards.find(c => c.id === cardId);
     if (!card) return;
-    const res = await fetch(`/api/cards/${cardId}/approve`, {
-      method: 'POST',
-      credentials: 'include',
-    });
-    if (res.ok) {
-      await get().fetchBoard(card.boardId);
+    try {
+      const res = await fetch(`/api/cards/${cardId}/approve`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        await get().fetchBoard(card.boardId);
+      }
+    } catch {
+      // Network error
     }
   },
 
   requestRevision: async (cardId, reason) => {
     const card = get().cards.find(c => c.id === cardId);
     if (!card) return;
-    const res = await fetch(`/api/cards/${cardId}/request-revision`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ reason }),
-    });
-    if (res.ok) {
-      await get().fetchBoard(card.boardId);
+    try {
+      const res = await fetch(`/api/cards/${cardId}/request-revision`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ reason }),
+      });
+      if (res.ok) {
+        await get().fetchBoard(card.boardId);
+      }
+    } catch {
+      // Network error
     }
   },
 
@@ -277,42 +285,54 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
   closeAttentionDrawer: () => set({ attentionDrawerOpen: false }),
 
   fetchNotifications: async () => {
-    const res = await fetch('/api/notifications', { credentials: 'include' });
-    if (!res.ok) return;
-    const data = await res.json();
-    set({ notifications: data.notifications, unreadNotificationCount: data.unreadCount });
+    try {
+      const res = await fetch('/api/notifications', { credentials: 'include' });
+      if (!res.ok) return;
+      const data = await res.json();
+      set({ notifications: data.notifications, unreadNotificationCount: data.unreadCount });
+    } catch {
+      // Network error
+    }
   },
 
   markNotificationsRead: async (ids: string[]) => {
-    const res = await fetch('/api/notifications', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ notificationIds: ids }),
-    });
-    if (!res.ok) return;
-    const data = await res.json();
-    set((state) => ({
-      notifications: state.notifications.map((n) =>
-        ids.includes(n.id) ? { ...n, isRead: true } : n
-      ),
-      unreadNotificationCount: data.unreadCount,
-    }));
+    try {
+      const res = await fetch('/api/notifications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ notificationIds: ids }),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      set((state) => ({
+        notifications: state.notifications.map((n) =>
+          ids.includes(n.id) ? { ...n, isRead: true } : n
+        ),
+        unreadNotificationCount: data.unreadCount,
+      }));
+    } catch {
+      // Network error
+    }
   },
 
   markAllNotificationsRead: async () => {
-    const res = await fetch('/api/notifications', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ notificationIds: [] }),
-    });
-    if (!res.ok) return;
-    const data = await res.json();
-    set((state) => ({
-      notifications: state.notifications.map((n) => ({ ...n, isRead: true })),
-      unreadNotificationCount: data.unreadCount,
-    }));
+    try {
+      const res = await fetch('/api/notifications', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ notificationIds: [] }),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      set((state) => ({
+        notifications: state.notifications.map((n) => ({ ...n, isRead: true })),
+        unreadNotificationCount: data.unreadCount,
+      }));
+    } catch {
+      // Network error
+    }
   },
 
   openNotificationPopup: () => set({ notificationPopupOpen: true }),
@@ -320,91 +340,107 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
 
   fetchBoard: async (boardId: string) => {
     if (get()._moveInFlight > 0) return; // skip poll while move is in-flight
-    const res = await fetch(`/api/boards/${boardId}`, { credentials: 'include' });
-    if (!res.ok) return;
-    const data = await res.json(); // ApiBoardDetail
-    set((state) => ({
-      boards: [...state.boards.filter(b => b.id !== data.board.id), {
-        id: data.board.id,
-        name: data.board.name,
-        createdAt: data.board.createdAt,
-        githubRepo: data.board.githubRepo ?? null,
-      }],
-      columns: [...state.columns.filter(c => c.boardId !== boardId), ...data.columns.map((col: any) => ({
-        id: col.id,
-        boardId: col.boardId,
-        name: col.name,
-        position: col.position,
-        type: col.type,
-      }))],
-      cards: [...state.cards.filter(c => c.boardId !== boardId), ...data.cards.map((card: any) => ({
-        id: card.id,
-        columnId: card.columnId,
-        boardId: card.boardId,
-        position: card.position,
-        title: card.title,
-        description: card.description,
-        acceptanceCriteria: card.acceptanceCriteria,
-        role: card.role,
-        assignee: card.role, // derive from role
-        githubRepo: card.githubRepo,
-        githubBranch: card.githubBranch,
-        agentStatus: card.agentStatus,
-        currentAgentRunId: card.currentAgentRunId,
-        agentRuns: card.agentRuns.map((r: any) => ({
-          id: r.id,
-          cardId: r.cardId,
-          role: r.role,
-          status: r.status,
-          attempt: r.attempt,
-          startedAt: r.startedAt,
-          endedAt: r.endedAt,
-          output: r.output,
-          blockedReason: r.blockedReason,
-          retryAfterMs: r.retryAfterMs,
-          sessionId: r.sessionId ?? null,
-          error: r.error ?? null,
-        })),
-        requiresApproval: card.requiresApproval ?? false,
-        revisionContextNote: card.revisionContextNote,
-        approvedBy: card.approvedBy,
-        approvedAt: card.approvedAt,
-        createdAt: card.createdAt,
-        updatedAt: card.updatedAt,
-        movedToColumnAt: card.movedToColumnAt ?? card.createdAt,
-        maxAttempts: card.maxAttempts ?? 5,
-      }))],
-    }));
+    try {
+      const res = await fetch(`/api/boards/${boardId}`, { credentials: 'include' });
+      if (!res.ok) return;
+      const data = await res.json(); // ApiBoardDetail
+      set((state) => ({
+        boards: [...state.boards.filter(b => b.id !== data.board.id), {
+          id: data.board.id,
+          name: data.board.name,
+          createdAt: data.board.createdAt,
+          githubRepo: data.board.githubRepo ?? null,
+        }],
+        columns: [...state.columns.filter(c => c.boardId !== boardId), ...data.columns.map((col: any) => ({
+          id: col.id,
+          boardId: col.boardId,
+          name: col.name,
+          position: col.position,
+          type: col.type,
+        }))],
+        cards: [...state.cards.filter(c => c.boardId !== boardId), ...data.cards.map((card: any) => ({
+          id: card.id,
+          columnId: card.columnId,
+          boardId: card.boardId,
+          position: card.position,
+          title: card.title,
+          description: card.description,
+          acceptanceCriteria: card.acceptanceCriteria,
+          role: card.role,
+          assignee: card.role, // derive from role
+          githubRepo: card.githubRepo,
+          githubBranch: card.githubBranch,
+          agentStatus: card.agentStatus,
+          currentAgentRunId: card.currentAgentRunId,
+          agentRuns: card.agentRuns.map((r: any) => ({
+            id: r.id,
+            cardId: r.cardId,
+            role: r.role,
+            status: r.status,
+            attempt: r.attempt,
+            startedAt: r.startedAt,
+            endedAt: r.endedAt,
+            output: r.output,
+            blockedReason: r.blockedReason,
+            retryAfterMs: r.retryAfterMs,
+            sessionId: r.sessionId ?? null,
+            error: r.error ?? null,
+          })),
+          requiresApproval: card.requiresApproval ?? false,
+          revisionContextNote: card.revisionContextNote,
+          approvedBy: card.approvedBy,
+          approvedAt: card.approvedAt,
+          createdAt: card.createdAt,
+          updatedAt: card.updatedAt,
+          movedToColumnAt: card.movedToColumnAt ?? card.createdAt,
+          maxAttempts: card.maxAttempts ?? 5,
+        }))],
+      }));
+    } catch {
+      // Network error — silently ignore for polling
+    }
   },
 
   fetchBoards: async () => {
-    const res = await fetch('/api/boards', { credentials: 'include' });
-    if (!res.ok) return;
-    const data = await res.json();
-    set({ boards: data });
+    try {
+      const res = await fetch('/api/boards', { credentials: 'include' });
+      if (!res.ok) return;
+      const data = await res.json();
+      set({ boards: data });
+    } catch {
+      // Network error
+    }
   },
 
   createBoardApi: async (name: string, githubRepo?: string) => {
-    const res = await fetch('/api/boards', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ name, ...(githubRepo ? { githubRepo } : {}) }),
-    });
-    if (!res.ok) return null;
-    const board = await res.json();
-    set((state) => ({ boards: [board, ...state.boards] }));
-    return board.id;
+    try {
+      const res = await fetch('/api/boards', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ name, ...(githubRepo ? { githubRepo } : {}) }),
+      });
+      if (!res.ok) return null;
+      const board = await res.json();
+      set((state) => ({ boards: [board, ...state.boards] }));
+      return board.id;
+    } catch {
+      return null;
+    }
   },
 
   deleteBoardApi: async (id: string) => {
-    const res = await fetch(`/api/boards/${id}`, {
-      method: 'DELETE',
-      credentials: 'include',
-    });
-    if (!res.ok) return false;
-    get().deleteBoard(id);
-    return true;
+    try {
+      const res = await fetch(`/api/boards/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (!res.ok) return false;
+      get().deleteBoard(id);
+      return true;
+    } catch {
+      return false;
+    }
   },
 
   moveCardApi: async (cardId: string, columnId: string, position?: number) => {
@@ -424,6 +460,8 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
         movedToColumnAt: card.movedToColumnAt,
       });
       return true;
+    } catch {
+      return false;
     } finally {
       set((s) => ({ _moveInFlight: s._moveInFlight - 1 }));
     }
@@ -439,13 +477,17 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
     githubBranch?: string;
     requiresApproval?: boolean;
   }) => {
-    const res = await fetch(`/api/boards/${boardId}/cards`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) return null;
-    return res.json();
+    try {
+      const res = await fetch(`/api/boards/${boardId}/cards`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) return null;
+      return res.json();
+    } catch {
+      return null;
+    }
   },
 }));
