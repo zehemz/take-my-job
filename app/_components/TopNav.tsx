@@ -45,11 +45,36 @@ export default function TopNav({ boardId, showAttentionBreadcrumb }: Props) {
           </>
         )}
         <span className="text-zinc-700 mx-2 shrink-0">|</span>
-        <Link href="/agents" className="text-zinc-400 hover:text-zinc-100 transition-colors text-sm shrink-0">
+        <Link
+          href="/"
+          className={`shrink-0 text-sm transition-colors ${
+            pathname === '/'
+              ? 'text-zinc-100'
+              : 'text-zinc-400 hover:text-zinc-100'
+          }`}
+        >
+          Boards
+        </Link>
+        <span className="text-zinc-700 mx-1 shrink-0">·</span>
+        <Link
+          href="/agents"
+          className={`shrink-0 text-sm transition-colors ${
+            pathname.startsWith('/agents')
+              ? 'text-zinc-100'
+              : 'text-zinc-400 hover:text-zinc-100'
+          }`}
+        >
           Agents
         </Link>
         <span className="text-zinc-700 mx-1 shrink-0">·</span>
-        <Link href="/sessions" className="text-zinc-400 hover:text-zinc-100 transition-colors text-sm shrink-0">
+        <Link
+          href="/sessions"
+          className={`shrink-0 text-sm transition-colors ${
+            pathname.startsWith('/sessions')
+              ? 'text-zinc-100'
+              : 'text-zinc-400 hover:text-zinc-100'
+          }`}
+        >
           Sessions
         </Link>
         <span className="text-zinc-700 mx-1 shrink-0">·</span>
