@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path // \"\"' | { read -r f; echo \"$f\" | grep -q 'docs/features/' && printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PostToolUse\",\"additionalContext\":\"REMINDER: You just wrote/edited a file under docs/features/. Open docs/INDEX.md and update the feature row: add a new row if this feature is missing, or update its status emoji if it changed. Never skip this step.\"}}' || true; }",
+            "statusMessage": "Checking docs/INDEX.md sync..."
+          }
+        ]
+      }
+    ]
+  }
+}
