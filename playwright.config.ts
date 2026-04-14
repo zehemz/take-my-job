@@ -13,7 +13,7 @@ export default defineConfig({
   testDir: './e2e',
   fullyParallel: false,   // sequential — DB state must be predictable
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 2 : 0,
+  retries: process.env.CI ? 1 : 0,
   workers: 1,
   reporter: process.env.CI ? 'github' : 'html',
   globalSetup: './e2e/global-setup.ts',
