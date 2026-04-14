@@ -17,10 +17,66 @@ jobs:
         with:
           node-version: 22
 
-      - run: rm -f package-lock.json && npm install
+      - run: npm ci
 
       - name: Typecheck
         run: npx tsc --noEmit
 
-      - name: Tests
+      - name: Unit tests
         run: npm test
+
+  e2e:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: kobani
+          POSTGRES_PASSWORD: kobani
+          POSTGRES_DB: kobani
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U kobani"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=5
+
+    env:
+      DATABASE_URL: postgresql://kobani:kobani@localhost:5432/kobani
+      AUTH_SECRET: ci-test-secret-not-for-production
+      ANTHROPIC_API_KEY: sk-ant-fake-key-for-ci
+      DEV_AUTH_BYPASS: "false"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run migrations
+        run: npx prisma migrate deploy
+
+      - name: Build app
+        run: npm run build
+
+      - name: Run E2E tests
+        run: |
+          npm start &
+          for i in $(seq 1 30); do curl -sf http://localhost:3000 > /dev/null && break || sleep 1; done
+          npm run e2e
+
+      - name: Upload test report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
