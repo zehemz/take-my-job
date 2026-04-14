@@ -19,6 +19,8 @@ export default function BoardView({ boardId }: Props) {
 
   useEffect(() => {
     fetchBoard(boardId);
+    const interval = setInterval(() => fetchBoard(boardId), 5000);
+    return () => clearInterval(interval);
   }, [boardId, fetchBoard]);
 
   const board = boards.find((b) => b.id === boardId);

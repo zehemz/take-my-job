@@ -435,6 +435,15 @@ export default function CardDetailModal() {
     fetchCard(selectedCardId);
   }, [selectedCardId]);
 
+  // Re-fetch when store card updates (e.g. from board polling)
+  const storeUpdatedAt = storeCard?.updatedAt;
+  const apiUpdatedAt = apiCard?.updatedAt;
+  useEffect(() => {
+    if (selectedCardId && storeUpdatedAt && apiUpdatedAt && storeUpdatedAt > apiUpdatedAt) {
+      fetchCard(selectedCardId);
+    }
+  }, [selectedCardId, storeUpdatedAt, apiUpdatedAt]);
+
   // SSE connection when card is live
   useEffect(() => {
     const status = apiCard?.agentStatus ?? storeCard?.agentStatus;
