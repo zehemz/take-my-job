@@ -45,4 +45,4 @@ jobs:
             Post findings as inline review comments on the relevant lines.
             Use severity labels: 🔴 Important (bugs/security), 🟡 Nit (style/minor), ℹ️ Info (suggestions).
             Skip generated files and migration files.
-          claude_args: "--max-turns 5 --model claude-sonnet-4-6"
+          claude_args: "--max-turns 20 --model claude-sonnet-4-6"
