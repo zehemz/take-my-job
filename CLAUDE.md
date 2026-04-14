@@ -37,7 +37,16 @@ docs/
 
 - **Spec before code.** Before implementing any feature, check `docs/features/` for an existing PRD or TECH_SPEC. If none exists, create the spec first (or ask). Never implement reactively without a spec.
 - **E2E scenarios are mandatory.** Every new feature must include E2E scenarios added to `docs/features/e2e-testing/SCENARIOS.md`. This is part of the definition of done, not optional.
-- **Always work in a branch.** Never commit directly to `main`. For every fix or feature: create a branch (`git checkout -b <type>/<short-description>`), do the work there, then open a PR. This prevents collisions with teammates working on `main`.
+- **Always use git worktrees.** Never commit directly to `main` and never use `git checkout -b` in the main working directory — switching branches there causes commits to land on the wrong branch when the team has other work in flight. Instead:
+  ```bash
+  # Start every task with a new worktree
+  git worktree add ../take-my-job--<type>-<description> -b <type>/<description>
+  # Work entirely inside that directory, then push + open a PR
+  gh pr create ...
+  # Clean up after merge
+  git worktree remove ../take-my-job--<type>-<description>
+  ```
+  The main worktree stays on `main` at all times. Each feature/fix lives in its own isolated directory with no branch ambiguity.
 
 ---
 
