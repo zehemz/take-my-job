@@ -228,15 +228,19 @@ test.describe('Cards', () => {
 
       await page.getByText(card.title).first().click();
 
+      // Scope all modal interactions to the modal panel
+      const modal = page.locator('[data-testid="card-detail-modal"]');
+      await expect(modal).toBeVisible({ timeout: 5_000 });
+
       // Click the title in the modal to enter edit mode
-      const titleHeading = page.locator('h2').filter({ hasText: card.title });
+      const titleHeading = modal.locator('h2').filter({ hasText: card.title });
       await expect(titleHeading).toBeVisible({ timeout: 5_000 });
       await titleHeading.click();
 
       // Input field appears with Save and Cancel buttons
-      await expect(page.locator('input[placeholder="Card title"]')).toBeVisible();
-      await expect(page.getByRole('button', { name: 'Save' }).first()).toBeVisible();
-      await expect(page.getByText('Cancel').first()).toBeVisible();
+      await expect(modal.locator('input[placeholder="Card title"]')).toBeVisible();
+      await expect(modal.getByRole('button', { name: 'Save' }).first()).toBeVisible();
+      await expect(modal.getByRole('button', { name: 'Cancel' }).first()).toBeVisible();
     } finally {
       await api.deleteCard(card.id).catch(() => { /* already deleted */ });
     }
@@ -329,7 +333,7 @@ test.describe('Cards', () => {
     expect(res.status()).toBe(401);
   });
 
-  test('APPROVAL-004: PATCH /api/cards/:id/move with invalid transition (active → terminal) → 400', async ({ cookieHeader, request }) => {
+  test('APPROVAL-004: POST /api/cards/:id/move with invalid transition (active → terminal) → 400', async ({ cookieHeader, request }) => {
     const api = new KobaniApi(request, cookieHeader);
     const boards = await api.getBoards();
     if (boards.length === 0) { test.skip(true, 'No boards in DB'); return; }
@@ -355,7 +359,7 @@ test.describe('Cards', () => {
       await api.moveCard(card.id, { columnId: activeCol.id });
 
       // Attempt active → terminal (invalid)
-      const res = await request.patch(`/api/cards/${card.id}/move`, {
+      const res = await request.post(`/api/cards/${card.id}/move`, {
         headers: { cookie: cookieHeader, 'Content-Type': 'application/json' },
         data: { columnId: terminalCol.id },
       });
@@ -389,6 +393,44 @@ test.describe('Cards', () => {
     }
   });
 
+  test('APPROVAL-006: active → review blocked when agent has not completed (idle/failed card) → 400', async ({ cookieHeader, request }) => {
+    const api = new KobaniApi(request, cookieHeader);
+    const boards = await api.getBoards();
+    if (boards.length === 0) { test.skip(true, 'No boards in DB'); return; }
+
+    const { board, columns } = await api.getBoard(boards[0].id);
+    const inactiveCol = columns.find((c) => c.type === 'inactive');
+    const activeCol   = columns.find((c) => c.type === 'active');
+    const reviewCol   = columns.find((c) => c.type === 'review');
+
+    if (!inactiveCol || !activeCol || !reviewCol) {
+      test.skip(true, 'Board missing required columns');
+      return;
+    }
+
+    const card = await api.createCard(board.id, {
+      title: `E2E Approval Gate ${Date.now()}`,
+      columnId: inactiveCol.id,
+      role: 'backend-engineer',
+    });
+
+    try {
+      // Move inactive → active (valid, no agent run yet = idle status)
+      await api.moveCard(card.id, { columnId: activeCol.id });
+
+      // Attempt active → review without agent having completed → must be 400
+      const res = await request.post(`/api/cards/${card.id}/move`, {
+        headers: { Cookie: cookieHeader, 'Content-Type': 'application/json' },
+        data: { columnId: reviewCol.id },
+      });
+      expect(res.status()).toBe(400);
+      const body = await res.json();
+      expect(body.error).toMatch(/criteria/i);
+    } finally {
+      await api.deleteCard(card.id).catch(() => {});
+    }
+  });
+
   test('E2E-CARD-013: save updates title, cancel discards changes', async ({ authedPage: page, cookieHeader, request }) => {
     const api = new KobaniApi(request, cookieHeader);
     const boards = await api.getBoards();
@@ -397,7 +439,7 @@ test.describe('Cards', () => {
     const { board, columns } = await api.getBoard(boards[0].id);
     if (columns.length === 0) { test.skip(true, 'Board has no columns'); return; }
 
-    const originalTitle = `E2E Edit Save ${Date.now()}`;
+    const originalTitle = `E2E Edit ${Date.now()}`;
     const card = await api.createCard(board.id, {
       title: originalTitle,
       columnId: columns[0].id,
@@ -410,31 +452,35 @@ test.describe('Cards', () => {
 
       await page.getByText(originalTitle).first().click();
 
+      // Scope all modal interactions to the modal panel
+      const modal = page.locator('[data-testid="card-detail-modal"]');
+      await expect(modal).toBeVisible({ timeout: 5_000 });
+
       // Enter edit mode on title
-      const titleHeading = page.locator('h2').filter({ hasText: originalTitle });
+      const titleHeading = modal.locator('h2').filter({ hasText: originalTitle });
       await expect(titleHeading).toBeVisible({ timeout: 5_000 });
       await titleHeading.click();
 
-      const titleInput = page.locator('input[placeholder="Card title"]');
+      const titleInput = modal.locator('input[placeholder="Card title"]');
       await expect(titleInput).toBeVisible();
 
       // Test cancel first: type something then cancel
       const discardedTitle = `Discarded ${Date.now()}`;
       await titleInput.fill(discardedTitle);
-      await page.getByText('Cancel').first().click();
+      await modal.getByRole('button', { name: 'Cancel' }).first().click();
 
       // Title reverts to original
-      await expect(page.locator('h2').filter({ hasText: originalTitle })).toBeVisible();
-      await expect(page.getByText(discardedTitle)).not.toBeVisible();
+      await expect(modal.locator('h2').filter({ hasText: originalTitle })).toBeVisible();
+      await expect(modal.getByText(discardedTitle)).not.toBeVisible();
 
       // Now test save: enter edit mode again, save a new title
-      await page.locator('h2').filter({ hasText: originalTitle }).click();
-      const newTitle = `Updated Title ${Date.now()}`;
-      await page.locator('input[placeholder="Card title"]').fill(newTitle);
-      await page.getByRole('button', { name: 'Save' }).first().click();
+      await modal.locator('h2').filter({ hasText: originalTitle }).click();
+      const newTitle = `Updated ${Date.now()}`;
+      await modal.locator('input[placeholder="Card title"]').fill(newTitle);
+      await modal.getByRole('button', { name: 'Save' }).first().click();
 
       // Title updates in the modal
-      await expect(page.locator('h2').filter({ hasText: newTitle })).toBeVisible({ timeout: 5_000 });
+      await expect(modal.locator('h2').filter({ hasText: newTitle })).toBeVisible({ timeout: 5_000 });
 
       // Verify via API that the change persisted
       const updated = await api.getCard(card.id);

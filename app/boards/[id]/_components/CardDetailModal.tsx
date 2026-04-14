@@ -676,6 +676,7 @@ export default function CardDetailModal() {
       onClick={closeCardDetail}
     >
       <div
+        data-testid="card-detail-modal"
         className="bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl w-full mx-3 max-h-[95vh] md:max-w-2xl md:mx-auto md:max-h-[90vh] overflow-y-auto flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
