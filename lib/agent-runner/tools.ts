@@ -1,8 +1,9 @@
 import type { Card, Column, AgentRun, UpdateCardInput } from "../types";
 import { AgentRunStatus } from "../types";
-import type { IDbQueries } from "../interfaces";
+import type { IDbQueries, IAnthropicClient } from "../interfaces";
 import { renderCliCommand } from "../config";
 import { promoteUnlockedCards } from "../auto-promote";
+import { run as runAgent } from "../agent-runner";
 
 // ---------------------------------------------------------------------------
 // Context
@@ -13,6 +14,7 @@ export interface UpdateCardContext {
   run: AgentRun;
   boardColumns: Column[];
   db: IDbQueries;
+  anthropicClient: IAnthropicClient;
   sessionId: string;
 }
 
@@ -34,7 +36,7 @@ export async function handleUpdateCard(
   input: UpdateCardInput,
   ctx: UpdateCardContext
 ): Promise<UpdateCardResult> {
-  const { card, run, boardColumns, db, sessionId } = ctx;
+  const { card, run, boardColumns, db, anthropicClient, sessionId } = ctx;
 
   switch (input.status) {
     // -----------------------------------------------------------------------
@@ -118,8 +120,20 @@ export async function handleUpdateCard(
         payload: { status: AgentRunStatus.completed },
       });
 
-      // Auto-promote cards whose dependencies are now satisfied
-      promoteUnlockedCards(card.boardId).catch((err) =>
+      // Auto-promote cards whose dependencies are now satisfied, then dispatch agents
+      promoteUnlockedCards(card.boardId).then(async (promotedIds) => {
+        for (const promotedId of promotedIds) {
+          const existing = await db.getActiveRunForCard(promotedId);
+          if (existing) continue;
+          const promoted = await db.getCard(promotedId);
+          if (!promoted) continue;
+          const role = promoted.role ?? 'backend-engineer';
+          const agentRun = await db.createAgentRun(promotedId, promoted.columnId, role, 1);
+          runAgent(promoted, agentRun, { db, anthropicClient }).catch((err) =>
+            console.error('[auto-promote] agent runner error:', err),
+          );
+        }
+      }).catch((err) =>
         console.error('[auto-promote] error after card completion:', err)
       );
 

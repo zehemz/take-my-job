@@ -101,6 +101,7 @@ export async function handleEvent(
           run,
           boardColumns,
           db,
+          anthropicClient,
           sessionId,
         });
 
