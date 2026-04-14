@@ -30,10 +30,10 @@ async function main() {
   // ── Default agent configs ─────────────────────────────────────────────────
   // Ensures the roles used in cards and E2E tests exist in the AgentConfig table.
   const defaultRoles = [
-    { role: "backend-engineer", anthropicAgentId: "placeholder", anthropicAgentVersion: "1", anthropicEnvironmentId: "default" },
-    { role: "qa-engineer",      anthropicAgentId: "placeholder", anthropicAgentVersion: "1", anthropicEnvironmentId: "default" },
-    { role: "content-writer",   anthropicAgentId: "placeholder", anthropicAgentVersion: "1", anthropicEnvironmentId: "default" },
-    { role: "product-spec-writer", anthropicAgentId: "placeholder", anthropicAgentVersion: "1", anthropicEnvironmentId: "default" },
+    { role: "backend-engineer", anthropicAgentId: "placeholder", anthropicAgentVersion: "1" },
+    { role: "qa-engineer",      anthropicAgentId: "placeholder", anthropicAgentVersion: "1" },
+    { role: "content-writer",   anthropicAgentId: "placeholder", anthropicAgentVersion: "1" },
+    { role: "product-spec-writer", anthropicAgentId: "placeholder", anthropicAgentVersion: "1" },
   ];
   for (const cfg of defaultRoles) {
     const existing = await prisma.agentConfig.findUnique({ where: { role: cfg.role } });

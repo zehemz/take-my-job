@@ -457,7 +457,7 @@ export default function CardDetailModal() {
   const [roleDraft, setRoleDraft] = useState('');
   const [repoDraft, setRepoDraft] = useState('');
   const [branchDraft, setBranchDraft] = useState('');
-  const [envDraft, setEnvDraft] = useState<string | null>(null);
+  const [envDraft, setEnvDraft] = useState('');
 
   const [savingField, setSavingField] = useState<EditingField>(null);
 
@@ -642,7 +642,7 @@ export default function CardDetailModal() {
       setCriteriaDraft(card.acceptanceCriteria.map((c) => c.text).join('\n'));
     }
     if (field === 'role') setRoleDraft(card.role);
-    if (field === 'env') setEnvDraft(card.environmentId ?? null);
+    if (field === 'env') setEnvDraft(card.environmentId);
     if (field === 'githubRepo') setRepoDraft(card.githubRepo ?? '');
     if (field === 'githubBranch') setBranchDraft(card.githubBranch ?? '');
   }
@@ -702,7 +702,7 @@ export default function CardDetailModal() {
   }
 
   function saveEnv() {
-    saveField('env', { environmentId: envDraft || null });
+    saveField('env', { environmentId: envDraft });
   }
 
   // ── Delete helpers ─────────────────────────────────────────────────────────
@@ -840,11 +840,12 @@ export default function CardDetailModal() {
             {editingField === 'env' ? (
               <span className={`flex items-center gap-1 ${isSaving('env') ? 'opacity-60 pointer-events-none' : ''}`}>
                 <select
+                  required
                   className="bg-zinc-800 border border-zinc-700 text-zinc-100 text-xs rounded-md px-2 py-1 outline-none focus:border-indigo-500 cursor-pointer"
-                  value={envDraft ?? ''}
-                  onChange={(e) => setEnvDraft(e.target.value || null)}
+                  value={envDraft}
+                  onChange={(e) => setEnvDraft(e.target.value)}
                 >
-                  <option value="">Default (from role)</option>
+                  <option value="" disabled>Select environment…</option>
                   {(environments ?? []).map((env) => (
                     <option key={env.id} value={env.id}>{env.name}</option>
                   ))}
@@ -855,21 +856,13 @@ export default function CardDetailModal() {
                   <span className="text-xs text-red-400">{saveError}</span>
                 )}
               </span>
-            ) : card.environmentId ? (
+            ) : (
               <span
                 className={`text-indigo-400 bg-zinc-800 rounded px-1.5 py-0.5 font-mono transition-colors ${isEditable ? 'cursor-pointer hover:bg-zinc-700' : ''}`}
                 title={isEditable ? 'Click to edit environment' : card.environmentId}
                 onClick={() => openEdit('env')}
               >
                 {envName ?? card.environmentId}{isEditable ? ' \u270E' : ''}
-              </span>
-            ) : (
-              <span
-                className={`text-zinc-600 italic transition-colors ${isEditable ? 'cursor-pointer hover:text-zinc-400' : ''}`}
-                onClick={() => openEdit('env')}
-                title={isEditable ? 'Click to set environment' : undefined}
-              >
-                default (from role){isEditable ? ' \u270E' : ''}
               </span>
             )}
           </span>

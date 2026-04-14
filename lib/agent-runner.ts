@@ -61,13 +61,10 @@ export async function run(
         ]
       : [];
 
-    // Card-level env > role-level env > board-level env
-    const environmentId = card.environmentId || agentConfig.anthropicEnvironmentId || board?.anthropicEnvironmentId || null;
-
     const session = await anthropicClient.createSession({
       agentId: agentConfig.anthropicAgentId,
       agentVersion: agentConfig.anthropicAgentVersion,
-      environmentId,
+      environmentId: card.environmentId,
       title: `${agentRun.role} — ${card.title} (attempt ${agentRun.attempt})`,
       resources,
     });

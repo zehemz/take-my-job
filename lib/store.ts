@@ -53,7 +53,7 @@ interface KobaniState {
   // Async API actions
   fetchBoard: (boardId: string) => Promise<void>;
   fetchBoards: () => Promise<void>;
-  createBoardApi: (name: string, workspacePath?: string, environmentId?: string, autoMode?: boolean) => Promise<string | null>; // returns new board id
+  createBoardApi: (name: string, workspacePath?: string, autoMode?: boolean) => Promise<string | null>; // returns new board id
   toggleAutoMode: (boardId: string, autoMode: boolean) => Promise<boolean>;
   deleteBoardApi: (id: string) => Promise<boolean>;
   moveCardApi: (cardId: string, columnId: string, position?: number) => Promise<boolean>;
@@ -66,7 +66,7 @@ interface KobaniState {
     githubRepo?: string;
     githubBranch?: string;
     requiresApproval?: boolean;
-    environmentId?: string;
+    environmentId: string;
     dependsOn?: string[];
   }) => Promise<unknown>;
 }
@@ -157,7 +157,7 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
         assignee: '@lucas',
         githubRepo: null,
         githubBranch: null,
-        environmentId: null,
+        environmentId: '',
         agentStatus: 'idle',
         currentAgentRunId: null,
         agentRuns: [],
@@ -356,7 +356,7 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
         assignee: card.role, // derive from role
         githubRepo: card.githubRepo,
         githubBranch: card.githubBranch,
-        environmentId: card.environmentId ?? null,
+        environmentId: card.environmentId,
         agentStatus: card.agentStatus,
         currentAgentRunId: card.currentAgentRunId,
         agentRuns: card.agentRuns.map((r: any) => ({
@@ -394,7 +394,7 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
     set({ boards: data });
   },
 
-  createBoardApi: async (name: string, workspacePath?: string, environmentId?: string, autoMode?: boolean) => {
+  createBoardApi: async (name: string, workspacePath?: string, autoMode?: boolean) => {
     const res = await fetch('/api/boards', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -402,7 +402,6 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
       body: JSON.stringify({
         name,
         ...(workspacePath ? { workspacePath } : {}),
-        ...(environmentId ? { environmentId } : {}),
         ...(autoMode !== undefined ? { autoMode } : {}),
       }),
     });
@@ -475,7 +474,7 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
     githubRepo?: string;
     githubBranch?: string;
     requiresApproval?: boolean;
-    environmentId?: string;
+    environmentId: string;
   }) => {
     const res = await fetch(`/api/boards/${boardId}/cards`, {
       method: 'POST',

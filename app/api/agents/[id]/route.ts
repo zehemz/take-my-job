@@ -197,7 +197,6 @@ export async function PATCH(
           role: body.role,
           anthropicAgentId: id,
           anthropicAgentVersion: String(updatedAgent.version ?? ''),
-          anthropicEnvironmentId: '',
         },
       })
     }

@@ -7,7 +7,7 @@ import { config } from '@/lib/config';
 // Eagerly boot the orchestrator when boards are listed (unsticks orphaned tasks)
 import '@/lib/orchestrator-instance';
 import { slugify, ensureBoardFolder } from '@/lib/workspace';
-import { checkCardAccess } from '@/lib/rbac';
+
 
 export async function GET() {
   const session = await auth();
@@ -52,23 +52,11 @@ export async function POST(req: Request) {
   }
 
   const autoMode = body.autoMode ?? false;
-  const environmentId = body.environmentId?.trim() || undefined;
-
-  if (environmentId) {
-    const hasAccess = await checkCardAccess(session.user.githubUsername, null, environmentId);
-    if (!hasAccess) {
-      return NextResponse.json(
-        { error: 'Forbidden: no access to this environment' },
-        { status: 403 }
-      );
-    }
-  }
 
   const board = await prisma.board.create({
     data: {
       name,
       autoMode,
-      ...(environmentId ? { anthropicEnvironmentId: environmentId } : {}),
       ...(workspacePath ? { githubRepo: config.WORKSPACE_REPO_URL, workspacePath } : {}),
       columns: {
         create: [

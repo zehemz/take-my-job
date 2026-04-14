@@ -65,31 +65,12 @@ export async function resolvePermissions(
 }
 
 /**
- * Resolve the environment ID for a card.
- * Card-level override takes priority; falls back to the role's AgentConfig.
- */
-export async function resolveCardEnvironment(
-  agentRole: string | null,
-  cardEnvironmentId?: string | null,
-): Promise<string | null> {
-  if (cardEnvironmentId) return cardEnvironmentId;
-  if (!agentRole) return null;
-
-  const config = await prisma.agentConfig.findUnique({
-    where: { role: agentRole },
-    select: { anthropicEnvironmentId: true },
-  });
-
-  return config?.anthropicEnvironmentId ?? null;
-}
-
-/**
  * Check whether a user has access to a specific agent role + environment.
  */
 export async function checkCardAccess(
   githubUsername: string | null | undefined,
   agentRole: string | null,
-  environmentId: string | null
+  environmentId: string
 ): Promise<boolean> {
   const perms = await resolvePermissions(githubUsername);
   if (!perms) return false;
@@ -99,7 +80,7 @@ export async function checkCardAccess(
     if (!perms.allowedAgentRoles.has(agentRole)) return false;
   }
 
-  if (environmentId && perms.allowedEnvironments !== null) {
+  if (perms.allowedEnvironments !== null) {
     if (!perms.allowedEnvironments.has(environmentId)) return false;
   }
 
@@ -108,14 +89,12 @@ export async function checkCardAccess(
 
 /**
  * High-level guard: given a card, check if the user has access.
- * Card-level environment override takes priority over the role default.
  */
 export async function guardCardAccess(
   githubUsername: string | null | undefined,
-  card: { role: string | null; environmentId?: string | null }
+  card: { role: string | null; environmentId: string }
 ): Promise<boolean> {
-  const environmentId = await resolveCardEnvironment(card.role, card.environmentId);
-  return checkCardAccess(githubUsername, card.role, environmentId);
+  return checkCardAccess(githubUsername, card.role, card.environmentId);
 }
 
 /**
@@ -124,7 +103,7 @@ export async function guardCardAccess(
  */
 export async function requireCardAccess(
   username: string | null | undefined,
-  card: { role: string | null },
+  card: { role: string | null; environmentId: string },
 ): Promise<NextResponse | null> {
   const hasAccess = await guardCardAccess(username, card);
   if (!hasAccess) {

@@ -3,7 +3,7 @@ import { prisma } from '@/lib/db';
 import { mapBoardSummary, mapColumn, mapAgentRun, mapCard, deriveCardAgentStatus } from '@/lib/api-mappers';
 import { devAuth as auth } from '@/lib/dev-auth';
 import { reconcileNotifications } from '@/lib/notifications';
-import { resolvePermissions, resolveCardEnvironment } from '@/lib/rbac';
+import { resolvePermissions } from '@/lib/rbac';
 // Eagerly boot the orchestrator when any board route is hit (needed for local dev)
 import '@/lib/orchestrator-instance';
 
@@ -85,24 +85,13 @@ export async function GET(
   // Resolve RBAC permissions for the current user
   const perms = await resolvePermissions(session.user.githubUsername);
 
-  // Build a cache of role → environmentId to avoid repeated DB lookups
-  const uniqueRoles = [...new Set(cards.map((c) => c.role).filter(Boolean))] as string[];
-  const envByRole = new Map<string, string | null>();
-  await Promise.all(
-    uniqueRoles.map(async (role) => {
-      envByRole.set(role, await resolveCardEnvironment(role));
-    }),
-  );
-
-  function canUserInteract(card: { role: string | null; environmentId?: string | null }): boolean {
+  function canUserInteract(card: { role: string | null; environmentId: string }): boolean {
     if (!perms) return false;
     if (perms.isAdmin) return true;
     if (!card.role) return true; // cards with no role are accessible to all
 
     const roleOk = perms.allowedAgentRoles === null || perms.allowedAgentRoles.has(card.role);
-    // Card-level environment override takes priority over the role default
-    const envId = card.environmentId ?? envByRole.get(card.role) ?? null;
-    const envOk = !envId || perms.allowedEnvironments === null || perms.allowedEnvironments.has(envId);
+    const envOk = perms.allowedEnvironments === null || perms.allowedEnvironments.has(card.environmentId);
     return roleOk && envOk;
   }
 

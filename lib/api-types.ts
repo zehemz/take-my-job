@@ -15,7 +15,6 @@ export interface ApiBoardSummary {
   name: string;
   githubRepo: string | null;
   workspacePath: string | null;
-  environmentId: string | null;
   autoMode: boolean;
   createdAt: string;
   columnCount: number;
@@ -69,8 +68,8 @@ export interface ApiCard {
   role: AgentRole;
   githubRepo: string | null;
   githubBranch: string | null;
-  /** Optional per-card environment override. Null = use role default. */
-  environmentId: string | null;
+  /** Anthropic environment this card's agent runs in. */
+  environmentId: string;
   /** Derived from the most recent AgentRun for this card. */
   agentStatus: AgentStatus;
   currentAgentRunId: string | null;
@@ -100,7 +99,6 @@ export interface ApiBoardDetail {
 export interface CreateBoardRequest {
   name: string;
   workspacePath?: string;
-  environmentId?: string;
   autoMode?: boolean;
 }
 
@@ -114,8 +112,8 @@ export interface CreateCardRequest {
   githubRepo?: string;
   githubBranch?: string;
   requiresApproval?: boolean;
-  /** Optional per-card environment override. Omit or null to use role default. */
-  environmentId?: string;
+  /** Anthropic environment for this card's agent. */
+  environmentId: string;
   /** Card IDs this card depends on. Card won't auto-promote until all are done. */
   dependsOn?: string[];
 }
@@ -131,8 +129,8 @@ export interface UpdateCardRequest {
   role?: AgentRole;
   githubRepo?: string;
   githubBranch?: string;
-  /** Per-card environment override. Null clears the override (reverts to role default). */
-  environmentId?: string | null;
+  /** Anthropic environment for this card's agent. */
+  environmentId?: string;
   revisionContextNote?: string;
   approvedBy?: string;
 }
@@ -168,7 +166,6 @@ export interface AgentConfigItem {
   role: string;
   anthropicAgentId: string;
   anthropicAgentVersion: string;
-  anthropicEnvironmentId: string | null;
   createdAt: string; // ISO-8601
 }
 

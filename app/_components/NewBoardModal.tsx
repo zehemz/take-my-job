@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useKobaniStore } from '@/lib/store';
 import type { CardDraft } from '@/app/api/projects/parse/route';
 import type { EnvironmentRow } from '@/lib/api-types';
-import { useRoles, roleLabel, roleColor } from '@/lib/useRoles';
+import { useRoles, roleLabel } from '@/lib/useRoles';
 
 interface Props {
   onClose: () => void;
@@ -24,7 +24,6 @@ export default function NewBoardModal({ onClose }: Props) {
   const [step, setStep] = useState<Step>('input');
   const [name, setName] = useState('');
   const [workspacePath, setWorkspacePath] = useState('');
-  const [environmentId, setEnvironmentId] = useState('');
   const [environments, setEnvironments] = useState<EnvironmentRow[]>([]);
   const [envLoading, setEnvLoading] = useState(true);
   const [autoMode, setAutoMode] = useState(false);
@@ -50,7 +49,7 @@ export default function NewBoardModal({ onClose }: Props) {
       setLoading(true);
       setError(null);
       try {
-        const id = await createBoardApi(name.trim(), workspacePath.trim() || undefined, environmentId || undefined, autoMode);
+        const id = await createBoardApi(name.trim(), workspacePath.trim() || undefined, autoMode);
         if (id) router.push(`/boards/${id}`);
         onClose();
       } catch (err) {
@@ -85,7 +84,7 @@ export default function NewBoardModal({ onClose }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const boardId = await createBoardApi(name.trim(), workspacePath.trim() || undefined, environmentId || undefined, autoMode);
+      const boardId = await createBoardApi(name.trim(), workspacePath.trim() || undefined, autoMode);
       if (!boardId) throw new Error('Failed to create board');
 
       await fetchBoard(boardId);
@@ -101,8 +100,6 @@ export default function NewBoardModal({ onClose }: Props) {
           .filter((idx: number) => idx >= 0 && idx < createdCardIds.length)
           .map((idx: number) => createdCardIds[idx]);
 
-        // Per-card env takes priority, then board-level, then nothing
-        const cardEnvId = draft.environmentId || environmentId || undefined;
         const result = await createCardApi(boardId, {
           title: draft.title,
           columnId: backlogCol.id,
@@ -114,7 +111,7 @@ export default function NewBoardModal({ onClose }: Props) {
             passed: null,
             evidence: null,
           })),
-          ...(cardEnvId ? { environmentId: cardEnvId } : {}),
+          environmentId: draft.environmentId || environments[0]?.id || '',
           ...(dependsOn.length > 0 ? { dependsOn } : {}),
         });
         createdCardIds.push((result as { id: string }).id);
@@ -196,34 +193,6 @@ export default function NewBoardModal({ onClose }: Props) {
               />
               <p className="text-xs text-zinc-600">
                 Folder path in the workspace repo. Auto-generated from name if left blank.
-              </p>
-            </div>
-
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-                Environment <span className="text-zinc-600 font-normal normal-case">(optional)</span>
-              </label>
-              {envLoading ? (
-                <div className="flex items-center gap-2 px-3 py-2 bg-zinc-950 border border-zinc-700 rounded-lg">
-                  <span className="inline-block w-3.5 h-3.5 border-2 border-zinc-600 border-t-zinc-300 rounded-full animate-spin shrink-0" />
-                  <span className="text-sm text-zinc-500">Loading environments…</span>
-                </div>
-              ) : (
-                <select
-                  value={environmentId}
-                  onChange={(e) => setEnvironmentId(e.target.value)}
-                  className="bg-zinc-950 border border-zinc-700 focus:border-indigo-500 rounded-lg px-3 py-2 text-sm text-zinc-100 outline-none cursor-pointer"
-                >
-                  <option value="">— No environment —</option>
-                  {environments.map((env) => (
-                    <option key={env.id} value={env.id}>
-                      {env.name}
-                    </option>
-                  ))}
-                </select>
-              )}
-              <p className="text-xs text-zinc-600">
-                Anthropic environment agents on this board will run in.
               </p>
             </div>
 
@@ -337,14 +306,15 @@ export default function NewBoardModal({ onClose }: Props) {
                     {envLoading ? (
                       <span className="text-xs text-zinc-600">Loading...</span>
                     ) : !environments || environments.length === 0 ? (
-                      <span className="text-xs text-zinc-600">{environmentId ? (environments ?? []).find((e) => e.id === environmentId)?.name ?? 'Board default' : 'Default (from role)'}</span>
+                      <span className="text-xs text-zinc-600">{draft.environmentId || 'Not set'}</span>
                     ) : (
                       <select
-                        value={draft.environmentId ?? environmentId ?? ''}
-                        onChange={(e) => updateDraft(i, { environmentId: e.target.value || null })}
+                        required
+                        value={draft.environmentId ?? ''}
+                        onChange={(e) => updateDraft(i, { environmentId: e.target.value })}
                         className="text-xs bg-zinc-900 border border-zinc-700 rounded px-1.5 py-0.5 text-zinc-200 outline-none cursor-pointer"
                       >
-                        <option value="">Default (from role)</option>
+                        <option value="" disabled>Select environment…</option>
                         {environments.map((env) => (
                           <option key={env.id} value={env.id}>
                             {env.name}

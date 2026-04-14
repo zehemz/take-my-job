@@ -3,6 +3,8 @@ import { KobaniApi } from './helpers/api';
 import type { ApiCard } from '../lib/api-types';
 import { prisma } from '../lib/db';
 
+const TEST_ENV_ID = 'test-env';
+
 /**
  * Card flows — E2E-CARD-*
  * Tests cover creation, detail view, and move via the API.
@@ -39,25 +41,38 @@ test.describe('Cards', () => {
       return;
     }
 
-    await page.goto(`/boards/${board.id}`);
-    await expect(page.locator('[data-testid="column"]').first()).toBeVisible({ timeout: 10_000 });
+    // Create a dedicated environment so the dropdown is never empty
+    const testEnv = await api.createEnvironment({ name: `E2E Card Env ${Date.now()}` });
 
-    // Click Add card in first column
-    await page.locator('[data-testid="add-card-button"]').first().click();
-    await expect(page.locator('[data-testid="new-card-modal"]')).toBeVisible();
+    try {
+      await page.goto(`/boards/${board.id}`);
+      await expect(page.locator('[data-testid="column"]').first()).toBeVisible({ timeout: 10_000 });
 
-    const cardTitle = `E2E Test Card ${Date.now()}`;
-    await page.locator('[data-testid="new-card-title-input"]').fill(cardTitle);
-    await page.locator('[data-testid="new-card-submit"]').click();
+      // Click Add card in first column
+      await page.locator('[data-testid="add-card-button"]').first().click();
+      await expect(page.locator('[data-testid="new-card-modal"]')).toBeVisible();
 
-    // Modal closes and card appears
-    await expect(page.locator('[data-testid="new-card-modal"]')).not.toBeVisible({ timeout: 5_000 });
-    await expect(page.getByText(cardTitle)).toBeVisible({ timeout: 10_000 });
+      const cardTitle = `E2E Test Card ${Date.now()}`;
+      await page.locator('[data-testid="new-card-title-input"]').fill(cardTitle);
 
-    // Cleanup: find and delete the created card
-    const { cards } = await api.getBoard(board.id);
-    const created = cards.find((c: ApiCard) => c.title === cardTitle);
-    if (created) await api.deleteCard(created.id);
+      // Environment is required — wait for options to load, then select our test env
+      const envSelect = page.locator('[data-testid="new-card-modal"] select').last();
+      await expect(envSelect.locator(`option[value="${testEnv.id}"]`)).toBeAttached({ timeout: 10_000 });
+      await envSelect.selectOption(testEnv.id);
+
+      await page.locator('[data-testid="new-card-submit"]').click();
+
+      // Modal closes and card appears
+      await expect(page.locator('[data-testid="new-card-modal"]')).not.toBeVisible({ timeout: 5_000 });
+      await expect(page.getByText(cardTitle)).toBeVisible({ timeout: 10_000 });
+
+      // Cleanup: find and delete the created card
+      const { cards } = await api.getBoard(board.id);
+      const created = cards.find((c: ApiCard) => c.title === cardTitle);
+      if (created) await api.deleteCard(created.id);
+    } finally {
+      await api.deleteEnvironment(testEnv.id).catch(() => {});
+    }
   });
 
   test('E2E-CARD-003: move card via API and verify new column', async ({ cookieHeader, request }) => {
@@ -81,6 +96,7 @@ test.describe('Cards', () => {
       title: `E2E Move Test ${Date.now()}`,
       columnId: columns[0].id,
       role: 'backend-engineer',
+      environmentId: TEST_ENV_ID,
     });
 
     expect(card.columnId).toBe(columns[0].id);
@@ -121,6 +137,7 @@ test.describe('Cards', () => {
       title: `E2E Delete Visible ${Date.now()}`,
       columnId: columns[0].id,
       role: 'backend-engineer',
+      environmentId: TEST_ENV_ID,
     });
 
     try {
@@ -149,6 +166,7 @@ test.describe('Cards', () => {
       title: `E2E Delete Confirm ${Date.now()}`,
       columnId: columns[0].id,
       role: 'backend-engineer',
+      environmentId: TEST_ENV_ID,
     });
 
     try {
@@ -185,6 +203,7 @@ test.describe('Cards', () => {
       title: `E2E Delete Cancel ${Date.now()}`,
       columnId: columns[0].id,
       role: 'backend-engineer',
+      environmentId: TEST_ENV_ID,
     });
 
     try {
@@ -220,6 +239,7 @@ test.describe('Cards', () => {
       title: `E2E Edit Title ${Date.now()}`,
       columnId: columns[0].id,
       role: 'backend-engineer',
+      environmentId: TEST_ENV_ID,
     });
 
     try {
@@ -263,6 +283,7 @@ test.describe('Cards', () => {
       title: `E2E Retry No Runs ${Date.now()}`,
       columnId: columns[0].id,
       role: 'backend-engineer',
+      environmentId: TEST_ENV_ID,
     });
 
     try {
@@ -314,6 +335,7 @@ test.describe('Cards', () => {
       title: `E2E Approve Not Review ${Date.now()}`,
       columnId: inactiveCol.id,
       role: 'backend-engineer',
+      environmentId: TEST_ENV_ID,
     });
 
     try {
@@ -352,6 +374,7 @@ test.describe('Cards', () => {
       title: `E2E Invalid Transition ${Date.now()}`,
       columnId: inactiveCol.id,
       role: 'backend-engineer',
+      environmentId: TEST_ENV_ID,
     });
 
     try {
@@ -382,6 +405,7 @@ test.describe('Cards', () => {
       title: `E2E Requires Approval ${Date.now()}`,
       columnId: inactiveCol.id,
       role: 'backend-engineer',
+      environmentId: TEST_ENV_ID,
       requiresApproval: true,
     });
 
@@ -412,6 +436,7 @@ test.describe('Cards', () => {
       title: `E2E Approval Gate ${Date.now()}`,
       columnId: inactiveCol.id,
       role: 'backend-engineer',
+      environmentId: TEST_ENV_ID,
     });
 
     try {
@@ -444,6 +469,7 @@ test.describe('Cards', () => {
       title: originalTitle,
       columnId: columns[0].id,
       role: 'backend-engineer',
+      environmentId: TEST_ENV_ID,
     });
 
     try {
@@ -502,6 +528,7 @@ test.describe('Cards', () => {
       title: `E2E Delete With Run ${Date.now()}`,
       columnId: columns[0].id,
       role: 'backend-engineer',
+      environmentId: TEST_ENV_ID,
     });
 
     // Seed an agent run so the FK constraint is triggered on delete

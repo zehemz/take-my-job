@@ -85,7 +85,6 @@ export function mapBoardSummary(board: {
   name: string;
   githubRepo?: string | null;
   workspacePath?: string | null;
-  anthropicEnvironmentId?: string | null;
   autoMode?: boolean;
   createdAt: Date;
   _count?: { columns: number; cards: number };
@@ -95,7 +94,6 @@ export function mapBoardSummary(board: {
     name: board.name,
     githubRepo: board.githubRepo ?? null,
     workspacePath: board.workspacePath ?? null,
-    environmentId: board.anthropicEnvironmentId ?? null,
     autoMode: board.autoMode ?? false,
     createdAt: board.createdAt.toISOString(),
     columnCount: board._count?.columns ?? 0,
@@ -173,7 +171,7 @@ export function mapCard(
     role: string | null;
     githubRepoUrl: string | null;
     githubBranch: string | null;
-    environmentId?: string | null;
+    environmentId: string;
     requiresApproval: boolean;
     movedToColumnAt: Date | null;
     revisionContextNote: string | null;
@@ -211,7 +209,7 @@ export function mapCard(
     role: (card.role ?? '') as AgentRole,
     githubRepo: card.githubRepoUrl,
     githubBranch: card.githubBranch,
-    environmentId: card.environmentId ?? null,
+    environmentId: card.environmentId,
     requiresApproval: card.requiresApproval,
     agentStatus: effectiveAgentStatus,
     currentAgentRunId: currentRun?.id ?? null,
@@ -254,7 +252,6 @@ export function mapAgentConfig(row: AgentConfig): AgentConfigItem {
     role: row.role,
     anthropicAgentId: row.anthropicAgentId,
     anthropicAgentVersion: row.anthropicAgentVersion,
-    anthropicEnvironmentId: row.anthropicEnvironmentId,
     createdAt: row.createdAt.toISOString(),
   };
 }

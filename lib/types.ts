@@ -13,7 +13,6 @@ export interface Board {
   name: string;
   githubRepo: string | null;
   workspacePath: string | null;
-  anthropicEnvironmentId: string | null;
   autoMode: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -44,7 +43,7 @@ export interface Card {
   position: number;
   githubRepoUrl: string | null;
   githubBranch: string | null;
-  environmentId: string | null;
+  environmentId: string;
   requiresApproval: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -77,7 +76,6 @@ export interface AgentConfig {
   role: string;
   anthropicAgentId: string;
   anthropicAgentVersion: string;
-  anthropicEnvironmentId: string;
   createdAt: Date;
 }
 
