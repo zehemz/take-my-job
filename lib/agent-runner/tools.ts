@@ -90,6 +90,9 @@ export async function handleUpdateCard(
         output: input.summary,
         ...(criteriaJson ? { criteriaResults: criteriaJson } : {}),
       });
+      // Keep in-memory status in sync so the nudge check in runEventLoop
+      // correctly sees the run as completed (prevents infinite nudge loop).
+      (run as { status: AgentRunStatus }).status = AgentRunStatus.completed;
 
       await db.moveCard(card.id, targetColumn.id);
 
@@ -114,7 +117,7 @@ export async function handleUpdateCard(
         payload: { status: AgentRunStatus.completed },
       });
 
-      return { success: true };
+      return { success: true, shouldExitLoop: true };
     }
 
     // -----------------------------------------------------------------------
@@ -124,6 +127,7 @@ export async function handleUpdateCard(
       await db.updateAgentRunStatus(run.id, AgentRunStatus.blocked, {
         blockedReason,
       });
+      (run as { status: AgentRunStatus }).status = AgentRunStatus.blocked;
 
       // Move card to blocked column immediately so board polling reflects the state
       // even if the SSE connection is lost (e.g. Vercel 60s timeout).
