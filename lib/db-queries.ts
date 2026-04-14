@@ -94,7 +94,14 @@ export const dbQueries: IDbQueries = {
   },
 
   async getAgentConfig(role: string) {
-    const config = await prisma.agentConfig.findUnique({ where: { role } });
+    let config = await prisma.agentConfig.findUnique({ where: { role } });
+    if (!config) {
+      // Try alternate format: hyphens ↔ underscores
+      const alt = role.includes('-')
+        ? role.replace(/-/g, '_')
+        : role.replace(/_/g, '-');
+      config = await prisma.agentConfig.findUnique({ where: { role: alt } });
+    }
     return config as unknown as import("./types").AgentConfig | null;
   },
 

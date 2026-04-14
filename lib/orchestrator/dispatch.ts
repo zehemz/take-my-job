@@ -23,7 +23,7 @@ export async function dispatchPending(
     const run = await deps.db.createAgentRun(
       card.id,
       card.columnId,
-      card.role ?? 'backend_engineer',
+      card.role ?? 'backend-engineer',
       1,
     )
     state.claimed.add(card.id)
