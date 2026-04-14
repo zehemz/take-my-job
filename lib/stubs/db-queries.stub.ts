@@ -137,7 +137,7 @@ export class StubDbQueries implements IDbQueries {
   }
 
   async getActiveRunForCard(cardId: string): Promise<AgentRun | null> {
-    const activeStatuses = new Set<AgentRunStatus>([Status.running, Status.idle, Status.blocked]);
+    const activeStatuses = new Set<AgentRunStatus>([Status.pending, Status.running, Status.idle, Status.blocked]);
     const runs = this.agentRuns
       .filter((r) => r.cardId === cardId && activeStatuses.has(r.status as AgentRunStatus))
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());

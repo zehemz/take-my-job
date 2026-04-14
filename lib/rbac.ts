@@ -6,8 +6,9 @@ import type { EffectivePermissions } from './rbac-types';
  * Returns null if user does not exist in the User table (unauthorized).
  */
 export async function resolvePermissions(
-  githubUsername: string
+  githubUsername: string | null | undefined
 ): Promise<EffectivePermissions | null> {
+  if (!githubUsername) return null;
   const user = await prisma.user.findUnique({
     where: { githubUsername: githubUsername.toLowerCase() },
     include: {
@@ -82,7 +83,7 @@ export async function resolveCardEnvironment(
  * Check whether a user has access to a specific agent role + environment.
  */
 export async function checkCardAccess(
-  githubUsername: string,
+  githubUsername: string | null | undefined,
   agentRole: string | null,
   environmentId: string | null
 ): Promise<boolean> {
@@ -106,7 +107,7 @@ export async function checkCardAccess(
  * Resolves the environment from the card's agent role automatically.
  */
 export async function guardCardAccess(
-  githubUsername: string,
+  githubUsername: string | null | undefined,
   card: { role: string | null }
 ): Promise<boolean> {
   const environmentId = await resolveCardEnvironment(card.role);
@@ -116,7 +117,8 @@ export async function guardCardAccess(
 /**
  * Check if a user is an admin.
  */
-export async function isAdmin(githubUsername: string): Promise<boolean> {
+export async function isAdmin(githubUsername: string | null | undefined): Promise<boolean> {
+  if (!githubUsername) return false;
   const user = await prisma.user.findUnique({
     where: { githubUsername: githubUsername.toLowerCase() },
     select: { isAdmin: true },
