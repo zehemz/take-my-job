@@ -68,4 +68,6 @@ export interface IOrchestrator {
   start(): Promise<void>;
   stop(): void;
   notifyCardMoved(cardId: string, newColumnId: string): Promise<void>;
+  /** Release a card from the in-memory claimed set so the next poll tick can re-dispatch it. */
+  unclaim(cardId: string): void;
 }

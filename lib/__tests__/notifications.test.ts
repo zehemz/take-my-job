@@ -98,7 +98,7 @@ describe('reconcileNotifications', () => {
   it('creates notifications for cards in attention states', async () => {
     const cards = [
       makeCard({ id: 'card-1', agentStatus: 'failed' }),
-      makeCard({ id: 'card-2', agentStatus: 'blocked', agentRuns: [{ id: 'run-2', cardId: 'card-2', columnId: null, role: 'backend-engineer', status: 'blocked', attempt: 1, startedAt: '', endedAt: null, output: '', blockedReason: 'Need credentials', retryAfterMs: null }], currentAgentRunId: 'run-2' }),
+      makeCard({ id: 'card-2', agentStatus: 'blocked', agentRuns: [{ id: 'run-2', cardId: 'card-2', columnId: null, role: 'backend-engineer', status: 'blocked', attempt: 1, startedAt: '', endedAt: null, output: '', blockedReason: 'Need credentials', retryAfterMs: null, sessionId: null, error: null }], currentAgentRunId: 'run-2' }),
       makeCard({ id: 'card-3', agentStatus: 'idle' }),
     ]
 

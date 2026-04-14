@@ -14,4 +14,8 @@ export class StubOrchestrator implements IOrchestrator {
   async notifyCardMoved(cardId: string, newColumnId: string): Promise<void> {
     this.calls.push({ cardId, newColumnId });
   }
+
+  unclaim(_cardId: string): void {
+    // No-op in stub
+  }
 }
