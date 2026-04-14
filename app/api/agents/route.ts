@@ -25,7 +25,7 @@ export async function GET() {
 
   // Only show agents that belong to this project
   const kobaniAgents = anthropicAgents.filter((a: any) =>
-    typeof a.name === 'string' && a.name.startsWith('kobani-'),
+    typeof a.name === 'string' && a.name.startsWith('kobani-') && a.archived_at == null,
   )
 
   const dbRows = await prisma.agentConfig.findMany()

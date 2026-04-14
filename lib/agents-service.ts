@@ -13,7 +13,7 @@ export async function listAgents(): Promise<AgentRow[]> {
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const kobaniAgents = anthropicAgents.filter((a: any) =>
-    typeof a.name === 'string' && a.name.startsWith('kobani-'),
+    typeof a.name === 'string' && a.name.startsWith('kobani-') && a.archived_at == null,
   )
 
   const dbRows = await prisma.agentConfig.findMany()
