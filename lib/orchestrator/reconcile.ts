@@ -22,7 +22,19 @@ export async function reconcileRunning(
         return
       }
 
-      // 2. If column is terminal or inactive → cancel
+      // 2. If run is blocked — move card to blocked column, clean up without interrupting session
+      if (run.status === AgentRunStatus.blocked) {
+        try {
+          await deps.db.moveCardToColumnType(card.id, card.boardId, 'blocked')
+        } catch (err) {
+          console.error('[reconcile] failed to move blocked card:', err)
+        }
+        state.running.delete(cardId)
+        state.claimed.delete(cardId)
+        return
+      }
+
+      // 3. If column is terminal or inactive → cancel
       if (card.column.isTerminalState || !card.column.isActiveState) {
         abortController.abort()
         await deps.anthropic.interruptSession(run.sessionId!)
@@ -32,7 +44,7 @@ export async function reconcileRunning(
         return
       }
 
-      // 3. Check session status
+      // 4. Check session status
       if (run.sessionId) {
         const session = await deps.anthropic.retrieveSession(run.sessionId)
         if (session.status === 'terminated') {

@@ -87,7 +87,9 @@ export class StubDbQueries implements IDbQueries {
   }
 
   async getRunningRuns(): Promise<AgentRun[]> {
-    return this.agentRuns.filter((r) => r.status === Status.running || r.status === Status.idle);
+    return this.agentRuns.filter(
+      (r) => r.status === Status.running || r.status === Status.idle || r.status === Status.blocked,
+    );
   }
 
   async getCard(id: string): Promise<(Card & { column: Column }) | null> {
@@ -121,7 +123,12 @@ export class StubDbQueries implements IDbQueries {
     return this.columns.filter((c) => c.boardId === boardId).sort((a, b) => a.position - b.position);
   }
 
-  async moveCardToColumnType(_cardId: string, _boardId: string, _targetColumnType: 'review' | 'terminal'): Promise<void> {
-    // no-op in tests
+  async moveCardToColumnType(cardId: string, boardId: string, targetColumnType: 'review' | 'terminal' | 'blocked'): Promise<void> {
+    const col = this.columns.find((c) => c.boardId === boardId && c.columnType === targetColumnType);
+    if (!col) throw new Error(`No ${targetColumnType} column on board ${boardId}`);
+    const card = this.cards.find((c) => c.id === cardId);
+    if (!card) throw new Error(`Card ${cardId} not found`);
+    card.columnId = col.id;
+    card.updatedAt = new Date();
   }
 }

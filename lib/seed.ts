@@ -125,6 +125,7 @@ npm install passport-oauth2 openid-client
 
 Writing OAuth2 strategy...`,
           blockedReason: null,
+          sessionId: null,
           retryAfterMs: null,
         },
       ],
@@ -179,6 +180,7 @@ Current connection handling:
 
 I need to know the target environment for PgBouncer deployment.`,
           blockedReason: 'I need to know whether PgBouncer should be deployed as a sidecar container alongside each app server instance, or as a standalone service in the shared infra VPC. This decision affects the configuration for `listen_addr`, TLS setup, and how app servers discover the pooler. Please clarify the deployment topology before I proceed.',
+          sessionId: null,
           retryAfterMs: null,
         },
       ],
@@ -227,6 +229,7 @@ Writing sliding window implementation...
 ERROR: Redis connection refused at localhost:6379
 Could not proceed without Redis. Failing.`,
           blockedReason: null,
+          sessionId: null,
           retryAfterMs: null,
         },
         {
@@ -250,6 +253,7 @@ FAIL src/__tests__/rateLimiter.test.ts
 
 Test suite failed.`,
           blockedReason: null,
+          sessionId: null,
           retryAfterMs: 38000,
         },
       ],
@@ -298,6 +302,7 @@ Running acceptance criteria checks...
 [2/3] Checking expired token response...
 [3/3] Checking access token TTL...`,
           blockedReason: null,
+          sessionId: null,
           retryAfterMs: null,
         },
       ],
@@ -352,6 +357,7 @@ Running acceptance criteria checks...
 
 2/4 criteria passed. 2 criteria failed. Sending to Revision Needed.`,
           blockedReason: null,
+          sessionId: null,
           retryAfterMs: null,
         },
       ],
@@ -407,6 +413,7 @@ All 5 onboarding screens rewritten with new brand voice.
 
 All acceptance criteria passed. Awaiting human approval.`,
           blockedReason: null,
+          sessionId: null,
           retryAfterMs: null,
         },
       ],
@@ -458,6 +465,7 @@ CHANGELOG.md updated.
 
 All acceptance criteria passed. Work complete.`,
           blockedReason: null,
+          sessionId: null,
           retryAfterMs: null,
         },
       ],
@@ -508,6 +516,7 @@ All acceptance criteria passed. Work complete.`,
 
 2 criteria failed. Sending to Revision Needed.`,
           blockedReason: null,
+          sessionId: null,
           retryAfterMs: null,
         },
       ],
@@ -561,6 +570,7 @@ Three trends are converging to make AI an indispensable part of the dev stack:
 **1. Ambient code generation**
 Tools like GitHub Copilot and Cursor have normalized the idea that the IDE suggests code as you type. But the next wave goes further...`,
           blockedReason: null,
+          sessionId: null,
           retryAfterMs: null,
         },
       ],
@@ -641,6 +651,7 @@ Retry-after examples in curl, Node.js, and Python added.
 
 All 3 acceptance criteria passed. Awaiting human approval.`,
           blockedReason: null,
+          sessionId: null,
           retryAfterMs: null,
         },
       ],
@@ -707,6 +718,7 @@ const boards = await client.boards.list();
 console.log(boards);
 \`\`\``,
           blockedReason: null,
+          sessionId: null,
           retryAfterMs: null,
         },
       ],
