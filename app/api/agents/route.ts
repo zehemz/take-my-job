@@ -93,7 +93,7 @@ export async function GET() {
   // Removing them keeps the /api/roles dropdown in sync.
   const orphanedIds: string[] = [];
   for (const dbRecord of dbRows) {
-    if (!anthropicIds.has(dbRecord.anthropicAgentId)) {
+    if (!anthropicIds.has(dbRecord.anthropicAgentId) && dbRecord.anthropicAgentId !== 'placeholder') {
       orphanedIds.push(dbRecord.id);
     }
   }
