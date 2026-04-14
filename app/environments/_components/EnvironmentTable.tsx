@@ -168,7 +168,7 @@ export default function EnvironmentTable({ items, onDelete }: Props) {
                 ? item.description.slice(0, 60) + '…'
                 : item.description
               : null;
-            const created = new Date(item.createdAt).toLocaleDateString();
+            const created = new Date(item.createdAt).toLocaleDateString('en-GB');
 
             return (
               <tr key={item.id} className="hover:bg-zinc-800/50 transition-colors">

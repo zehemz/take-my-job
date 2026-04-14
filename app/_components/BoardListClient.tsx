@@ -34,7 +34,7 @@ export default function BoardListClient() {
 
         <div data-testid="board-list" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {boards.map((board) => {
-            const createdDate = new Date(board.createdAt).toLocaleDateString();
+            const createdDate = new Date(board.createdAt).toLocaleDateString('en-GB');
 
             return (
               <Link

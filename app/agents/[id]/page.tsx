@@ -645,12 +645,12 @@ export default function AgentDetailPage() {
 
                 {/* Row 4: Created at (read-only) | Archived at (read-only) */}
                 <Field label="Created at">
-                  {new Date(agent.createdAt).toLocaleDateString()}
+                  {new Date(agent.createdAt).toLocaleDateString('en-GB')}
                 </Field>
 
                 <Field label="Archived at">
                   {agent.archivedAt
-                    ? new Date(agent.archivedAt).toLocaleDateString()
+                    ? new Date(agent.archivedAt).toLocaleDateString('en-GB')
                     : <span className="text-zinc-500 italic">--</span>}
                 </Field>
 
