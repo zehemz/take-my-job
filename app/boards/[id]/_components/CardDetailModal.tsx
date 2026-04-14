@@ -10,6 +10,7 @@ import AcceptanceCriteriaList from './AcceptanceCriteriaList';
 import AgentOutputPanel from './AgentOutputPanel';
 import { relativeTime } from '@/lib/timeUtils';
 import { useRoles, roleLabel } from '@/lib/useRoles';
+import { useEnvironments } from '@/lib/useEnvironments';
 
 const INPUT_CLASS =
   'bg-zinc-950 border border-zinc-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-sm text-zinc-100 outline-none transition-colors';
@@ -433,6 +434,7 @@ export default function CardDetailModal() {
   const columns = useKobaniStore((s) => s.columns);
   const deleteCard = useKobaniStore((s) => s.deleteCard);
   const { roles } = useRoles();
+  const { environments } = useEnvironments();
 
   const storeCard = cards.find((c) => c.id === selectedCardId);
   const column = storeCard ? columns.find((col) => col.id === storeCard.columnId) : null;
@@ -455,6 +457,7 @@ export default function CardDetailModal() {
   const [roleDraft, setRoleDraft] = useState('');
   const [repoDraft, setRepoDraft] = useState('');
   const [branchDraft, setBranchDraft] = useState('');
+  const [envDraft, setEnvDraft] = useState<string | null>(null);
 
   const [savingField, setSavingField] = useState<EditingField>(null);
 
@@ -639,6 +642,7 @@ export default function CardDetailModal() {
       setCriteriaDraft(card.acceptanceCriteria.map((c) => c.text).join('\n'));
     }
     if (field === 'role') setRoleDraft(card.role);
+    if (field === 'env') setEnvDraft(card.environmentId ?? null);
     if (field === 'githubRepo') setRepoDraft(card.githubRepo ?? '');
     if (field === 'githubBranch') setBranchDraft(card.githubBranch ?? '');
   }
@@ -695,6 +699,10 @@ export default function CardDetailModal() {
 
   function saveRole() {
     saveField('role', { role: roleDraft });
+  }
+
+  function saveEnv() {
+    saveField('env', { environmentId: envDraft || null });
   }
 
   // ── Delete helpers ─────────────────────────────────────────────────────────
@@ -829,12 +837,40 @@ export default function CardDetailModal() {
           </span>
           <span className="flex items-center gap-1">
             Env:{' '}
-            {card.environmentId ? (
-              <span className="text-indigo-400 bg-zinc-800 rounded px-1.5 py-0.5 font-mono" title={card.environmentId}>
-                {envName ?? card.environmentId}
+            {editingField === 'env' ? (
+              <span className={`flex items-center gap-1 ${isSaving('env') ? 'opacity-60 pointer-events-none' : ''}`}>
+                <select
+                  className="bg-zinc-800 border border-zinc-700 text-zinc-100 text-xs rounded-md px-2 py-1 outline-none focus:border-indigo-500 cursor-pointer"
+                  value={envDraft ?? ''}
+                  onChange={(e) => setEnvDraft(e.target.value || null)}
+                >
+                  <option value="">Default (from role)</option>
+                  {environments.map((env) => (
+                    <option key={env.id} value={env.id}>{env.name}</option>
+                  ))}
+                </select>
+                <button onClick={saveEnv} className={SAVE_BTN}>{isSaving('env') ? 'Saving\u2026' : 'Save'}</button>
+                <button onClick={cancelEdit} className={CANCEL_BTN}>Cancel</button>
+                {saveError && editingField === 'env' && (
+                  <span className="text-xs text-red-400">{saveError}</span>
+                )}
+              </span>
+            ) : card.environmentId ? (
+              <span
+                className={`text-indigo-400 bg-zinc-800 rounded px-1.5 py-0.5 font-mono transition-colors ${isEditable ? 'cursor-pointer hover:bg-zinc-700' : ''}`}
+                title={isEditable ? 'Click to edit environment' : card.environmentId}
+                onClick={() => openEdit('env')}
+              >
+                {envName ?? card.environmentId}{isEditable ? ' \u270E' : ''}
               </span>
             ) : (
-              <span className="text-zinc-600 italic">default (from role)</span>
+              <span
+                className={`text-zinc-600 italic transition-colors ${isEditable ? 'cursor-pointer hover:text-zinc-400' : ''}`}
+                onClick={() => openEdit('env')}
+                title={isEditable ? 'Click to set environment' : undefined}
+              >
+                default (from role){isEditable ? ' \u270E' : ''}
+              </span>
             )}
           </span>
         </div>

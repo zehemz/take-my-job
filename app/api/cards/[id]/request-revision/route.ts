@@ -4,6 +4,7 @@ import { mapAgentRun, mapCard, deriveCardAgentStatus } from '@/lib/api-mappers';
 import type { RequestRevisionRequest } from '@/lib/api-types';
 import { devAuth as auth } from '@/lib/dev-auth';
 import { guardCardAccess } from '@/lib/rbac';
+import { dbQueries } from '@/lib/db-queries';
 
 export async function POST(
   req: Request,
@@ -69,6 +70,14 @@ export async function POST(
       column: { select: { columnType: true } },
       dependsOn: { select: { id: true } },
     },
+  });
+
+  // Emit orchestrator event so SSE clients are notified
+  await dbQueries.insertOrchestratorEvent({
+    boardId: card.boardId,
+    cardId: card.id,
+    type: 'card_revision_requested',
+    payload: { reason: body.reason },
   });
 
   const mappedRuns = updatedCard.agentRuns.map(mapAgentRun);

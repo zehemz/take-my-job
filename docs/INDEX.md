@@ -32,9 +32,9 @@
 | [Agent Tools & MCP](./features/agent-edit/PRD.md) | ✅ Shipped | ✓ | — | — | — |
 | [Environment Detail & Edit](./features/environments/TECH_SPEC.md) | ✅ Shipped | — | — | ✓ | — |
 | [RBAC — Role-Based Access Control](./features/rbac/) | ✅ Shipped | ✓ | ✓ | ✓ | ✓ |
-| [Stateless Orchestrator](./features/stateless-orchestrator/TECH_SPEC.md) | 🟠 In Progress | — | — | ✓ | — |
+| [Stateless Orchestrator](./features/stateless-orchestrator/TECH_SPEC.md) | ✅ Shipped | — | — | ✓ | — |
 | [Environment Creation with Presets](./features/environment-creation/) | ✅ Shipped | ✓ | — | ✓ | — |
-| [Per-Card Environment Override](./features/per-card-environment/TECH_SPEC.md) | 🟠 In Progress | — | — | ✓ | — |
+| [Per-Card Environment Override](./features/per-card-environment/TECH_SPEC.md) | ✅ Shipped | — | — | ✓ | — |
 
 **Status legend:** ✅ Shipped · 🔵 In Design · 🟠 In Progress · 🟡 Planned · ⛔ Blocked
 
