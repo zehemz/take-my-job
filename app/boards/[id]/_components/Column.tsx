@@ -38,6 +38,8 @@ export default function Column({ column }: Props) {
     <>
       <div
         ref={setNodeRef}
+        data-testid="column"
+        data-column-id={column.id}
         className={`w-72 shrink-0 flex flex-col bg-zinc-900 border border-zinc-800 rounded-xl h-full transition-all duration-150 ${
           isOver ? 'ring-2 ring-indigo-500 ring-inset' : ''
         }`}
@@ -45,7 +47,7 @@ export default function Column({ column }: Props) {
         {/* Header */}
         <div className="flex items-center justify-between px-3 py-2.5 shrink-0">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-zinc-400 uppercase tracking-widest">
+            <span data-testid="column-name" className="text-xs font-semibold text-zinc-400 uppercase tracking-widest">
               {column.name}
             </span>
             <span className={`text-xs font-medium rounded px-1.5 py-0.5 ${typeCfg.color}`}>
@@ -78,6 +80,7 @@ export default function Column({ column }: Props) {
         <div className="px-2 pb-2 shrink-0">
           <button
             onClick={() => setShowNewCard(true)}
+            data-testid="add-card-button"
             className="w-full text-left text-sm text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 rounded-lg px-3 py-2 transition-colors duration-150 cursor-pointer"
           >
             + Add card

@@ -31,6 +31,7 @@ export default function UserMenu() {
       {/* Avatar trigger */}
       <button
         onClick={() => setOpen((prev) => !prev)}
+        data-testid="user-menu-trigger"
         className="focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 rounded-full"
         aria-label="User menu"
       >
@@ -49,9 +50,9 @@ export default function UserMenu() {
 
       {/* Dropdown */}
       {open && (
-        <div className="absolute right-0 top-10 w-48 bg-zinc-900 border border-zinc-800 rounded-lg shadow-xl z-50 py-1">
+        <div data-testid="user-menu-dropdown" className="absolute right-0 top-10 w-48 bg-zinc-900 border border-zinc-800 rounded-lg shadow-xl z-50 py-1">
           {/* Username header */}
-          <div className="px-3 py-2 text-xs text-zinc-500 font-mono">
+          <div data-testid="user-menu-username" className="px-3 py-2 text-xs text-zinc-500 font-mono">
             @{githubUsername}
           </div>
 
@@ -61,6 +62,7 @@ export default function UserMenu() {
           {/* Sign out */}
           <button
             onClick={() => signOut({ callbackUrl: '/login' })}
+            data-testid="sign-out-button"
             className="w-full text-left px-3 py-2 text-sm text-zinc-300 hover:bg-zinc-800 hover:text-zinc-100 transition-colors cursor-pointer"
           >
             Sign out

@@ -69,6 +69,7 @@ export default function NewCardModal({ columnId, boardId, onClose }: Props) {
       onClick={onClose}
     >
       <div
+        data-testid="new-card-modal"
         className="bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
@@ -90,6 +91,7 @@ export default function NewCardModal({ columnId, boardId, onClose }: Props) {
             <input
               type="text"
               required
+              data-testid="new-card-title-input"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Card title..."
@@ -178,6 +180,7 @@ export default function NewCardModal({ columnId, boardId, onClose }: Props) {
             </button>
             <button
               type="submit"
+              data-testid="new-card-submit"
               className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-150 cursor-pointer"
             >
               Create Card

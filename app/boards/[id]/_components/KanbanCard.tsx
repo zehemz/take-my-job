@@ -58,6 +58,8 @@ export default function KanbanCard({ card, isDragging: overrideDragging }: Props
       style={overrideDragging ? undefined : style}
       {...(overrideDragging ? {} : attributes)}
       {...(overrideDragging ? {} : listeners)}
+      data-testid="kanban-card"
+      data-card-id={card.id}
       onClick={() => {
         if (!isDragging) openCardDetail(card.id);
       }}
@@ -68,7 +70,7 @@ export default function KanbanCard({ card, isDragging: overrideDragging }: Props
       }`}
     >
       {/* Title */}
-      <p className="text-sm font-medium text-zinc-100 leading-snug line-clamp-2 overflow-hidden">
+      <p data-testid="kanban-card-title" className="text-sm font-medium text-zinc-100 leading-snug line-clamp-2 overflow-hidden">
         {card.title}
       </p>
 

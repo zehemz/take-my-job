@@ -10,10 +10,11 @@
 | Feature | Status | PRD | Design | Tech Spec | Security Review |
 |---------|--------|-----|--------|-----------|-----------------|
 | [API Layer](./features/api-layer/TECH_SPEC.md) | ✅ Shipped | — | — | ✓ | — |
-| [Auth — GitHub OAuth + Whitelist](./features/auth/) | 🔵 In Design | ✓ | ✓ | ✓ | ✓ |
-| Kanban ↔ DB wiring (Zustand → API) | 🟡 Planned | — | — | — | — |
-| Card creation UI | 🟡 Planned | — | — | — | — |
+| [Auth — GitHub OAuth + Whitelist](./features/auth/) | ✅ Shipped | ✓ | ✓ | ✓ | ✓ |
+| Kanban ↔ DB wiring (Zustand → API) | ✅ Shipped | — | — | — | — |
+| Card creation UI | ✅ Shipped | — | — | — | — |
 | SSE real-time updates | 🟡 Planned | — | — | — | — |
+| [E2E Testing](./features/e2e-testing/SCENARIOS.md) | 🟠 In Progress | — | — | ✓ | — |
 
 **Status legend:** ✅ Shipped · 🔵 In Design · 🟠 In Progress · 🟡 Planned · ⛔ Blocked
 

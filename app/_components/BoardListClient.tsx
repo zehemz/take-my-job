@@ -24,7 +24,7 @@ export default function BoardListClient() {
           <p className="text-sm text-zinc-500 mt-1">{boards.length} boards</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div data-testid="board-list" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {boards.map((board) => {
             const boardColumns = columns.filter((c) => c.boardId === board.id);
             const boardCards = cards.filter((c) => c.boardId === board.id);
@@ -34,6 +34,7 @@ export default function BoardListClient() {
               <Link
                 key={board.id}
                 href={`/boards/${board.id}`}
+                data-testid="board-card"
                 className="group bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-xl p-5 flex flex-col gap-3 transition-colors duration-150 cursor-pointer"
               >
                 <div className="flex items-start justify-between">
