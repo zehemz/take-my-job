@@ -1,4 +1,7 @@
 import { prisma } from './db';
+import { dbQueries } from './db-queries';
+import { anthropicClient } from './anthropic-client';
+import { run as runAgent } from './agent-runner';
 
 /**
  * Promote unlocked cards on an autoMode board.
@@ -7,8 +10,8 @@ import { prisma } from './db';
  * 1. It is in an inactive column (backlog)
  * 2. It has NO dependencies, OR all its dependencies are in terminal columns
  *
- * Unlocked cards are moved to the board's first active column (In Progress),
- * which triggers the orchestrator to dispatch agents for them.
+ * Unlocked cards are moved to the board's first active column (In Progress)
+ * and immediately dispatched to an agent runner.
  */
 export async function promoteUnlockedCards(boardId: string): Promise<string[]> {
   const board = await prisma.board.findUnique({
@@ -62,7 +65,7 @@ export async function promoteUnlockedCards(boardId: string): Promise<string[]> {
       },
     });
 
-    // Insert a card_moved orchestrator event so the orchestrator picks it up
+    // Insert a card_moved orchestrator event
     await prisma.orchestratorEvent.create({
       data: {
         boardId,
@@ -71,6 +74,23 @@ export async function promoteUnlockedCards(boardId: string): Promise<string[]> {
         payload: { newColumnId: activeColumn.id, autoPromoted: true },
       },
     });
+
+    // Immediately dispatch an agent for this card (don't wait for poll loop)
+    try {
+      const existing = await dbQueries.getActiveRunForCard(card.id);
+      if (!existing) {
+        const role = card.role ?? 'backend-engineer';
+        const agentRun = await dbQueries.createAgentRun(card.id, activeColumn.id, role, 1);
+        const cardWithColumn = await dbQueries.getCard(card.id);
+        if (cardWithColumn) {
+          // Fire-and-forget: don't await the agent run
+          runAgent(cardWithColumn, agentRun, { db: dbQueries, anthropicClient })
+            .catch((err) => console.error('[auto-promote] agent runner error for card', card.id, err));
+        }
+      }
+    } catch (err) {
+      console.error('[auto-promote] dispatch error for card', card.id, err);
+    }
 
     promotedIds.push(card.id);
   }

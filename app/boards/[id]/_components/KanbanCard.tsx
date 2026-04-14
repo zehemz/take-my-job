@@ -77,13 +77,20 @@ export default function KanbanCard({ card, isDragging: overrideDragging }: Props
         {card.title}
       </p>
 
-      {/* Status badge */}
-      <AgentStatusBadge
-        status={card.agentStatus}
-        retryAfterMs={
-          card.agentStatus === 'failed' ? currentRun?.retryAfterMs : undefined
-        }
-      />
+      {/* Status badge + deps */}
+      <div className="flex items-center gap-2">
+        <AgentStatusBadge
+          status={card.agentStatus}
+          retryAfterMs={
+            card.agentStatus === 'failed' ? currentRun?.retryAfterMs : undefined
+          }
+        />
+        {card.dependsOn && card.dependsOn.length > 0 && (
+          <span className="text-[10px] text-zinc-500 bg-zinc-900 border border-zinc-700 rounded px-1.5 py-0.5 shrink-0" title={`Depends on ${card.dependsOn.length} card(s)`}>
+            {card.dependsOn.length} dep{card.dependsOn.length > 1 ? 's' : ''}
+          </span>
+        )}
+      </div>
 
       {/* Footer: assignee + time */}
       <div className="flex items-center justify-between">

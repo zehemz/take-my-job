@@ -353,6 +353,48 @@ function PendingApprovalActions({ cardId, criteria }: { cardId: string; criteria
 
 // ─── RetrySchedulePanel ───────────────────────────────────────────────────────
 
+function DependenciesList({ cardIds }: { cardIds: string[] }) {
+  const cards = useKobaniStore((s) => s.cards);
+  const columns = useKobaniStore((s) => s.columns);
+  const openCardDetail = useKobaniStore((s) => s.openCardDetail);
+
+  const deps = cardIds.map((id) => {
+    const c = cards.find((card) => card.id === id);
+    const col = c ? columns.find((col) => col.id === c.columnId) : null;
+    const isDone = col?.type === 'terminal';
+    return { id, title: c?.title ?? id, isDone, columnName: col?.name };
+  });
+
+  return (
+    <div className="px-6 py-3 border-t border-zinc-800">
+      <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-2">Dependencies</p>
+      <div className="flex flex-col gap-1.5">
+        {deps.map((dep) => (
+          <button
+            key={dep.id}
+            onClick={() => openCardDetail(dep.id)}
+            className="flex items-center gap-2 text-xs text-left hover:bg-zinc-800 rounded px-2 py-1.5 -mx-2 transition-colors cursor-pointer group"
+          >
+            <span className={`flex items-center justify-center w-4 h-4 rounded-full shrink-0 ${dep.isDone ? 'bg-green-900/60 text-green-400' : 'bg-zinc-800 text-zinc-500 border border-zinc-700'}`}>
+              {dep.isDone ? (
+                <svg width="10" height="10" viewBox="0 0 12 12" fill="none"><path d="M2.5 6.5L4.5 8.5L9.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+              ) : (
+                <span className="w-1.5 h-1.5 rounded-full bg-zinc-600" />
+              )}
+            </span>
+            <span className={`${dep.isDone ? 'text-zinc-500 line-through' : 'text-zinc-300'} group-hover:text-zinc-100 transition-colors`}>
+              {dep.title}
+            </span>
+            {dep.columnName && (
+              <span className="text-[10px] text-zinc-600 ml-auto">{dep.columnName}</span>
+            )}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function RetrySchedulePanel({
   cardId,
   agentRuns,
@@ -861,6 +903,11 @@ export default function CardDetailModal() {
             )}
 
           </div>
+        )}
+
+        {/* Dependencies */}
+        {card.dependsOn && card.dependsOn.length > 0 && (
+          <DependenciesList cardIds={card.dependsOn} />
         )}
 
         {/* Description */}
