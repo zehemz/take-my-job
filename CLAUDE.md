@@ -33,6 +33,13 @@ docs/
 
 ---
 
+## Development process
+
+- **Spec before code.** Before implementing any feature, check `docs/features/` for an existing PRD or TECH_SPEC. If none exists, create the spec first (or ask). Never implement reactively without a spec.
+- **E2E scenarios are mandatory.** Every new feature must include E2E scenarios added to `docs/features/e2e-testing/SCENARIOS.md`. This is part of the definition of done, not optional.
+
+---
+
 ## Code conventions
 
 - API contract types go in `lib/api-types.ts` — never inline response shapes in route files.

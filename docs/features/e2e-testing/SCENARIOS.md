@@ -51,6 +51,16 @@ IDs are stable — never reuse a retired ID.
 
 ---
 
+## Board management (`e2e/board.spec.ts`)
+
+| ID | Scenario | Status |
+|----|----------|--------|
+| E2E-BOARD-DELETE-001 | Delete board button visible on board detail page | 🟡 Planned |
+| E2E-BOARD-DELETE-002 | Delete modal: confirm button disabled until board name typed exactly | 🟡 Planned |
+| E2E-BOARD-DELETE-003 | Typing board name and confirming deletes board and redirects to `/` | 🟡 Planned |
+
+---
+
 ## Drag and drop (`e2e/drag.spec.ts`)
 
 | ID | Scenario | Status |

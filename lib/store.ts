@@ -41,6 +41,7 @@ interface KobaniState {
   fetchBoard: (boardId: string) => Promise<void>;
   fetchBoards: () => Promise<void>;
   createBoardApi: (name: string) => Promise<string | null>; // returns new board id
+  deleteBoardApi: (id: string) => Promise<boolean>;
   moveCardApi: (cardId: string, columnId: string, position?: number) => Promise<void>;
   createCardApi: (boardId: string, payload: {
     title: string;
@@ -336,6 +337,16 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
     const board = await res.json();
     set((state) => ({ boards: [board, ...state.boards] }));
     return board.id;
+  },
+
+  deleteBoardApi: async (id: string) => {
+    const res = await fetch(`/api/boards/${id}`, {
+      method: 'DELETE',
+      credentials: 'include',
+    });
+    if (!res.ok) return false;
+    get().deleteBoard(id);
+    return true;
   },
 
   moveCardApi: async (cardId: string, columnId: string, position?: number) => {
