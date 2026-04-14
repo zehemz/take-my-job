@@ -1003,9 +1003,9 @@ export default function CardDetailModal() {
                 <button
                   onClick={handleDeleteConfirm}
                   disabled={deleteRunning}
-                  className="text-xs text-red-400 hover:text-red-300 border border-red-800 hover:border-red-600 rounded-md px-2 py-1 transition-colors cursor-pointer disabled:opacity-60"
+                  className="text-xs text-red-400 hover:text-red-300 border border-red-800 hover:border-red-600 rounded-md px-2 py-1 transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  Delete permanently
+                  {deleteRunning ? 'Deleting…' : 'Delete permanently'}
                 </button>
                 <button onClick={handleDeleteCancel} className={CANCEL_BTN}>
                   Keep

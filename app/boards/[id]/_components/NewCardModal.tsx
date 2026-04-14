@@ -31,44 +31,49 @@ export default function NewCardModal({ columnId, boardId, onClose }: Props) {
   const [githubRepo, setGithubRepo] = useState('');
   const [githubBranch, setGithubBranch] = useState('');
   const [requiresApproval, setRequiresApproval] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!title.trim()) return;
+    if (!title.trim() || loading) return;
 
-    const criteria = criteriaText
-      .split('\n')
-      .map((line) => line.trim())
-      .filter(Boolean)
-      .map((text, i) => ({
-        id: `ac-new-${Date.now()}-${i}`,
-        text,
-        passed: null as null,
-        evidence: null as null,
-      }));
+    setLoading(true);
+    try {
+      const criteria = criteriaText
+        .split('\n')
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((text, i) => ({
+          id: `ac-new-${Date.now()}-${i}`,
+          text,
+          passed: null as null,
+          evidence: null as null,
+        }));
 
-    const result = await createCardApi(boardId, {
-      title: title.trim(),
-      columnId,
-      role,
-      description: description.trim(),
-      acceptanceCriteria: criteria,
-      githubRepo: githubRepo.trim() || undefined,
-      githubBranch: githubBranch.trim() || undefined,
-      requiresApproval,
-    });
+      const result = await createCardApi(boardId, {
+        title: title.trim(),
+        columnId,
+        role,
+        description: description.trim(),
+        acceptanceCriteria: criteria,
+        githubRepo: githubRepo.trim() || undefined,
+        githubBranch: githubBranch.trim() || undefined,
+        requiresApproval,
+      });
 
-    if (result) {
-      await fetchBoard(boardId);
+      if (result) {
+        await fetchBoard(boardId);
+      }
+      onClose();
+    } finally {
+      setLoading(false);
     }
-
-    onClose();
   }
 
   const modal = (
     <div
       className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
-      onClick={onClose}
+      onClick={loading ? undefined : onClose}
     >
       <div
         data-testid="new-card-modal"
@@ -195,16 +200,18 @@ export default function NewCardModal({ columnId, boardId, onClose }: Props) {
             <button
               type="button"
               onClick={onClose}
-              className="bg-zinc-700 hover:bg-zinc-600 text-zinc-200 rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-150 cursor-pointer"
+              disabled={loading}
+              className="bg-zinc-700 hover:bg-zinc-600 text-zinc-200 rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancel
             </button>
             <button
               type="submit"
               data-testid="new-card-submit"
-              className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-150 cursor-pointer"
+              disabled={loading}
+              className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-150 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Create Card
+              {loading ? 'Creating…' : 'Create Card'}
             </button>
           </div>
         </form>

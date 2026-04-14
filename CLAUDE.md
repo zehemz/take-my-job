@@ -46,6 +46,7 @@ docs/
 - DB→API mapping logic goes in `lib/api-mappers.ts`.
 - Every API route handler must call `auth()` as a secondary guard (once auth is implemented).
 - `approvedBy` and any user-attribution fields must always be set server-side from the session, never from the request body.
+- **Every mutation button must have a loading state** (see ADR-006). Use `disabled={loading}`, change the label to an ellipsis form (`'Saving…'`), block modal dismissal while in-flight, and always clear loading in `finally`. Classes: `disabled:opacity-60 disabled:cursor-not-allowed`.
 
 ---
 
