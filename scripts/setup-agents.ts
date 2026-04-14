@@ -113,27 +113,43 @@ async function setupAgent(
     return;
   }
 
-  // Load system prompt from workflow file
-  const workflowPath = join(process.cwd(), "workflows", `${role.key}.md`);
-  let systemPrompt = `You are a ${role.displayName}.`;
-  if (existsSync(workflowPath)) {
-    systemPrompt = readFileSync(workflowPath, "utf-8");
-    console.log(`Loaded workflow from ${workflowPath}`);
-  } else {
-    console.warn(`No workflow file at ${workflowPath}, using default system prompt.`);
+  // Check Anthropic for an existing agent with the same name (find-or-create).
+  // This prevents orphaned agents when the script is run against a local DB
+  // while pointing at the shared Anthropic account.
+  const agentName = `kobani-${role.key}`;
+  let agent: any = null;
+  for await (const a of beta.agents.list()) {
+    if (a.name === agentName && !a.archived_at) {
+      agent = a;
+      break;
+    }
   }
 
-  console.log(`Creating agent for role "${role.key}"...`);
-  const agent = await beta.agents.create({
-    model: "claude-opus-4-6",
-    name: `kobani-${role.key}`,
-    description: `Kobani ${role.displayName} agent`,
-    system: systemPrompt,
-    tools: [
-      { type: "agent_toolset_20260401" },
-      UPDATE_CARD_TOOL,
-    ],
-  });
+  if (agent) {
+    console.log(`Found existing Anthropic agent "${agentName}": ${agent.id}, linking to DB.`);
+  } else {
+    // Load system prompt from workflow file
+    const workflowPath = join(process.cwd(), "workflows", `${role.key}.md`);
+    let systemPrompt = `You are a ${role.displayName}.`;
+    if (existsSync(workflowPath)) {
+      systemPrompt = readFileSync(workflowPath, "utf-8");
+      console.log(`Loaded workflow from ${workflowPath}`);
+    } else {
+      console.warn(`No workflow file at ${workflowPath}, using default system prompt.`);
+    }
+
+    console.log(`Creating agent for role "${role.key}"...`);
+    agent = await beta.agents.create({
+      model: "claude-opus-4-6",
+      name: agentName,
+      description: `Kobani ${role.displayName} agent`,
+      system: systemPrompt,
+      tools: [
+        { type: "agent_toolset_20260401" },
+        UPDATE_CARD_TOOL,
+      ],
+    });
+  }
 
   const agentVersion = String(agent.version ?? "1");
 
