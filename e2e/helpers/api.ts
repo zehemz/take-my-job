@@ -182,7 +182,9 @@ export class KobaniApi {
       data,
     });
     if (!res.ok()) throw new Error(`POST /api/environments → ${res.status()}: ${await res.text()}`);
-    return res.json();
+    const body = await res.json();
+    // POST /api/environments returns { environment: { ... } } — unwrap
+    return body.environment;
   }
 
   async patchEnvironment(id: string, data: Record<string, unknown>): Promise<any> {

@@ -11,10 +11,10 @@ export function useEnvironments(): { environments: EnvironmentRow[]; loading: bo
   useEffect(() => {
     if (cachedEnvironments) return;
     fetch('/api/environments')
-      .then((r) => r.json())
+      .then((r) => r.ok ? r.json() : [])
       .then((data) => {
-        cachedEnvironments = data.items ?? [];
-        setEnvironments(cachedEnvironments!);
+        cachedEnvironments = Array.isArray(data) ? data : [];
+        setEnvironments(cachedEnvironments);
       })
       .catch(() => {
         cachedEnvironments = [];

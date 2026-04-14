@@ -63,6 +63,14 @@ export async function POST(
     },
   });
 
+  // Emit orchestrator event so SSE clients are notified
+  await dbQueries.insertOrchestratorEvent({
+    boardId: card.boardId,
+    cardId: card.id,
+    type: 'card_approved',
+    payload: { approvedBy: session.user.githubUsername },
+  });
+
   // Approval moves card to terminal — auto-promote dependent cards and dispatch agents
   promoteUnlockedCards(card.boardId).then(async (promotedIds) => {
     for (const promotedId of promotedIds) {

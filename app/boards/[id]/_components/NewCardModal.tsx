@@ -29,8 +29,8 @@ export default function NewCardModal({ columnId, boardId, onClose }: Props) {
   useEffect(() => {
     fetch('/api/environments')
       .then((res) => res.ok ? res.json() : null)
-      .then((data: EnvironmentRow[] | null) => {
-        if (data) setEnvironments(data);
+      .then((data) => {
+        if (Array.isArray(data)) setEnvironments(data);
       })
       .catch(() => {});
   }, []);

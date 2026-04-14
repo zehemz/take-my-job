@@ -156,9 +156,12 @@ test.describe('RBAC — Admin UI', () => {
   test('E2E-RBAC-017: Navigate to /access as admin → page renders Users/Groups tabs', async ({ authedPage: page }) => {
     await page.goto('/access');
 
-    // Wait for the page to load — look for tab controls
-    const usersTab = page.getByRole('tab', { name: /users/i }).or(page.getByText('Users'));
-    const groupsTab = page.getByRole('tab', { name: /groups/i }).or(page.getByText('Groups'));
+    // Wait for the page heading to confirm we're on the right page
+    await expect(page.getByRole('heading', { name: 'Access Control' })).toBeVisible({ timeout: 10_000 });
+
+    // The tabs are plain <button> elements inside a border-b container
+    const usersTab = page.getByRole('button', { name: 'Users', exact: true });
+    const groupsTab = page.getByRole('button', { name: 'Groups', exact: true });
 
     await expect(usersTab).toBeVisible({ timeout: 10_000 });
     await expect(groupsTab).toBeVisible({ timeout: 10_000 });

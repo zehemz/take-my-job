@@ -35,7 +35,7 @@ export default function NewBoardModal({ onClose }: Props) {
   useEffect(() => {
     fetch('/api/environments', { credentials: 'include' })
       .then((r) => r.ok ? r.json() : null)
-      .then((data) => { if (data?.items) setEnvironments(data.items); })
+      .then((data) => { if (Array.isArray(data)) setEnvironments(data); })
       .catch(() => {})
       .finally(() => setEnvLoading(false));
   }, []);
@@ -305,7 +305,7 @@ export default function NewBoardModal({ onClose }: Props) {
                     <span className="text-xs text-zinc-500">Env:</span>
                     {envLoading ? (
                       <span className="text-xs text-zinc-600">Loading...</span>
-                    ) : environments.length === 0 ? (
+                    ) : !environments || environments.length === 0 ? (
                       <span className="text-xs text-zinc-600">{draft.environmentId || 'Not set'}</span>
                     ) : (
                       <select

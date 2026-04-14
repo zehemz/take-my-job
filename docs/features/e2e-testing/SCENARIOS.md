@@ -252,6 +252,18 @@ IDs are stable — never reuse a retired ID.
 
 ---
 
+## Audit Log (`e2e/audit-log.spec.ts`)
+
+| ID | Scenario | Status |
+|----|----------|--------|
+| E2E-AUDIT-001 | Navigate to `/audit-log` as admin — table renders with column headers (Timestamp, Actor, Action, Entity, Details) | 🟡 Planned |
+| E2E-AUDIT-002 | `GET /api/audit-log` without session → 401 | 🟡 Planned |
+| E2E-AUDIT-003 | Create a card → `GET /api/audit-log?entityType=card` includes entry with action `card.created` and matching entity ID | 🟡 Planned |
+| E2E-AUDIT-004 | Filter by `entityType=card` → only card events shown in results (no agent, board, or RBAC events) | 🟡 Planned |
+| E2E-AUDIT-005 | Non-admin user navigating to `/audit-log` → redirected away from audit log page | 🟡 Planned |
+
+---
+
 ## How to add a new scenario
 
 1. Pick the next available ID in the relevant group (never reuse a retired one).
