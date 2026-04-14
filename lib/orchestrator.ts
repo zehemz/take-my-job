@@ -41,58 +41,68 @@ export class Orchestrator implements IOrchestrator {
     this.state.claimed.clear()
 
     // ── 2. Recover running/idle AgentRuns from previous process ─
-    const staleRuns = await this.deps.db.getRunningRuns()
+    // Wrapped in try-catch so a recovery error never prevents the poll loop from starting.
+    try {
+      const staleRuns = await this.deps.db.getRunningRuns()
 
-    for (const run of staleRuns) {
-      if (!run.sessionId) {
-        // Never got a session — schedule retry with backoff
-        await scheduleRetry(run, this.deps.db)
-        continue
-      }
-
-      // Blocked runs: add to state so the reconciler moves the card; don't re-attach
-      if (run.status === AgentRunStatus.blocked) {
-        const card = await this.deps.db.getCard(run.cardId)
-        if (card) {
-          this.state.claimed.add(run.cardId)
-          this.state.running.set(run.cardId, { run, abortController: new AbortController() })
-        }
-        continue
-      }
-
-      const session = await this.deps.anthropic.retrieveSession(run.sessionId)
-
-      if (session.status === 'terminated') {
-        if (session.outcome === 'success') {
-          await this.deps.db.updateAgentRunStatus(run.id, AgentRunStatus.completed)
-        } else {
+      for (const run of staleRuns) {
+        if (!run.sessionId) {
+          // Never got a session — schedule retry with backoff
           await scheduleRetry(run, this.deps.db)
+          continue
         }
-      } else {
-        // Session still alive — re-attach
-        const card = await this.deps.db.getCard(run.cardId)
-        if (card) {
-          this.state.claimed.add(run.cardId)
-          const abortController = new AbortController()
-          this.state.running.set(run.cardId, { run, abortController })
-          this.spawnRunner(card, run)
+
+        // Blocked runs: add to state so the reconciler moves the card; don't re-attach
+        if (run.status === AgentRunStatus.blocked) {
+          const card = await this.deps.db.getCard(run.cardId)
+          if (card) {
+            this.state.claimed.add(run.cardId)
+            this.state.running.set(run.cardId, { run, abortController: new AbortController() })
+          }
+          continue
+        }
+
+        const session = await this.deps.anthropic.retrieveSession(run.sessionId)
+
+        if (session.status === 'terminated') {
+          if (session.outcome === 'success') {
+            await this.deps.db.updateAgentRunStatus(run.id, AgentRunStatus.completed)
+          } else {
+            await scheduleRetry(run, this.deps.db)
+          }
+        } else {
+          // Session still alive — re-attach
+          const card = await this.deps.db.getCard(run.cardId)
+          if (card) {
+            this.state.claimed.add(run.cardId)
+            const abortController = new AbortController()
+            this.state.running.set(run.cardId, { run, abortController })
+            this.spawnRunner(card, run)
+          }
         }
       }
-    }
 
-    // ── 3. Make retry-eligible runs immediately dispatchable ────
-    const retryRuns = await this.deps.db.getRetryEligibleRuns()
-    for (const run of retryRuns) {
-      await this.deps.db.updateAgentRunStatus(run.id, AgentRunStatus.failed, {
-        retryAfterMs: Date.now(),
-      })
+      // ── 3. Make retry-eligible runs immediately dispatchable ────
+      const retryRuns = await this.deps.db.getRetryEligibleRuns()
+      for (const run of retryRuns) {
+        await this.deps.db.updateAgentRunStatus(run.id, AgentRunStatus.failed, {
+          retryAfterMs: Date.now(),
+        })
+      }
+    } catch (err) {
+      console.error('[orchestrator] recovery error (poll loop will still start):', err)
     }
 
     // ── 4. Start poll loop ──────────────────────────────────────
     const tick = async () => {
-      await reconcileRunning(this.state, this.deps)
-      await dispatchPending(this.state, this.deps, this.spawnRunner)
-      this.timer = setTimeout(tick, this.pollInterval)
+      try {
+        await reconcileRunning(this.state, this.deps)
+        await dispatchPending(this.state, this.deps, this.spawnRunner)
+      } catch (err) {
+        console.error('[orchestrator] tick error (loop continues):', err)
+      } finally {
+        this.timer = setTimeout(tick, this.pollInterval)
+      }
     }
     this.timer = setTimeout(tick, this.pollInterval)
   }
@@ -144,20 +154,26 @@ export class Orchestrator implements IOrchestrator {
     if (!column.isTerminalState && column.isActiveState) return
 
     const entry = this.state.running.get(cardId)
-    if (!entry) return
-
-    // Interrupt the Anthropic session
-    if (entry.run.sessionId) {
-      await this.deps.anthropic.interruptSession(entry.run.sessionId)
+    if (entry) {
+      // Session is tracked in memory — interrupt and clean up
+      if (entry.run.sessionId) {
+        await this.deps.anthropic.interruptSession(entry.run.sessionId)
+      }
+      await this.deps.db.updateAgentRunStatus(entry.run.id, AgentRunStatus.cancelled)
+      entry.abortController.abort()
+      this.state.running.delete(cardId)
+      this.state.claimed.delete(cardId)
+    } else {
+      // Not in memory (e.g. server restarted mid-run) — check DB for any live session
+      const activeRun = await this.deps.db.getActiveRunForCard(cardId)
+      if (activeRun) {
+        if (activeRun.sessionId) {
+          await this.deps.anthropic.interruptSession(activeRun.sessionId)
+        }
+        await this.deps.db.updateAgentRunStatus(activeRun.id, AgentRunStatus.cancelled)
+      }
+      this.state.claimed.delete(cardId)
     }
-
-    // Transition the run to cancelled
-    await this.deps.db.updateAgentRunStatus(entry.run.id, AgentRunStatus.cancelled)
-
-    // Clean up in-memory state
-    entry.abortController.abort()
-    this.state.running.delete(cardId)
-    this.state.claimed.delete(cardId)
   }
 }
 

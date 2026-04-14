@@ -131,4 +131,12 @@ export class StubDbQueries implements IDbQueries {
     card.columnId = col.id;
     card.updatedAt = new Date();
   }
+
+  async getActiveRunForCard(cardId: string): Promise<AgentRun | null> {
+    const activeStatuses = new Set<AgentRunStatus>([Status.running, Status.idle, Status.blocked]);
+    const runs = this.agentRuns
+      .filter((r) => r.cardId === cardId && activeStatuses.has(r.status as AgentRunStatus))
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return runs[0] ?? null;
+  }
 }

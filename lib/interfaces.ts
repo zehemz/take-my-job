@@ -13,6 +13,7 @@ export interface IDbQueries {
   getColumnByName(boardId: string, name: string): Promise<Column | null>;
   getBoardColumns(boardId: string): Promise<Column[]>;
   moveCardToColumnType(cardId: string, boardId: string, targetColumnType: 'review' | 'terminal' | 'blocked'): Promise<void>;
+  getActiveRunForCard(cardId: string): Promise<AgentRun | null>;
 }
 
 /** Typed events emitted by the Anthropic Managed Agents SSE stream. */
