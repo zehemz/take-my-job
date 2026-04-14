@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import TopNav from '@/app/_components/TopNav';
-import type { AgentDetail, AgentSyncStatus, PatchAgentResponse } from '@/lib/api-types';
+import type { AgentDetail, AgentSyncStatus, AgentToolConfig, AgentMCPServer, PatchAgentResponse } from '@/lib/api-types';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
@@ -24,6 +24,28 @@ const AVAILABLE_ROLES = [
 ] as const;
 
 const SYSTEM_PROMPT_MAX = 100_000;
+
+const TOOL_NAMES = ['bash', 'edit', 'read', 'write', 'glob', 'grep', 'web_fetch', 'web_search'] as const;
+
+const TOOL_LABELS: Record<string, string> = {
+  bash: 'Bash (shell commands)',
+  edit: 'Edit (file editing)',
+  read: 'Read (file reading)',
+  write: 'Write (file creation)',
+  glob: 'Glob (file search)',
+  grep: 'Grep (content search)',
+  web_fetch: 'Web Fetch (fetch pages)',
+  web_search: 'Web Search (search web)',
+};
+
+const MCP_PRESETS = [
+  { name: 'github', url: 'https://api.githubcopilot.com/mcp/' },
+  { name: 'slack', url: 'https://mcp.slack.com/sse' },
+  { name: 'linear', url: 'https://mcp.linear.app/sse' },
+  { name: 'sentry', url: 'https://mcp.sentry.dev/sse' },
+] as const;
+
+const MCP_MAX_SERVERS = 20;
 
 // ─── Sync status badge ────────────────────────────────────────────────────────
 
@@ -467,6 +489,247 @@ function EditableSelect({
   );
 }
 
+// ─── Built-in Tools editor ───────────────────────────────────────────────────
+
+function ToolsEditor({
+  tools,
+  onSave,
+  disabled,
+}: {
+  tools: AgentToolConfig[];
+  onSave: (tools: AgentToolConfig[]) => Promise<void>;
+  disabled?: boolean;
+}) {
+  const [draft, setDraft] = useState<AgentToolConfig[]>(() =>
+    TOOL_NAMES.map((name) => {
+      const existing = tools.find((t) => t.name === name);
+      return existing ?? { name, enabled: true, permissionPolicy: 'always_allow' as const };
+    }),
+  );
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Sync draft when tools prop changes (e.g. after reload)
+  useEffect(() => {
+    setDraft(
+      TOOL_NAMES.map((name) => {
+        const existing = tools.find((t) => t.name === name);
+        return existing ?? { name, enabled: true, permissionPolicy: 'always_allow' as const };
+      }),
+    );
+  }, [tools]);
+
+  function toggleTool(index: number) {
+    setDraft((prev) => prev.map((t, i) => (i === index ? { ...t, enabled: !t.enabled } : t)));
+  }
+
+  function setPolicy(index: number, policy: 'always_allow' | 'always_ask') {
+    setDraft((prev) => prev.map((t, i) => (i === index ? { ...t, permissionPolicy: policy } : t)));
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    setError(null);
+    try {
+      await onSave(draft);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save tools');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      {draft.map((tool, i) => (
+        <div key={tool.name} className="flex items-center gap-3">
+          {/* Toggle switch */}
+          <button
+            type="button"
+            role="switch"
+            aria-checked={tool.enabled}
+            disabled={disabled}
+            onClick={() => toggleTool(i)}
+            className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed ${
+              tool.enabled ? 'bg-emerald-600' : 'bg-zinc-700'
+            }`}
+          >
+            <span
+              className={`inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform ${
+                tool.enabled ? 'translate-x-4.5' : 'translate-x-0.5'
+              }`}
+            />
+          </button>
+          {/* Tool label */}
+          <span className={`text-sm flex-1 ${tool.enabled ? 'text-zinc-200' : 'text-zinc-500'}`}>
+            {TOOL_LABELS[tool.name] ?? tool.name}
+          </span>
+          {/* Permission dropdown */}
+          <select
+            value={tool.permissionPolicy}
+            onChange={(e) => setPolicy(i, e.target.value as 'always_allow' | 'always_ask')}
+            disabled={disabled || !tool.enabled}
+            className="bg-zinc-800 border border-zinc-700 rounded px-2 py-0.5 text-xs text-zinc-300 focus:outline-none focus:border-zinc-500 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            <option value="always_allow">Auto-approve</option>
+            <option value="always_ask">Ask first</option>
+          </select>
+        </div>
+      ))}
+      <div className="pt-2">
+        <button
+          onClick={handleSave}
+          disabled={disabled || saving}
+          className="px-3 py-1 text-xs font-medium bg-zinc-700 hover:bg-zinc-600 text-zinc-200 rounded transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {saving ? 'Saving\u2026' : 'Save Tools'}
+        </button>
+        {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
+      </div>
+    </div>
+  );
+}
+
+// ─── MCP Servers editor ──────────────────────────────────────────────────────
+
+function MCPServersEditor({
+  servers,
+  onSave,
+  disabled,
+}: {
+  servers: AgentMCPServer[];
+  onSave: (servers: AgentMCPServer[]) => Promise<void>;
+  disabled?: boolean;
+}) {
+  const [draft, setDraft] = useState<AgentMCPServer[]>(() => [...servers]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Sync draft when servers prop changes
+  useEffect(() => {
+    setDraft([...servers]);
+  }, [servers]);
+
+  const atLimit = draft.length >= MCP_MAX_SERVERS;
+
+  // Presets not already in draft
+  const availablePresets = MCP_PRESETS.filter(
+    (p) => !draft.some((s) => s.name === p.name && s.url === p.url),
+  );
+
+  function addPreset(preset: typeof MCP_PRESETS[number]) {
+    if (atLimit) return;
+    setDraft((prev) => [...prev, { name: preset.name, url: preset.url }]);
+  }
+
+  function addCustom() {
+    if (atLimit) return;
+    setDraft((prev) => [...prev, { name: '', url: '' }]);
+  }
+
+  function removeServer(index: number) {
+    setDraft((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function updateServer(index: number, field: 'name' | 'url', value: string) {
+    setDraft((prev) => prev.map((s, i) => (i === index ? { ...s, [field]: value } : s)));
+  }
+
+  async function handleSave() {
+    setSaving(true);
+    setError(null);
+    try {
+      await onSave(draft);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save MCP servers');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      {draft.map((server, i) => (
+        <div key={i} className="flex items-center gap-2">
+          <input
+            type="text"
+            value={server.name}
+            onChange={(e) => updateServer(i, 'name', e.target.value)}
+            placeholder="Name"
+            disabled={disabled}
+            className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-sm text-zinc-200 focus:outline-none focus:border-zinc-500 disabled:opacity-60 w-32"
+          />
+          <input
+            type="text"
+            value={server.url}
+            onChange={(e) => updateServer(i, 'url', e.target.value)}
+            placeholder="https://..."
+            disabled={disabled}
+            className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-sm text-zinc-200 focus:outline-none focus:border-zinc-500 disabled:opacity-60 flex-1"
+          />
+          <button
+            onClick={() => removeServer(i)}
+            disabled={disabled}
+            className="text-zinc-600 hover:text-red-400 transition-colors cursor-pointer p-1 disabled:opacity-60 disabled:cursor-not-allowed"
+            title="Remove server"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+      ))}
+
+      {draft.length === 0 && (
+        <p className="text-xs text-zinc-500 italic">No MCP servers configured.</p>
+      )}
+
+      <div className="flex items-center gap-2 pt-1">
+        {availablePresets.length > 0 && (
+          <select
+            value=""
+            onChange={(e) => {
+              const preset = MCP_PRESETS.find((p) => p.name === e.target.value);
+              if (preset) addPreset(preset);
+            }}
+            disabled={disabled || atLimit}
+            className="bg-zinc-800 border border-zinc-700 rounded px-2 py-1 text-xs text-zinc-300 focus:outline-none focus:border-zinc-500 disabled:opacity-60 disabled:cursor-not-allowed"
+          >
+            <option value="">Add from preset...</option>
+            {availablePresets.map((p) => (
+              <option key={p.name} value={p.name}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        )}
+        <button
+          onClick={addCustom}
+          disabled={disabled || atLimit}
+          className="px-3 py-1 text-xs font-medium text-zinc-400 hover:text-zinc-200 border border-zinc-700 rounded transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          + Add custom
+        </button>
+        {atLimit && (
+          <span className="text-xs text-zinc-500">Max {MCP_MAX_SERVERS} servers</span>
+        )}
+      </div>
+
+      <div className="pt-2">
+        <button
+          onClick={handleSave}
+          disabled={disabled || saving}
+          className="px-3 py-1 text-xs font-medium bg-zinc-700 hover:bg-zinc-600 text-zinc-200 rounded transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {saving ? 'Saving\u2026' : 'Save MCP Servers'}
+        </button>
+        {error && <p className="text-xs text-red-400 mt-1">{error}</p>}
+      </div>
+    </div>
+  );
+}
+
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AgentDetailPage() {
@@ -672,6 +935,26 @@ export default function AgentDetailPage() {
                   requireConfirm
                   confirmMessage="Changing the system prompt will alter this agent's behavior. Save changes?"
                 />
+
+                {/* ─── Built-in Tools ─── */}
+                <div className="sm:col-span-2 border-t border-zinc-800 pt-4 mt-2">
+                  <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">Built-in Tools</p>
+                  <ToolsEditor
+                    tools={agent.tools}
+                    onSave={async (tools) => { await patchAgent('tools', tools); }}
+                    disabled={isOrphaned}
+                  />
+                </div>
+
+                {/* ─── MCP Servers ─── */}
+                <div className="sm:col-span-2 border-t border-zinc-800 pt-4 mt-2">
+                  <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">MCP Servers</p>
+                  <MCPServersEditor
+                    servers={agent.mcpServers}
+                    onSave={async (servers) => { await patchAgent('mcpServers', servers); }}
+                    disabled={isOrphaned}
+                  />
+                </div>
               </div>
             </div>
           </div>

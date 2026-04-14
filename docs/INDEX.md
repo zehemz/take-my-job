@@ -29,6 +29,7 @@
 | [Attention Queue](./features/attention-queue/TECH_SPEC.md) | ✅ Shipped | — | — | ✓ | — |
 | [Notifications Popup](./features/notifications-popup/) | ✅ Shipped | ✓ | ✓ | ✓ | — |
 | [Agent Edit](./features/agent-edit/) | 🟠 In Progress | — | — | — | — |
+| [Agent Tools & MCP](./features/agent-edit/PRD.md) | 🟠 In Progress | — | — | — | — |
 
 **Status legend:** ✅ Shipped · 🔵 In Design · 🟠 In Progress · 🟡 Planned · ⛔ Blocked
 

@@ -195,6 +195,19 @@ IDs are stable — never reuse a retired ID.
 | E2E-AGENT-016 | Cancel during edit → reverts to original value | 🟡 Planned |
 | E2E-AGENT-017 | Orphaned agent → edit icons not shown, disabled banner visible | 🟡 Planned |
 
+## Agent Tools & MCP Configuration (`e2e/agents.spec.ts`)
+
+| ID | Scenario | Status |
+|----|----------|--------|
+| E2E-AGENT-018 | Agent detail page shows Built-in Tools section with 8 tool rows | 🟡 Planned |
+| E2E-AGENT-019 | Toggle a tool off and save → tool config updates | 🟡 Planned |
+| E2E-AGENT-020 | Change permission policy to "Ask first" and save → policy updates | 🟡 Planned |
+| E2E-AGENT-021 | MCP Servers section shows current servers from Anthropic | 🟡 Planned |
+| E2E-AGENT-022 | Add preset MCP server → row appears with pre-filled name/URL | 🟡 Planned |
+| E2E-AGENT-023 | Add custom MCP server with name + URL → save → persists | 🟡 Planned |
+| E2E-AGENT-024 | Remove MCP server → save → server removed from agent | 🟡 Planned |
+| E2E-AGENT-025 | Orphaned agent → tools and MCP sections show disabled state | 🟡 Planned |
+
 ---
 
 ## How to add a new scenario

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { prisma } from '@/lib/db'
 import { devAuth as auth } from '@/lib/dev-auth'
-import type { AgentDetail, PatchAgentRequest, PatchAgentResponse } from '@/lib/api-types'
+import type { AgentDetail, AgentToolConfig, AgentMCPServer, PatchAgentRequest, PatchAgentResponse } from '@/lib/api-types'
 
 export async function GET(
   _req: Request,
@@ -34,6 +34,20 @@ export async function GET(
     where: { anthropicAgentId: id },
   })
 
+  // Extract built-in tool configs from agent.tools
+  const builtInToolset = (agent.tools ?? []).find((t: any) => t.type === 'agent_toolset_20260401');
+  const toolConfigs: AgentToolConfig[] = (builtInToolset?.configs ?? []).map((c: any) => ({
+    name: c.name,
+    enabled: c.enabled ?? true,
+    permissionPolicy: c.permission_policy?.type === 'always_ask' ? 'always_ask' as const : 'always_allow' as const,
+  }));
+
+  // Extract MCP servers
+  const mcpServers: AgentMCPServer[] = (agent.mcp_servers ?? []).map((s: any) => ({
+    name: s.name,
+    url: s.url,
+  }));
+
   const detail: AgentDetail = {
     anthropicAgentId: agent.id,
     name: agent.name,
@@ -46,6 +60,8 @@ export async function GET(
     system: agent.system ?? null,
     createdAt: agent.created_at ?? new Date().toISOString(),
     archivedAt: agent.archived_at ?? null,
+    tools: toolConfigs,
+    mcpServers,
   }
 
   return NextResponse.json(detail)
@@ -85,6 +101,23 @@ export async function PATCH(
   }
   if (body.system !== undefined) {
     anthropicFields.system = body.system === '' ? null : body.system
+  }
+  if (body.tools !== undefined) {
+    anthropicFields.tools = [{
+      type: 'agent_toolset_20260401',
+      configs: body.tools.map(t => ({
+        name: t.name,
+        enabled: t.enabled,
+        permission_policy: { type: t.permissionPolicy },
+      })),
+    }];
+  }
+  if (body.mcpServers !== undefined) {
+    anthropicFields.mcp_servers = body.mcpServers.map(s => ({
+      type: 'url',
+      name: s.name,
+      url: s.url,
+    }));
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -165,6 +198,20 @@ export async function PATCH(
     }
   }
 
+  // Extract built-in tool configs from updated agent
+  const updatedToolset = (updatedAgent.tools ?? []).find((t: any) => t.type === 'agent_toolset_20260401');
+  const updatedToolConfigs: AgentToolConfig[] = (updatedToolset?.configs ?? []).map((c: any) => ({
+    name: c.name,
+    enabled: c.enabled ?? true,
+    permissionPolicy: c.permission_policy?.type === 'always_ask' ? 'always_ask' as const : 'always_allow' as const,
+  }));
+
+  // Extract MCP servers from updated agent
+  const updatedMcpServers: AgentMCPServer[] = (updatedAgent.mcp_servers ?? []).map((s: any) => ({
+    name: s.name,
+    url: s.url,
+  }));
+
   const detail: AgentDetail = {
     anthropicAgentId: updatedAgent.id,
     name: updatedAgent.name,
@@ -177,6 +224,8 @@ export async function PATCH(
     system: updatedAgent.system ?? null,
     createdAt: updatedAgent.created_at ?? new Date().toISOString(),
     archivedAt: updatedAgent.archived_at ?? null,
+    tools: updatedToolConfigs,
+    mcpServers: updatedMcpServers,
   }
 
   return NextResponse.json({
