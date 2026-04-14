@@ -179,10 +179,10 @@ IDs are stable — never reuse a retired ID.
 
 | ID | Scenario | Status |
 |----|----------|--------|
-| E2E-ENV-001 | Navigate to `/environments` → table renders with Name, Network, ID columns visible | 🟡 Planned |
-| E2E-ENV-002 | Click Delete on an environment row → inline confirmation (Confirm?/Yes/Cancel) appears | 🟡 Planned |
-| E2E-ENV-003 | Click Cancel → row unchanged | 🟡 Planned |
-| E2E-ENV-004 | Click Yes → spinner shows → row disappears after success | 🟡 Planned |
+| E2E-ENV-001 | Navigate to `/environments` → table renders with Name, Network, ID columns visible | ✅ Implemented |
+| E2E-ENV-002 | Click Delete on an environment row → inline confirmation (Confirm?/Yes/Cancel) appears | ✅ Implemented |
+| E2E-ENV-003 | Click Cancel → row unchanged | ✅ Implemented |
+| E2E-ENV-004 | Click Yes → spinner shows → row disappears after success | ⛔ Skipped — permanently archives real Anthropic environments |
 
 ## Agent Edit (`e2e/agents.spec.ts`)
 
@@ -214,12 +214,12 @@ IDs are stable — never reuse a retired ID.
 
 | ID | Scenario | Status |
 |----|----------|--------|
-| E2E-ENV-005 | Click environment name in list → navigates to `/environments/[id]` detail page | 🟡 Planned |
-| E2E-ENV-006 | Edit environment name → Save → name updates | 🟡 Planned |
-| E2E-ENV-007 | Edit description → Save → description updates | 🟡 Planned |
+| E2E-ENV-005 | Click environment name in list → navigates to `/environments/[id]` detail page | ✅ Implemented |
+| E2E-ENV-006 | Edit environment name → Save → name updates | ✅ Implemented |
+| E2E-ENV-007 | Edit description → Save → description updates | ✅ Implemented |
 | E2E-ENV-008 | Switch network from unrestricted to limited → configure hosts → Save → persists | 🟡 Planned |
 | E2E-ENV-009 | Edit packages (add npm package) → Save → persists | 🟡 Planned |
-| E2E-ENV-010 | Navigate to `/environments/nonexistent` → shows "not found" | 🟡 Planned |
+| E2E-ENV-010 | Navigate to `/environments/nonexistent` → shows "not found" | ✅ Implemented |
 
 ---
 
