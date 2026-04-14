@@ -1,0 +1,20 @@
+name: Orchestrator Tick
+
+on:
+  schedule:
+    # Every 5 minutes. GitHub Actions doesn't reliably fire sub-5-minute crons.
+    - cron: '*/5 * * * *'
+  workflow_dispatch: # allow manual trigger for testing
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call tick endpoint
+        run: |
+          curl -f -s -X GET "$APP_URL/api/cron/tick" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            -H "Content-Type: application/json"
+        env:
+          APP_URL: ${{ secrets.APP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
