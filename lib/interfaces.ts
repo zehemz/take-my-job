@@ -12,7 +12,7 @@ export interface IDbQueries {
   getRetryEligibleRuns(): Promise<AgentRun[]>;
   getColumnByName(boardId: string, name: string): Promise<Column | null>;
   getBoardColumns(boardId: string): Promise<Column[]>;
-  moveCardToColumnType(cardId: string, boardId: string, targetColumnType: 'review' | 'terminal'): Promise<void>;
+  moveCardToColumnType(cardId: string, boardId: string, targetColumnType: 'review' | 'terminal' | 'blocked'): Promise<void>;
 }
 
 /** Typed events emitted by the Anthropic Managed Agents SSE stream. */
@@ -70,4 +70,5 @@ export interface IOrchestrator {
   notifyCardMoved(cardId: string, newColumnId: string): Promise<void>;
   /** Release a card from the in-memory claimed set so the next poll tick can re-dispatch it. */
   unclaim(cardId: string): void;
+  notifyCardUnblocked(cardId: string, run: AgentRun): Promise<void>;
 }

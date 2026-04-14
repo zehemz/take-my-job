@@ -76,7 +76,7 @@ describe('Orchestrator', () => {
     spawnRunner = (card: Card, run: AgentRun) => {
       spawned.push({ card, run })
     }
-    orch = new Orchestrator({ db, anthropic, broadcaster }, spawnRunner)
+    orch = new Orchestrator({ db, anthropic, broadcaster }, spawnRunner, () => {})
   })
 
   afterEach(() => {

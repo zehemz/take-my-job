@@ -1,4 +1,4 @@
-export type ColumnType = 'inactive' | 'active' | 'review' | 'revision' | 'terminal';
+export type ColumnType = 'inactive' | 'active' | 'blocked' | 'review' | 'revision' | 'terminal';
 
 /**
  * Authoritative transition matrix for drag-and-drop and server-side move validation.
@@ -8,7 +8,8 @@ export type ColumnType = 'inactive' | 'active' | 'review' | 'revision' | 'termin
  */
 export const VALID_TRANSITIONS: Record<ColumnType, ColumnType[]> = {
   inactive: ['active'],
-  active: ['active', 'review'],
+  active: ['active', 'blocked', 'review'],
+  blocked: ['active'],
   review: ['terminal', 'revision'],
   revision: ['active'],
   terminal: [],
@@ -50,6 +51,7 @@ export interface AgentRun {
   endedAt: string | null;
   output: string;
   blockedReason: string | null;
+  sessionId: string | null;
   retryAfterMs: number | null;
   sessionId: string | null;
   error: string | null;

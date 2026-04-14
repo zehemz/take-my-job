@@ -45,6 +45,7 @@ export interface ApiAgentRun {
   endedAt: string | null;  // ISO 8601, null if still active
   output: string;
   blockedReason: string | null;
+  sessionId: string | null;
   retryAfterMs: number | null;
   /** Anthropic Managed Agents session ID, if the run was backed by one. */
   sessionId: string | null;
@@ -213,4 +214,25 @@ export interface NotificationsResponse {
 
 export interface MarkNotificationsReadRequest {
   notificationIds: string[]; // empty array = mark ALL read
+}
+
+// ─── Agent detail ────────────────────────────────────────────────────────────
+
+export interface AgentDetail {
+  anthropicAgentId: string;
+  name: string;
+  model: string;
+  anthropicVersion: string;
+  role: string | null;
+  dbId: string | null;
+  syncStatus: AgentSyncStatus;
+  description: string | null;
+  createdAt: string;
+  archivedAt: string | null;
+}
+
+// ─── Card reply (unblock) ─────────────────────────────────────────────────────
+
+export interface CardReplyRequest {
+  message: string;
 }

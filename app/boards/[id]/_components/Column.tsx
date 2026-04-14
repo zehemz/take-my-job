@@ -11,6 +11,7 @@ import NewCardModal from './NewCardModal';
 const COLUMN_TYPE_LABEL: Record<string, { label: string; color: string }> = {
   inactive: { label: 'Inactive', color: 'text-zinc-500 bg-zinc-800' },
   active: { label: 'Active', color: 'text-emerald-400 bg-emerald-900/40' },
+  blocked: { label: 'Blocked', color: 'text-amber-400 bg-amber-900/40' },
   review: { label: 'Review', color: 'text-sky-400 bg-sky-900/40' },
   revision: { label: 'Revision', color: 'text-amber-400 bg-amber-900/40' },
   terminal: { label: 'Done', color: 'text-violet-400 bg-violet-900/40' },
@@ -52,6 +53,12 @@ export default function Column({ column, isValidDropTarget = true }: Props) {
         {/* Header */}
         <div className="flex items-center justify-between px-3 py-2.5 shrink-0">
           <div className="flex items-center gap-2">
+            {column.type === 'blocked' && cards.length > 0 && (
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500" />
+              </span>
+            )}
             <span data-testid="column-name" className="text-xs font-semibold text-zinc-400 uppercase tracking-widest">
               {column.name}
             </span>

@@ -1,9 +1,10 @@
 import type { IOrchestrator } from './interfaces'
 import { AgentRunStatus } from './types'
+import type { AgentRun } from './types'
 import { dispatchPending } from './orchestrator/dispatch'
 import { reconcileRunning } from './orchestrator/reconcile'
 import { scheduleRetry } from './orchestrator/retry'
-import type { OrchestratorDeps, OrchestratorState, SpawnRunner } from './orchestrator/types'
+import type { OrchestratorDeps, OrchestratorState, SpawnRunner, SpawnResumeRunner } from './orchestrator/types'
 
 export type { OrchestratorDeps, OrchestratorState, SpawnRunner }
 
@@ -27,6 +28,7 @@ export class Orchestrator implements IOrchestrator {
   constructor(
     private deps: OrchestratorDeps,
     private spawnRunner: SpawnRunner,
+    private spawnResumeRunner: SpawnResumeRunner,
   ) {
     const envMs = parseInt(process.env.POLL_INTERVAL_MS ?? '', 10)
     this.pollInterval = clampPollInterval(Number.isNaN(envMs) ? POLL_DEFAULT_MS : envMs)
@@ -45,6 +47,16 @@ export class Orchestrator implements IOrchestrator {
       if (!run.sessionId) {
         // Never got a session — schedule retry with backoff
         await scheduleRetry(run, this.deps.db)
+        continue
+      }
+
+      // Blocked runs: add to state so the reconciler moves the card; don't re-attach
+      if (run.status === AgentRunStatus.blocked) {
+        const card = await this.deps.db.getCard(run.cardId)
+        if (card) {
+          this.state.claimed.add(run.cardId)
+          this.state.running.set(run.cardId, { run, abortController: new AbortController() })
+        }
         continue
       }
 
@@ -108,6 +120,17 @@ export class Orchestrator implements IOrchestrator {
   /** Release a card from the claimed set so the next poll tick can re-dispatch it. */
   unclaim(cardId: string): void {
     this.state.claimed.delete(cardId)
+  }
+
+  /** Called when a human replies to a blocked card (implements IOrchestrator). */
+  async notifyCardUnblocked(cardId: string, run: AgentRun): Promise<void> {
+    const card = await this.deps.db.getCard(cardId)
+    if (!card) return
+
+    const abortController = new AbortController()
+    this.state.claimed.add(cardId)
+    this.state.running.set(cardId, { run, abortController })
+    this.spawnResumeRunner(card, run, abortController.signal)
   }
 
   /** Called when a card is moved on the board (implements IOrchestrator). */

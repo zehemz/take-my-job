@@ -2,8 +2,8 @@ import { Orchestrator } from './orchestrator';
 import { dbQueries } from './db-queries';
 import { broadcaster } from './broadcaster-singleton';
 import { anthropicClient } from './anthropic-client';
-import { run as runAgent } from './agent-runner';
-import type { SpawnRunner } from './orchestrator/types';
+import { run as runAgent, resumeBlocked } from './agent-runner';
+import type { SpawnRunner, SpawnResumeRunner } from './orchestrator/types';
 import type { Card, Column } from './types';
 
 // Bump this version string whenever the Orchestrator class gains new methods so
@@ -31,9 +31,16 @@ function createOrchestrator(): Orchestrator {
       });
   };
 
+  const spawnResumeRunner: SpawnResumeRunner = (card, agentRun, signal) => {
+    resumeBlocked(card, agentRun, { db: dbQueries, anthropicClient, broadcaster }, signal).catch((err) => {
+      console.error('[orchestrator] resume runner error:', err);
+    });
+  };
+
   const orchestrator = new Orchestrator(
     { db: dbQueries, anthropic: anthropicClient, broadcaster },
     spawnRunner,
+    spawnResumeRunner,
   );
 
   orchestrator.start().catch((err) => {
