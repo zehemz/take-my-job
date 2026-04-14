@@ -3,12 +3,59 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useKobaniStore } from '@/lib/store';
-import type { AgentRun } from '@/lib/kanban-types';
-import type { ApiCard, SseEvent } from '@/lib/api-types';
+import type { AgentRun, AgentRole } from '@/lib/kanban-types';
+import type { ApiCard, ApiAcceptanceCriterion, SseEvent, UpdateCardRequest } from '@/lib/api-types';
 import AgentStatusBadge from '@/app/_components/AgentStatusBadge';
 import AcceptanceCriteriaList from './AcceptanceCriteriaList';
 import AgentOutputPanel from './AgentOutputPanel';
 import { relativeTime } from '@/lib/timeUtils';
+
+const AGENT_ROLES: AgentRole[] = [
+  'backend-engineer',
+  'qa-engineer',
+  'tech-lead',
+  'content-writer',
+  'product-spec-writer',
+  'designer',
+];
+
+const INPUT_CLASS =
+  'bg-zinc-950 border border-zinc-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-sm text-zinc-100 outline-none transition-colors';
+const SAVE_BTN =
+  'bg-indigo-600 hover:bg-indigo-500 text-white rounded-md px-2 py-1 text-xs font-medium transition-colors cursor-pointer';
+const CANCEL_BTN = 'text-zinc-500 hover:text-zinc-300 text-xs cursor-pointer';
+
+// ─── Inline save/cancel row ───────────────────────────────────────────────────
+
+function SaveCancelRow({
+  onSave,
+  onCancel,
+  saving,
+  error,
+}: {
+  onSave: () => void;
+  onCancel: () => void;
+  saving: boolean;
+  error: string;
+}) {
+  return (
+    <div className="flex items-center gap-3 mt-1.5">
+      <button
+        onClick={onSave}
+        disabled={saving}
+        className={SAVE_BTN + (saving ? ' opacity-60 pointer-events-none' : '')}
+      >
+        Save
+      </button>
+      <button onClick={onCancel} className={CANCEL_BTN}>
+        Cancel
+      </button>
+      {error && <span className="text-xs text-red-400">{error}</span>}
+    </div>
+  );
+}
+
+// ─── BlockedBanner ────────────────────────────────────────────────────────────
 
 function BlockedBanner({ cardId, blockedReason }: { cardId: string; blockedReason: string }) {
   const [reply, setReply] = useState('');
@@ -72,6 +119,8 @@ function BlockedBanner({ cardId, blockedReason }: { cardId: string; blockedReaso
   );
 }
 
+// ─── RevisionContextForm ──────────────────────────────────────────────────────
+
 function RevisionContextForm({ cardId }: { cardId: string }) {
   const [note, setNote] = useState('');
   const sendRevisionContext = useKobaniStore((s) => s.sendRevisionContext);
@@ -101,6 +150,8 @@ function RevisionContextForm({ cardId }: { cardId: string }) {
     </div>
   );
 }
+
+// ─── PendingApprovalActions ───────────────────────────────────────────────────
 
 function PendingApprovalActions({ cardId }: { cardId: string }) {
   const [revisionNote, setRevisionNote] = useState('');
@@ -155,6 +206,8 @@ function PendingApprovalActions({ cardId }: { cardId: string }) {
   );
 }
 
+// ─── RetrySchedulePanel ───────────────────────────────────────────────────────
+
 function RetrySchedulePanel({ agentRuns }: { agentRuns: AgentRun[] }) {
   const sorted = [...agentRuns].sort((a, b) => a.attempt - b.attempt);
   const lastRun = sorted[sorted.length - 1];
@@ -185,11 +238,14 @@ function RetrySchedulePanel({ agentRuns }: { agentRuns: AgentRun[] }) {
   );
 }
 
+// ─── CardDetailModal ──────────────────────────────────────────────────────────
+
 export default function CardDetailModal() {
   const selectedCardId = useKobaniStore((s) => s.selectedCardId);
   const closeCardDetail = useKobaniStore((s) => s.closeCardDetail);
   const cards = useKobaniStore((s) => s.cards);
   const columns = useKobaniStore((s) => s.columns);
+  const deleteCard = useKobaniStore((s) => s.deleteCard);
 
   const storeCard = cards.find((c) => c.id === selectedCardId);
   const column = storeCard ? columns.find((col) => col.id === storeCard.columnId) : null;
@@ -201,6 +257,27 @@ export default function CardDetailModal() {
   // ── 2. SSE live output ────────────────────────────────────────────────────
   const [sseOutput, setSseOutput] = useState('');
   const esRef = useRef<EventSource | null>(null);
+
+  // ── 3. Edit state ─────────────────────────────────────────────────────────
+  type EditingField = 'title' | 'description' | 'criteria' | 'role' | 'githubRepo' | 'githubBranch' | null;
+  const [editingField, setEditingField] = useState<EditingField>(null);
+
+  const [titleDraft, setTitleDraft] = useState('');
+  const [descDraft, setDescDraft] = useState('');
+  const [criteriaDraft, setCriteriaDraft] = useState('');
+  const [roleDraft, setRoleDraft] = useState<AgentRole>('backend-engineer');
+  const [repoDraft, setRepoDraft] = useState('');
+  const [branchDraft, setBranchDraft] = useState('');
+
+  const [savingField, setSavingField] = useState<EditingField>(null);
+  const [saveError, setSaveError] = useState('');
+
+  // ── 4. Delete state ───────────────────────────────────────────────────────
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleteRunning, setDeleteRunning] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+  const [deleteNote, setDeleteNote] = useState('');
+  const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   async function fetchCard(cardId: string) {
     try {
@@ -221,6 +298,10 @@ export default function CardDetailModal() {
     if (!selectedCardId) {
       setApiCard(null);
       setSseOutput('');
+      setEditingField(null);
+      setDeleteConfirm(false);
+      setDeleteError('');
+      setDeleteNote('');
       return;
     }
     setApiCard(null);
@@ -230,13 +311,10 @@ export default function CardDetailModal() {
 
   // SSE connection when card is live
   useEffect(() => {
-    // Determine status: prefer fresh API data, fall back to store
     const status = apiCard?.agentStatus ?? storeCard?.agentStatus;
     const cardId = selectedCardId;
-
     const isLiveStatus = status === 'running' || status === 'evaluating';
 
-    // Close any existing connection first
     if (esRef.current) {
       esRef.current.close();
       esRef.current = null;
@@ -279,7 +357,7 @@ export default function CardDetailModal() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedCardId, apiCard?.agentStatus]);
 
-  // ── Existing scroll-lock & keyboard effects ────────────────────────────────
+  // Scroll lock
   useEffect(() => {
     if (storeCard) {
       document.body.style.overflow = 'hidden';
@@ -289,13 +367,28 @@ export default function CardDetailModal() {
     };
   }, [storeCard]);
 
+  // Keyboard
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') closeCardDetail();
+      if (e.key === 'Escape') {
+        if (editingField) {
+          setEditingField(null);
+          setSaveError('');
+        } else {
+          closeCardDetail();
+        }
+      }
     }
     document.addEventListener('keydown', handleKey);
     return () => document.removeEventListener('keydown', handleKey);
-  }, [closeCardDetail]);
+  }, [closeCardDetail, editingField]);
+
+  // Cleanup delete timer on unmount
+  useEffect(() => {
+    return () => {
+      if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
+    };
+  }, []);
 
   if (!storeCard || !column) return null;
 
@@ -322,9 +415,132 @@ export default function CardDetailModal() {
   const isLive = card.agentStatus === 'running' || card.agentStatus === 'evaluating';
   const blockedRun = card.agentRuns.find((r) => r.status === 'blocked');
   const isInRevisionColumn = column.type === 'revision';
-
-  // Combine SSE-streamed text with stored run output (SSE takes precedence if non-empty)
   const liveOutput = sseOutput || currentRun?.output || '';
+
+  // ── Edit helpers ───────────────────────────────────────────────────────────
+
+  function openEdit(field: EditingField) {
+    setSaveError('');
+    setEditingField(field);
+    if (field === 'title') setTitleDraft(card.title);
+    if (field === 'description') setDescDraft(card.description ?? '');
+    if (field === 'criteria') {
+      setCriteriaDraft(card.acceptanceCriteria.map((c) => c.text).join('\n'));
+    }
+    if (field === 'role') setRoleDraft(card.role as AgentRole);
+    if (field === 'githubRepo') setRepoDraft(card.githubRepo ?? '');
+    if (field === 'githubBranch') setBranchDraft(card.githubBranch ?? '');
+  }
+
+  function cancelEdit() {
+    setEditingField(null);
+    setSaveError('');
+  }
+
+  async function patchCard(payload: UpdateCardRequest) {
+    const res = await fetch(`/api/cards/${card.id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) throw new Error('patch failed');
+    await fetchCard(card.id);
+  }
+
+  async function saveField(field: EditingField, payload: UpdateCardRequest) {
+    setSavingField(field);
+    setSaveError('');
+    try {
+      await patchCard(payload);
+      setEditingField(null);
+    } catch {
+      setSaveError('Could not save. Try again.');
+    } finally {
+      setSavingField(null);
+    }
+  }
+
+  function saveTitle() {
+    if (!titleDraft.trim()) return;
+    saveField('title', { title: titleDraft.trim() });
+  }
+
+  function saveDescription() {
+    saveField('description', { description: descDraft });
+  }
+
+  function saveCriteria() {
+    const lines = criteriaDraft.split('\n').map((l) => l.trim()).filter(Boolean);
+    const existingMap = new Map(card.acceptanceCriteria.map((c) => [c.text, c]));
+    const newCriteria: ApiAcceptanceCriterion[] = lines.map((text) => {
+      const existing = existingMap.get(text);
+      return existing
+        ? { id: existing.id, text: existing.text, passed: existing.passed, evidence: existing.evidence }
+        : { id: crypto.randomUUID(), text, passed: null, evidence: null };
+    });
+    saveField('criteria', { acceptanceCriteria: newCriteria });
+  }
+
+  function saveRole() {
+    saveField('role', { role: roleDraft });
+  }
+
+  function saveGithubRepo() {
+    saveField('githubRepo', { githubRepo: repoDraft.trim() || undefined });
+  }
+
+  function saveGithubBranch() {
+    saveField('githubBranch', { githubBranch: branchDraft.trim() || undefined });
+  }
+
+  // ── Delete helpers ─────────────────────────────────────────────────────────
+
+  function handleDeleteClick() {
+    if (card.agentStatus === 'running' || card.agentStatus === 'evaluating') {
+      setDeleteNote('Stop the agent before deleting.');
+      return;
+    }
+    setDeleteNote('');
+    setDeleteError('');
+    setDeleteConfirm(true);
+    if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
+    deleteTimerRef.current = setTimeout(() => {
+      setDeleteConfirm(false);
+      setDeleteNote('');
+    }, 5000);
+  }
+
+  function handleDeleteCancel() {
+    if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
+    setDeleteConfirm(false);
+    setDeleteNote('');
+    setDeleteError('');
+  }
+
+  async function handleDeleteConfirm() {
+    if (deleteRunning) return;
+    if (deleteTimerRef.current) clearTimeout(deleteTimerRef.current);
+    setDeleteRunning(true);
+    try {
+      const res = await fetch(`/api/cards/${card.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('delete failed');
+      deleteCard(card.id);
+      closeCardDetail();
+    } catch {
+      setDeleteError('Could not delete card. Try again.');
+      setDeleteConfirm(false);
+    } finally {
+      setDeleteRunning(false);
+    }
+  }
+
+  // ── Render ─────────────────────────────────────────────────────────────────
+
+  const isSaving = (field: EditingField) => savingField === field;
 
   const modal = (
     <div
@@ -337,8 +553,36 @@ export default function CardDetailModal() {
       >
         {/* Header */}
         <div className="flex items-start justify-between px-6 py-4 shrink-0">
-          <div className="flex flex-col gap-1.5">
-            <h2 className="text-base font-semibold text-zinc-100">{card.title}</h2>
+          <div className="flex flex-col gap-1.5 flex-1 min-w-0 mr-3">
+            {/* Title */}
+            {editingField === 'title' ? (
+              <div className={isSaving('title') ? 'opacity-60 pointer-events-none' : ''}>
+                <input
+                  type="text"
+                  className="w-full bg-transparent border-b border-indigo-500 text-base font-semibold text-zinc-100 outline-none pb-0.5 focus:border-indigo-400"
+                  value={titleDraft}
+                  onChange={(e) => setTitleDraft(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') saveTitle(); }}
+                  autoFocus
+                  placeholder="Card title"
+                />
+                <SaveCancelRow
+                  onSave={saveTitle}
+                  onCancel={cancelEdit}
+                  saving={isSaving('title')}
+                  error={editingField === 'title' ? saveError : ''}
+                />
+              </div>
+            ) : (
+              <h2
+                className="text-base font-semibold text-zinc-100 cursor-pointer hover:text-zinc-300 transition-colors"
+                onClick={() => openEdit('title')}
+                title="Click to edit title"
+              >
+                {card.title}
+              </h2>
+            )}
+
             <div className="flex items-center gap-2">
               {loadingCard ? (
                 <div className="h-5 w-20 rounded bg-zinc-600 animate-pulse" />
@@ -352,14 +596,13 @@ export default function CardDetailModal() {
                 {relativeTime(card.movedToColumnAt)} in {column.name}
               </span>
             </div>
-            {/* approvedBy */}
             {card.approvedBy && (
               <span className="text-xs text-zinc-500">Approved by @{card.approvedBy.replace(/^@/, '')}</span>
             )}
           </div>
           <button
             onClick={closeCardDetail}
-            className="text-zinc-500 hover:text-zinc-100 transition-colors p-1 rounded cursor-pointer"
+            className="text-zinc-500 hover:text-zinc-100 transition-colors p-1 rounded cursor-pointer shrink-0"
           >
             ✕
           </button>
@@ -368,34 +611,156 @@ export default function CardDetailModal() {
         {/* Meta row */}
         {currentRun && (
           <div className="px-6 py-3 flex flex-wrap items-center gap-4 text-xs text-zinc-500 shrink-0 border-t border-zinc-800">
-            <span>
-              Role: <span className="text-zinc-300">{currentRun.role}</span>
+            {/* Role */}
+            <span className="flex items-center gap-1">
+              Role:{' '}
+              {editingField === 'role' ? (
+                <span className={`flex items-center gap-1 ${isSaving('role') ? 'opacity-60 pointer-events-none' : ''}`}>
+                  <select
+                    className="bg-zinc-800 border border-zinc-700 text-zinc-100 text-xs rounded-md px-2 py-1 outline-none focus:border-indigo-500 cursor-pointer"
+                    value={roleDraft}
+                    onChange={(e) => setRoleDraft(e.target.value as AgentRole)}
+                  >
+                    {AGENT_ROLES.map((r) => (
+                      <option key={r} value={r}>{r}</option>
+                    ))}
+                  </select>
+                  <button onClick={saveRole} className={SAVE_BTN}>Save</button>
+                  <button onClick={cancelEdit} className={CANCEL_BTN}>Cancel</button>
+                  {saveError && editingField === 'role' && (
+                    <span className="text-xs text-red-400">{saveError}</span>
+                  )}
+                </span>
+              ) : (
+                <span
+                  className="text-zinc-300 bg-zinc-800 rounded px-1.5 py-0.5 font-mono text-xs cursor-pointer hover:bg-zinc-700 transition-colors"
+                  onClick={() => openEdit('role')}
+                  title="Click to edit role"
+                >
+                  {currentRun.role} ✎
+                </span>
+              )}
             </span>
+
             <span>
               Attempt: <span className="text-zinc-300">{currentRun.attempt} / 5</span>
             </span>
             <span>
               Started: <span className="text-zinc-300">{relativeTime(currentRun.startedAt)} ago</span>
             </span>
-            {card.githubRepo && (
-              <span>
-                Repo: <span className="text-zinc-300 font-mono text-xs">{card.githubRepo}</span>
+
+            {/* GitHub Repo */}
+            {editingField === 'githubRepo' ? (
+              <span className={`flex items-center gap-1 ${isSaving('githubRepo') ? 'opacity-60 pointer-events-none' : ''}`}>
+                <span className="text-zinc-500">Repo:</span>
+                <input
+                  type="text"
+                  className="bg-zinc-950 border border-zinc-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded px-2 py-0.5 text-xs text-zinc-100 font-mono outline-none transition-colors w-40"
+                  value={repoDraft}
+                  onChange={(e) => setRepoDraft(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') saveGithubRepo(); }}
+                  placeholder="owner/repo"
+                  autoFocus
+                />
+                <button onClick={saveGithubRepo} className={SAVE_BTN}>Save</button>
+                <button onClick={cancelEdit} className={CANCEL_BTN}>Cancel</button>
+                {saveError && editingField === 'githubRepo' && (
+                  <span className="text-xs text-red-400">{saveError}</span>
+                )}
+              </span>
+            ) : card.githubRepo ? (
+              <span
+                className="flex items-center gap-1 cursor-pointer hover:text-zinc-300 transition-colors"
+                onClick={() => openEdit('githubRepo')}
+                title="Click to edit repo"
+              >
+                Repo: <span className="text-zinc-300 font-mono">{card.githubRepo}</span>
+                <span className="text-zinc-600">✎</span>
+              </span>
+            ) : (
+              <span
+                className="text-zinc-600 hover:text-zinc-400 cursor-pointer transition-colors"
+                onClick={() => openEdit('githubRepo')}
+              >
+                + Add repo
               </span>
             )}
-            {card.githubBranch && (
-              <span>
-                Branch: <span className="text-zinc-300 font-mono text-xs">{card.githubBranch}</span>
+
+            {/* GitHub Branch */}
+            {editingField === 'githubBranch' ? (
+              <span className={`flex items-center gap-1 ${isSaving('githubBranch') ? 'opacity-60 pointer-events-none' : ''}`}>
+                <span className="text-zinc-500">Branch:</span>
+                <input
+                  type="text"
+                  className="bg-zinc-950 border border-zinc-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded px-2 py-0.5 text-xs text-zinc-100 font-mono outline-none transition-colors w-32"
+                  value={branchDraft}
+                  onChange={(e) => setBranchDraft(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') saveGithubBranch(); }}
+                  placeholder="main"
+                  autoFocus
+                />
+                <button onClick={saveGithubBranch} className={SAVE_BTN}>Save</button>
+                <button onClick={cancelEdit} className={CANCEL_BTN}>Cancel</button>
+                {saveError && editingField === 'githubBranch' && (
+                  <span className="text-xs text-red-400">{saveError}</span>
+                )}
+              </span>
+            ) : card.githubBranch ? (
+              <span
+                className="flex items-center gap-1 cursor-pointer hover:text-zinc-300 transition-colors"
+                onClick={() => openEdit('githubBranch')}
+                title="Click to edit branch"
+              >
+                Branch: <span className="text-zinc-300 font-mono">{card.githubBranch}</span>
+                <span className="text-zinc-600">✎</span>
+              </span>
+            ) : (
+              <span
+                className="text-zinc-600 hover:text-zinc-400 cursor-pointer transition-colors"
+                onClick={() => openEdit('githubBranch')}
+              >
+                + Add branch
               </span>
             )}
           </div>
         )}
 
         {/* Description */}
-        {card.description && (
-          <div className="px-6 py-3 border-t border-zinc-800">
-            <p className="text-sm text-zinc-300 leading-relaxed">{card.description}</p>
-          </div>
-        )}
+        <div className="px-6 py-3 border-t border-zinc-800">
+          {editingField === 'description' ? (
+            <div className={isSaving('description') ? 'opacity-60 pointer-events-none' : ''}>
+              <textarea
+                className={`w-full ${INPUT_CLASS} placeholder-zinc-600 resize-none`}
+                rows={4}
+                value={descDraft}
+                onChange={(e) => setDescDraft(e.target.value)}
+                autoFocus
+                placeholder="Describe the work for the agent..."
+              />
+              <SaveCancelRow
+                onSave={saveDescription}
+                onCancel={cancelEdit}
+                saving={isSaving('description')}
+                error={editingField === 'description' ? saveError : ''}
+              />
+            </div>
+          ) : card.description ? (
+            <p
+              className="text-sm text-zinc-300 leading-relaxed cursor-pointer hover:text-zinc-200 transition-colors"
+              onClick={() => openEdit('description')}
+              title="Click to edit description"
+            >
+              {card.description}
+            </p>
+          ) : (
+            <p
+              className="text-sm text-zinc-600 cursor-pointer hover:text-zinc-400 transition-colors"
+              onClick={() => openEdit('description')}
+            >
+              No description. Click to add one.
+            </p>
+          )}
+        </div>
 
         {/* Blocked banner */}
         {card.agentStatus === 'blocked' && blockedRun?.blockedReason && (
@@ -404,13 +769,44 @@ export default function CardDetailModal() {
 
         {/* Acceptance Criteria */}
         <div className="px-6 py-4 border-t border-zinc-800">
-          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-3">
-            Acceptance Criteria
-          </p>
-          <AcceptanceCriteriaList
-            criteria={card.acceptanceCriteria}
-            cardStatus={card.agentStatus}
-          />
+          <div className="flex items-center gap-2 mb-3">
+            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+              Acceptance Criteria
+            </p>
+            {editingField !== 'criteria' && (
+              <button
+                className="text-zinc-600 hover:text-zinc-400 text-xs cursor-pointer transition-colors"
+                onClick={() => openEdit('criteria')}
+              >
+                Edit
+              </button>
+            )}
+          </div>
+
+          {editingField === 'criteria' ? (
+            <div className={isSaving('criteria') ? 'opacity-60 pointer-events-none' : ''}>
+              <textarea
+                className={`w-full ${INPUT_CLASS} placeholder-zinc-600 resize-none`}
+                rows={Math.max(4, card.acceptanceCriteria.length + 1)}
+                value={criteriaDraft}
+                onChange={(e) => setCriteriaDraft(e.target.value)}
+                autoFocus
+                placeholder="One criterion per line..."
+              />
+              <p className="text-xs text-zinc-600 mt-1">One criterion per line</p>
+              <SaveCancelRow
+                onSave={saveCriteria}
+                onCancel={cancelEdit}
+                saving={isSaving('criteria')}
+                error={editingField === 'criteria' ? saveError : ''}
+              />
+            </div>
+          ) : (
+            <AcceptanceCriteriaList
+              criteria={card.acceptanceCriteria}
+              cardStatus={card.agentStatus}
+            />
+          )}
         </div>
 
         {/* Agent Output */}
@@ -426,7 +822,6 @@ export default function CardDetailModal() {
           {currentRun ? (
             <>
               <AgentOutputPanel output={liveOutput} isLive={isLive} />
-              {/* Previous runs */}
               {card.agentRuns.length > 1 && (
                 <div className="mt-3">
                   {card.agentRuns
@@ -462,6 +857,42 @@ export default function CardDetailModal() {
         {card.agentStatus === 'pending-approval' && (
           <PendingApprovalActions cardId={card.id} />
         )}
+
+        {/* Footer — delete affordance */}
+        <div className="border-t border-zinc-800 px-6 py-3 flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-3">
+            {deleteConfirm ? (
+              <>
+                <span className="text-xs text-zinc-400">Delete this card?</span>
+                <button
+                  onClick={handleDeleteConfirm}
+                  disabled={deleteRunning}
+                  className="text-xs text-red-400 hover:text-red-300 border border-red-800 hover:border-red-600 rounded-md px-2 py-1 transition-colors cursor-pointer disabled:opacity-60"
+                >
+                  Delete permanently
+                </button>
+                <button onClick={handleDeleteCancel} className={CANCEL_BTN}>
+                  Keep
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={handleDeleteClick}
+                  className="text-xs text-red-400 hover:text-red-300 transition-colors cursor-pointer"
+                >
+                  Delete card
+                </button>
+                {deleteNote && (
+                  <span className="text-xs text-zinc-500">{deleteNote}</span>
+                )}
+                {deleteError && (
+                  <span className="text-xs text-red-400">{deleteError}</span>
+                )}
+              </>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

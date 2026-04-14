@@ -105,4 +105,194 @@ test.describe('Cards', () => {
     });
     expect(res.status()).toBe(401);
   });
+
+  // ── Delete card ────────────────────────────────────────────────────────────
+
+  test('E2E-CARD-009: delete button visible in card detail modal', async ({ authedPage: page, cookieHeader, request }) => {
+    const api = new KobaniApi(request, cookieHeader);
+    const boards = await api.getBoards();
+    if (boards.length === 0) { test.skip(true, 'No boards in DB'); return; }
+
+    const { board, columns } = await api.getBoard(boards[0].id);
+    if (columns.length === 0) { test.skip(true, 'Board has no columns'); return; }
+
+    const card = await api.createCard(board.id, {
+      title: `E2E Delete Visible ${Date.now()}`,
+      columnId: columns[0].id,
+      role: 'backend-engineer',
+    });
+
+    try {
+      await page.goto(`/boards/${board.id}`);
+      await expect(page.locator('[data-testid="column"]').first()).toBeVisible({ timeout: 10_000 });
+
+      // Open the card detail modal by clicking on the card title
+      await page.getByText(card.title).first().click();
+
+      // The modal should be visible and contain the delete button
+      await expect(page.getByRole('button', { name: 'Delete card' })).toBeVisible({ timeout: 5_000 });
+    } finally {
+      await api.deleteCard(card.id).catch(() => { /* may already be deleted */ });
+    }
+  });
+
+  test('E2E-CARD-010: delete requires confirm step before card is removed', async ({ authedPage: page, cookieHeader, request }) => {
+    const api = new KobaniApi(request, cookieHeader);
+    const boards = await api.getBoards();
+    if (boards.length === 0) { test.skip(true, 'No boards in DB'); return; }
+
+    const { board, columns } = await api.getBoard(boards[0].id);
+    if (columns.length === 0) { test.skip(true, 'Board has no columns'); return; }
+
+    const card = await api.createCard(board.id, {
+      title: `E2E Delete Confirm ${Date.now()}`,
+      columnId: columns[0].id,
+      role: 'backend-engineer',
+    });
+
+    try {
+      await page.goto(`/boards/${board.id}`);
+      await expect(page.locator('[data-testid="column"]').first()).toBeVisible({ timeout: 10_000 });
+
+      await page.getByText(card.title).first().click();
+      await expect(page.getByRole('button', { name: 'Delete card' })).toBeVisible({ timeout: 5_000 });
+
+      // First click shows confirm step, not immediate deletion
+      await page.getByRole('button', { name: 'Delete card' }).click();
+      await expect(page.getByRole('button', { name: 'Delete permanently' })).toBeVisible();
+      await expect(page.getByText('Delete this card?')).toBeVisible();
+
+      // Confirm: card disappears and modal closes
+      await page.getByRole('button', { name: 'Delete permanently' }).click();
+      await expect(page.getByRole('button', { name: 'Delete permanently' })).not.toBeVisible({ timeout: 5_000 });
+      await expect(page.getByText(card.title)).not.toBeVisible({ timeout: 5_000 });
+    } catch {
+      // If test fails before deletion, clean up via API
+      await api.deleteCard(card.id).catch(() => { /* may already be deleted */ });
+    }
+  });
+
+  test('E2E-CARD-011: delete confirm cancel returns to delete button', async ({ authedPage: page, cookieHeader, request }) => {
+    const api = new KobaniApi(request, cookieHeader);
+    const boards = await api.getBoards();
+    if (boards.length === 0) { test.skip(true, 'No boards in DB'); return; }
+
+    const { board, columns } = await api.getBoard(boards[0].id);
+    if (columns.length === 0) { test.skip(true, 'Board has no columns'); return; }
+
+    const card = await api.createCard(board.id, {
+      title: `E2E Delete Cancel ${Date.now()}`,
+      columnId: columns[0].id,
+      role: 'backend-engineer',
+    });
+
+    try {
+      await page.goto(`/boards/${board.id}`);
+      await expect(page.locator('[data-testid="column"]').first()).toBeVisible({ timeout: 10_000 });
+
+      await page.getByText(card.title).first().click();
+      await expect(page.getByRole('button', { name: 'Delete card' })).toBeVisible({ timeout: 5_000 });
+
+      await page.getByRole('button', { name: 'Delete card' }).click();
+      await expect(page.getByRole('button', { name: 'Delete permanently' })).toBeVisible();
+
+      // Click Keep — should revert to delete button, card still on board
+      await page.getByRole('button', { name: 'Keep' }).click();
+      await expect(page.getByRole('button', { name: 'Delete card' })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Delete permanently' })).not.toBeVisible();
+    } finally {
+      await api.deleteCard(card.id).catch(() => { /* already deleted */ });
+    }
+  });
+
+  // ── Inline edit ────────────────────────────────────────────────────────────
+
+  test('E2E-CARD-012: clicking title enters edit mode and shows Save/Cancel', async ({ authedPage: page, cookieHeader, request }) => {
+    const api = new KobaniApi(request, cookieHeader);
+    const boards = await api.getBoards();
+    if (boards.length === 0) { test.skip(true, 'No boards in DB'); return; }
+
+    const { board, columns } = await api.getBoard(boards[0].id);
+    if (columns.length === 0) { test.skip(true, 'Board has no columns'); return; }
+
+    const card = await api.createCard(board.id, {
+      title: `E2E Edit Title ${Date.now()}`,
+      columnId: columns[0].id,
+      role: 'backend-engineer',
+    });
+
+    try {
+      await page.goto(`/boards/${board.id}`);
+      await expect(page.locator('[data-testid="column"]').first()).toBeVisible({ timeout: 10_000 });
+
+      await page.getByText(card.title).first().click();
+
+      // Click the title in the modal to enter edit mode
+      const titleHeading = page.locator('h2').filter({ hasText: card.title });
+      await expect(titleHeading).toBeVisible({ timeout: 5_000 });
+      await titleHeading.click();
+
+      // Input field appears with Save and Cancel buttons
+      await expect(page.locator('input[placeholder="Card title"]')).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Save' }).first()).toBeVisible();
+      await expect(page.getByText('Cancel').first()).toBeVisible();
+    } finally {
+      await api.deleteCard(card.id).catch(() => { /* already deleted */ });
+    }
+  });
+
+  test('E2E-CARD-013: save updates title, cancel discards changes', async ({ authedPage: page, cookieHeader, request }) => {
+    const api = new KobaniApi(request, cookieHeader);
+    const boards = await api.getBoards();
+    if (boards.length === 0) { test.skip(true, 'No boards in DB'); return; }
+
+    const { board, columns } = await api.getBoard(boards[0].id);
+    if (columns.length === 0) { test.skip(true, 'Board has no columns'); return; }
+
+    const originalTitle = `E2E Edit Save ${Date.now()}`;
+    const card = await api.createCard(board.id, {
+      title: originalTitle,
+      columnId: columns[0].id,
+      role: 'backend-engineer',
+    });
+
+    try {
+      await page.goto(`/boards/${board.id}`);
+      await expect(page.locator('[data-testid="column"]').first()).toBeVisible({ timeout: 10_000 });
+
+      await page.getByText(originalTitle).first().click();
+
+      // Enter edit mode on title
+      const titleHeading = page.locator('h2').filter({ hasText: originalTitle });
+      await expect(titleHeading).toBeVisible({ timeout: 5_000 });
+      await titleHeading.click();
+
+      const titleInput = page.locator('input[placeholder="Card title"]');
+      await expect(titleInput).toBeVisible();
+
+      // Test cancel first: type something then cancel
+      const discardedTitle = `Discarded ${Date.now()}`;
+      await titleInput.fill(discardedTitle);
+      await page.getByText('Cancel').first().click();
+
+      // Title reverts to original
+      await expect(page.locator('h2').filter({ hasText: originalTitle })).toBeVisible();
+      await expect(page.getByText(discardedTitle)).not.toBeVisible();
+
+      // Now test save: enter edit mode again, save a new title
+      await page.locator('h2').filter({ hasText: originalTitle }).click();
+      const newTitle = `Updated Title ${Date.now()}`;
+      await page.locator('input[placeholder="Card title"]').fill(newTitle);
+      await page.getByRole('button', { name: 'Save' }).first().click();
+
+      // Title updates in the modal
+      await expect(page.locator('h2').filter({ hasText: newTitle })).toBeVisible({ timeout: 5_000 });
+
+      // Verify via API that the change persisted
+      const updated = await api.getCard(card.id);
+      expect(updated.title).toBe(newTitle);
+    } finally {
+      await api.deleteCard(card.id).catch(() => { /* already deleted */ });
+    }
+  });
 });

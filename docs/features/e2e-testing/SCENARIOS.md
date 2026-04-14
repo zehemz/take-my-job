@@ -48,6 +48,11 @@ IDs are stable — never reuse a retired ID.
 | E2E-CARD-006 | Card title appears in correct column after drag-and-drop | 🟡 Planned |
 | E2E-CARD-007 | `approvedBy` field is always set from session on server, not from request body | 🟡 Planned |
 | E2E-CARD-008 | Card detail modal opens on click and shows title, description, agent status | 🟡 Planned |
+| E2E-CARD-009 | Delete button visible in card detail modal footer | ✅ Implemented |
+| E2E-CARD-010 | Delete confirm step required; card disappears and modal closes after confirm | ✅ Implemented |
+| E2E-CARD-011 | Delete confirm cancel returns footer to initial delete button (no deletion) | ✅ Implemented |
+| E2E-CARD-012 | Clicking title in modal enters edit mode and shows Save/Cancel buttons | ✅ Implemented |
+| E2E-CARD-013 | Save updates title (API-persisted); Cancel discards changes | ✅ Implemented |
 
 ---
 
