@@ -184,14 +184,12 @@ export const dbQueries: IDbQueries = {
 
   async claimAndCreateAgentRun(cardId: string, columnId: string, role: string, attempt: number): Promise<AgentRun | null> {
     return prisma.$transaction(async (tx) => {
-      // Lock the card row — skip if another process already locked it
       const locked: Array<{ id: string }> = await tx.$queryRawUnsafe(
         `SELECT id FROM "Card" WHERE id = $1 FOR UPDATE SKIP LOCKED`,
         cardId,
       );
       if (locked.length === 0) return null;
 
-      // Guard: if the card already has an active, completed, or blocked run, bail out
       const blockingRun = await tx.agentRun.findFirst({
         where: { cardId, status: { in: ["running", "idle", "pending", "completed", "blocked"] } },
       });
@@ -251,5 +249,12 @@ export const dbQueries: IDbQueries = {
       orderBy: { createdAt: "asc" },
     });
     return events as unknown as OrchestratorEvent[];
+  },
+
+  async clearRetryAfter(runId: string): Promise<void> {
+    await prisma.agentRun.update({
+      where: { id: runId },
+      data: { retryAfterMs: null },
+    });
   },
 };

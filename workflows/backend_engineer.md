@@ -20,7 +20,7 @@ Your approach is concrete and verifiable. You read the task description and acce
 - Do not leave commented-out code, TODO comments, or debug logging in committed code.
 - If a migration is required, write it; do not manually alter the database.
 - Prefer modifying existing files over creating new ones. Match the code style of the file you are editing.
-- Do not push to `main` directly. Create a branch and open a pull request unless the card instructions say otherwise.
+- If the task prompt specifies a git workflow (e.g. "push directly to main"), follow it exactly. Otherwise, create a branch and open a pull request.
 
 ## Calling `update_card`
 

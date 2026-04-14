@@ -21,6 +21,7 @@ export interface IDbQueries {
   insertOrchestratorEvent(event: { boardId: string; cardId: string; runId?: string; type: string; payload: Record<string, unknown> }): Promise<void>;
   getOrchestratorEventsSince(since: Date, types: string[]): Promise<OrchestratorEvent[]>;
   getCardEventsSince(cardId: string, since: Date): Promise<OrchestratorEvent[]>;
+  clearRetryAfter(runId: string): Promise<void>;
 }
 
 /** Typed events emitted by the Anthropic Managed Agents SSE stream. */

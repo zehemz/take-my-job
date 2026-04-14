@@ -58,6 +58,11 @@ export function renderTurnPrompt(input: PromptRenderInput): string {
         "All your work MUST be done inside this directory. `cd` into it before starting."
       );
       lines.push("Do NOT modify files outside this directory.");
+      lines.push("");
+      lines.push("**Git workflow:** Commit and push directly to `main`. Do NOT create branches.");
+      lines.push("```");
+      lines.push("git add -A && git commit -m \"your message\" && git push origin main");
+      lines.push("```");
     }
   }
 

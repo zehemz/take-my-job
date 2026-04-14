@@ -65,11 +65,42 @@ function StatusBadge({ status }: { status: SessionStatus }) {
   );
 }
 
-interface Props {
-  items: SessionRow[];
+function StopButton({ sessionId, status, onStopped }: { sessionId: string; status: SessionStatus; onStopped: () => void }) {
+  const [loading, setLoading] = useState(false);
+  const canStop = status === 'running' || status === 'idle' || status === 'rescheduling';
+
+  if (!canStop) return null;
+
+  async function handleStop() {
+    if (!confirm('Stop this session? The agent will be interrupted.')) return;
+    setLoading(true);
+    try {
+      await fetch(`/api/sessions/${sessionId}`, { method: 'DELETE' });
+      onStopped();
+    } catch {
+      // ignore
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  return (
+    <button
+      onClick={handleStop}
+      disabled={loading}
+      className="text-xs text-red-400 hover:text-red-300 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+    >
+      {loading ? 'Stopping…' : 'Stop'}
+    </button>
+  );
 }
 
-export default function SessionTable({ items }: Props) {
+interface Props {
+  items: SessionRow[];
+  onRefresh?: () => void;
+}
+
+export default function SessionTable({ items, onRefresh }: Props) {
   if (items.length === 0) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -103,6 +134,9 @@ export default function SessionTable({ items }: Props) {
             </th>
             <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
               Created
+            </th>
+            <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider w-20">
+              Actions
             </th>
           </tr>
         </thead>
@@ -144,6 +178,13 @@ export default function SessionTable({ items }: Props) {
               </td>
               <td className="px-4 py-3 text-zinc-400">
                 {new Date(item.createdAt).toLocaleString('en-GB')}
+              </td>
+              <td className="px-4 py-3">
+                <StopButton
+                  sessionId={item.id}
+                  status={item.status}
+                  onStopped={() => onRefresh?.()}
+                />
               </td>
             </tr>
           ))}

@@ -34,7 +34,12 @@ export async function dispatchPending(
   // ── 2. Retry-eligible runs ─────────────────────────────────
   const retryRuns = await deps.db.getRetryEligibleRuns()
 
+  // Deduplicate: only retry once per card (the latest failed run wins)
+  const seenCards = new Set<string>()
   for (const prevRun of retryRuns) {
+    if (seenCards.has(prevRun.cardId)) continue
+    seenCards.add(prevRun.cardId)
+
     const currentActive = await deps.db.countActiveRuns()
     if (currentActive >= MAX_CONCURRENT) break
     // Guard: never exceed the attempt cap
@@ -53,6 +58,10 @@ export async function dispatchPending(
       prevRun.attempt + 1,
     )
     if (!run) continue // another process claimed it
+
+    // Clear retryAfterMs on the old run so it's not picked up again
+    await deps.db.clearRetryAfter(prevRun.id)
+
     spawnRunner(card, run) // non-blocking
   }
 }

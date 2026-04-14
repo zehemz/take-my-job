@@ -200,4 +200,9 @@ export class StubDbQueries implements IDbQueries {
       (e) => e.cardId === cardId && e.createdAt > since && !excluded.has(e.type),
     );
   }
+
+  async clearRetryAfter(runId: string): Promise<void> {
+    const run = this.agentRuns.find((r) => r.id === runId);
+    if (run) run.retryAfterMs = null;
+  }
 }
