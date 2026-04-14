@@ -35,6 +35,7 @@
 | [Stateless Orchestrator](./features/stateless-orchestrator/TECH_SPEC.md) | ✅ Shipped | — | — | ✓ | — |
 | [Environment Creation with Presets](./features/environment-creation/) | ✅ Shipped | ✓ | — | ✓ | — |
 | [Per-Card Environment Override](./features/per-card-environment/TECH_SPEC.md) | ✅ Shipped | — | — | ✓ | — |
+| [Audit Log](./features/audit-log/) | 🟡 Planned | ✓ | — | ✓ | — |
 
 **Status legend:** ✅ Shipped · 🔵 In Design · 🟠 In Progress · 🟡 Planned · ⛔ Blocked
 
