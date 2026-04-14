@@ -34,6 +34,19 @@ export async function PATCH(
 
   const body: UpdateCardRequest = await req.json();
 
+  // Only allow edits while the card is in the backlog (inactive column)
+  const existing = await prisma.card.findUnique({
+    where: { id: params.id },
+    include: { column: { select: { columnType: true } } },
+  });
+  if (!existing) return NextResponse.json({ error: 'Card not found' }, { status: 404 });
+  if (existing.column.columnType !== 'inactive') {
+    return NextResponse.json(
+      { error: 'Cards can only be edited while in the backlog' },
+      { status: 403 },
+    );
+  }
+
   const card = await prisma.card.update({
     where: { id: params.id },
     data: {
