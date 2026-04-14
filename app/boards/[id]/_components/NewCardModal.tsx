@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useKobaniStore } from '@/lib/store';
 import { useRoles, roleLabel } from '@/lib/useRoles';
-import type { EnvironmentRow, PaginatedResponse } from '@/lib/api-types';
+import type { EnvironmentRow } from '@/lib/api-types';
 
 interface Props {
   columnId: string;
@@ -29,8 +29,8 @@ export default function NewCardModal({ columnId, boardId, onClose }: Props) {
   useEffect(() => {
     fetch('/api/environments')
       .then((res) => res.ok ? res.json() : null)
-      .then((data: PaginatedResponse<EnvironmentRow> | null) => {
-        if (data) setEnvironments(data.items);
+      .then((data: EnvironmentRow[] | null) => {
+        if (data) setEnvironments(data);
       })
       .catch(() => {});
   }, []);
