@@ -1,5 +1,6 @@
 [tools]
 node = "22"
+"github:anthropics/anthropic-cli" = "latest"
 
 [env]
 _.file = ".env"
