@@ -162,6 +162,7 @@ export interface AgentRow {
   name: string
   model: string
   anthropicVersion: string
+  environmentId: string | null
   // From DB (role mapping)
   role: string | null       // null = unmapped (exists on Anthropic, no DB record)
   dbId: string | null       // AgentConfig.id, null if unmapped

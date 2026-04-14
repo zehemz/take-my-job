@@ -25,7 +25,7 @@ export async function GET() {
 
   // Only show agents that belong to this project
   const kobaniAgents = anthropicAgents.filter((a: any) =>
-    typeof a.name === 'string' && a.name.startsWith('kobani-') && a.archived_at == null,
+    typeof a.name === 'string' && a.name.startsWith('kobani-'),
   )
 
   const dbRows = await prisma.agentConfig.findMany()
@@ -37,8 +37,9 @@ export async function GET() {
       ? {
           anthropicAgentId: a.id,
           name: a.name,
-          model: typeof a.model === 'object' ? (a.model?.id ?? '') : (a.model ?? ''),
+          model: a.model ?? '',
           anthropicVersion: String(a.version ?? ''),
+          environmentId: a.environment_id ?? null,
           role: dbRecord.role,
           dbId: dbRecord.id,
           syncStatus: 'healthy',
@@ -46,8 +47,9 @@ export async function GET() {
       : {
           anthropicAgentId: a.id,
           name: a.name,
-          model: typeof a.model === 'object' ? (a.model?.id ?? '') : (a.model ?? ''),
+          model: a.model ?? '',
           anthropicVersion: String(a.version ?? ''),
+          environmentId: a.environment_id ?? null,
           role: null,
           dbId: null,
           syncStatus: 'unmapped',
@@ -63,6 +65,7 @@ export async function GET() {
         name: dbRecord.role,
         model: '',
         anthropicVersion: dbRecord.anthropicAgentVersion,
+        environmentId: null,
         role: dbRecord.role,
         dbId: dbRecord.id,
         syncStatus: 'orphaned',

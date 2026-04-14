@@ -3,20 +3,6 @@
 import { useState } from 'react';
 import type { AgentRow, AgentSyncStatus } from '@/lib/api-types';
 
-function Spinner() {
-  return (
-    <svg
-      className="animate-spin w-3 h-3 text-zinc-400"
-      xmlns="http://www.w3.org/2000/svg"
-      fill="none"
-      viewBox="0 0 24 24"
-    >
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-    </svg>
-  );
-}
-
 function CopyableCell({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
 
@@ -76,25 +62,9 @@ function SyncStatusBadge({ status }: { status: AgentSyncStatus }) {
 
 interface Props {
   items: AgentRow[];
-  onDelete: (anthropicAgentId: string) => void;
 }
 
-export default function AgentConfigTable({ items, onDelete }: Props) {
-  const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
-
-  async function handleDelete(anthropicAgentId: string) {
-    setDeletingIds((prev) => new Set(prev).add(anthropicAgentId));
-    try {
-      await onDelete(anthropicAgentId);
-    } finally {
-      setDeletingIds((prev) => {
-        const next = new Set(prev);
-        next.delete(anthropicAgentId);
-        return next;
-      });
-    }
-  }
-
+export default function AgentConfigTable({ items }: Props) {
   if (items.length === 0) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -128,8 +98,8 @@ export default function AgentConfigTable({ items, onDelete }: Props) {
             <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
               Version
             </th>
-            <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
-              Actions
+            <th className="text-left px-4 py-3 text-xs font-semibold text-zinc-500 uppercase tracking-wider hidden md:table-cell">
+              Environment ID
             </th>
           </tr>
         </thead>
@@ -154,31 +124,12 @@ export default function AgentConfigTable({ items, onDelete }: Props) {
                 <CopyableCell value={item.anthropicAgentId} />
               </td>
               <td className="px-4 py-3 text-zinc-400">{item.anthropicVersion}</td>
-              <td className="px-4 py-3">
-                <button
-                  onClick={() => handleDelete(item.anthropicAgentId)}
-                  disabled={deletingIds.has(item.anthropicAgentId)}
-                  className="text-zinc-500 hover:text-red-400 transition-colors text-xs flex items-center gap-1 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  {deletingIds.has(item.anthropicAgentId) ? (
-                    <Spinner />
-                  ) : (
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      className="w-4 h-4"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                    >
-                      <polyline points="3 6 5 6 21 6" />
-                      <path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" />
-                      <path d="M10 11v6M14 11v6" />
-                      <path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2" />
-                    </svg>
-                  )}
-                  Delete
-                </button>
+              <td className="px-4 py-3 hidden md:table-cell">
+                {item.environmentId != null ? (
+                  <CopyableCell value={item.environmentId} />
+                ) : (
+                  <span className="text-zinc-600">—</span>
+                )}
               </td>
             </tr>
           ))}
