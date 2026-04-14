@@ -26,6 +26,7 @@ jobs:
         run: npm test
 
   e2e:
+    if: false # disabled until ANTHROPIC_API_KEY is available as a GitHub secret
     runs-on: ubuntu-latest
 
     services:
