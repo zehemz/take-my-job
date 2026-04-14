@@ -141,6 +141,17 @@ IDs are stable — never reuse a retired ID.
 
 ---
 
+## Environments Management (`e2e/environments.spec.ts`)
+
+| ID | Scenario | Status |
+|----|----------|--------|
+| E2E-ENV-001 | Navigate to `/environments` → table renders with Name, Network, ID columns visible | 🟡 Planned |
+| E2E-ENV-002 | Click Delete on an environment row → inline confirmation (Confirm?/Yes/Cancel) appears | 🟡 Planned |
+| E2E-ENV-003 | Click Cancel → row unchanged | 🟡 Planned |
+| E2E-ENV-004 | Click Yes → spinner shows → row disappears after success | 🟡 Planned |
+
+---
+
 ## How to add a new scenario
 
 1. Pick the next available ID in the relevant group (never reuse a retired one).

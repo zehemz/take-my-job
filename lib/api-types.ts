@@ -210,3 +210,22 @@ export interface NotificationsResponse {
 export interface MarkNotificationsReadRequest {
   notificationIds: string[]; // empty array = mark ALL read
 }
+
+// ─── Environments ────────────────────────────────────────────────────────────
+
+export interface EnvironmentRow {
+  id: string;
+  name: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+  networkType: 'unrestricted' | 'limited';
+}
+export type EnvironmentListResponse = EnvironmentRow[]
+
+// ─── Paginated response wrapper ──────────────────────────────────────────────
+
+export interface PaginatedResponse<T> {
+  items: T[];
+  nextPage: string | null;
+}
