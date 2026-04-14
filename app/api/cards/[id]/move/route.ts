@@ -46,6 +46,16 @@ export async function POST(
     );
   }
 
+  // inactive → active: description required so the agent knows what to do
+  if (fromType === 'inactive' && toType === 'active') {
+    if (!existingCard.description?.trim()) {
+      return NextResponse.json(
+        { error: 'Add a description before moving a card to an active column.' },
+        { status: 400 },
+      );
+    }
+  }
+
   // active → review: agent must have completed with all criteria passing
   if (fromType === 'active' && toType === 'review') {
     const agentStatus = deriveCardAgentStatus(existingCard.agentRuns);

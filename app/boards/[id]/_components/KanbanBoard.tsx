@@ -119,9 +119,10 @@ export default function KanbanBoard({ boardId }: Props) {
           .filter((c) => c.columnId === targetColumnId)
           .sort((a, b) => a.position - b.position);
         moveCard(activeId, targetColumnId, colCards.length);
-        const ok = await moveCardApi(activeId, targetColumnId, colCards.length);
-        if (!ok) {
+        const moveError = await moveCardApi(activeId, targetColumnId, colCards.length);
+        if (moveError) {
           await fetchBoard(boardId);
+          setDragError(moveError);
         }
       }
       return;
@@ -151,9 +152,10 @@ export default function KanbanBoard({ boardId }: Props) {
         return;
       }
       moveCard(activeId, overCard.columnId, overCard.position);
-      const ok = await moveCardApi(activeId, overCard.columnId, overCard.position);
-      if (!ok) {
+      const moveError = await moveCardApi(activeId, overCard.columnId, overCard.position);
+      if (moveError) {
         await fetchBoard(boardId);
+        setDragError(moveError);
       }
     }
   }

@@ -42,7 +42,7 @@ interface KobaniState {
   fetchBoards: () => Promise<void>;
   createBoardApi: (name: string, githubRepo?: string) => Promise<string | null>; // returns new board id
   deleteBoardApi: (id: string) => Promise<boolean>;
-  moveCardApi: (cardId: string, columnId: string, position?: number) => Promise<boolean>;
+  moveCardApi: (cardId: string, columnId: string, position?: number) => Promise<string | null>;
   createCardApi: (boardId: string, payload: {
     title: string;
     columnId: string;
@@ -354,14 +354,17 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
       credentials: 'include',
       body: JSON.stringify({ columnId, position }),
     });
-    if (!res.ok) return false;
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      return (body as { error?: string }).error ?? 'Move failed.';
+    }
     const card = await res.json();
     get().updateCard(card.id, {
       columnId: card.columnId,
       position: card.position,
       movedToColumnAt: card.movedToColumnAt,
     });
-    return true;
+    return null;
   },
 
   createCardApi: async (boardId: string, payload: {
