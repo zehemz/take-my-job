@@ -4,6 +4,7 @@ import type { IDbQueries, IAnthropicClient, IBroadcaster, AgentEvent } from "./i
 import { config } from "./config";
 import { renderTurnPrompt } from "./prompt-renderer";
 import { handleEvent } from "./agent-runner/event-handler";
+import { scheduleRetry } from "./orchestrator/retry";
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -95,9 +96,8 @@ export async function run(
     await runEventLoop(stream, card, currentRun, sessionId, boardColumns, deps, signal);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    await deps.db.updateAgentRunStatus(agentRun.id, AgentRunStatus.failed, {
-      error: message,
-    });
+    await deps.db.updateAgentRunStatus(agentRun.id, AgentRunStatus.failed, { error: message });
+    await scheduleRetry(agentRun, deps.db);
   }
 }
 

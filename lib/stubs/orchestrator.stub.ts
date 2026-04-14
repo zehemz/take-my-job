@@ -20,4 +20,8 @@ export class StubOrchestrator implements IOrchestrator {
   async notifyCardUnblocked(cardId: string, run: AgentRun): Promise<void> {
     this.unblockedCalls.push({ cardId, run });
   }
+
+  unclaim(_cardId: string): void {
+    // No-op in stub
+  }
 }

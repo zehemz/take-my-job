@@ -1,5 +1,22 @@
 import type { Card, Column, AgentRun } from "./types";
 
+/** Parse the raw acceptanceCriteria DB field (JSON array or plain text) into strings. */
+function parseCriteria(raw: string | null): string[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed
+        .map((c: { text?: string }) => c.text ?? String(c))
+        .filter(Boolean);
+    }
+  } catch {
+    // plain text fallback — split on newlines
+    return raw.split('\n').map(l => l.trim()).filter(Boolean);
+  }
+  return [];
+}
+
 export interface PromptRenderInput {
   card: Card;
   run: AgentRun;
@@ -35,7 +52,8 @@ export function renderTurnPrompt(input: PromptRenderInput): string {
     );
   }
 
-  if (card.acceptanceCriteria) {
+  const parsedCriteria = parseCriteria(card.acceptanceCriteria);
+  if (parsedCriteria.length > 0) {
     lines.push("");
     lines.push("## Acceptance Criteria");
     lines.push("");
@@ -49,7 +67,9 @@ export function renderTurnPrompt(input: PromptRenderInput): string {
       "If any criterion cannot be met, call `update_card(blocked)` and explain why."
     );
     lines.push("");
-    lines.push(card.acceptanceCriteria);
+    for (const criterion of parsedCriteria) {
+      lines.push(`- [ ] ${criterion}`);
+    }
   }
 
   if (run.attempt > 1) {
