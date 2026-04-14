@@ -11,8 +11,10 @@ test.describe('Board', () => {
     const boards = await api.getBoards();
 
     await page.goto('/');
-    await expect(page.locator('[data-testid="board-list"]')).toBeVisible({ timeout: 10_000 });
+    // "All Boards" heading is always rendered — proves the page loaded and auth passed
+    await expect(page.getByRole('heading', { name: 'All Boards' })).toBeVisible({ timeout: 10_000 });
 
+    // board-list container is empty when DB has no boards (zero height → hidden)
     if (boards.length > 0) {
       await expect(page.locator('[data-testid="board-card"]').first()).toBeVisible();
     }

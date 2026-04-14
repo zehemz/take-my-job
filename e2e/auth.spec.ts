@@ -60,8 +60,13 @@ test.describe('Auth flows', () => {
 
   test('E2E-AUTH-007: open-redirect callbackUrl=//evil.com is sanitised', async ({ page }) => {
     await page.goto('/login?callbackUrl=//evil.com');
-    // Should stay on our domain — not redirect off-site
-    expect(page.url()).not.toMatch(/evil\.com/);
+    // The server sanitises //evil.com → / before passing it to signIn.
+    // The query string may still contain "evil.com" as a value — that's fine.
+    // What matters: the browser is NOT navigated off our domain.
+    const url = new URL(page.url());
+    expect(url.hostname).toBe('localhost');
+    // The login page renders normally (not an error, not a redirect off-site)
+    await expect(page.getByText('Sign in to continue')).toBeVisible();
   });
 
   test('E2E-AUTH-008: /api/cards move endpoint without session returns 401', async ({ request }) => {
