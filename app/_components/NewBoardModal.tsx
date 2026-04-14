@@ -36,7 +36,7 @@ export default function NewBoardModal({ onClose }: Props) {
   useEffect(() => {
     fetch('/api/environments', { credentials: 'include' })
       .then((r) => r.ok ? r.json() : null)
-      .then((data) => { if (data?.items) setEnvironments(data.items); })
+      .then((data) => { if (Array.isArray(data)) setEnvironments(data); })
       .catch(() => {})
       .finally(() => setEnvLoading(false));
   }, []);

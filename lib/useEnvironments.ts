@@ -13,7 +13,7 @@ export function useEnvironments(): { environments: EnvironmentRow[]; loading: bo
     fetch('/api/environments')
       .then((r) => r.json())
       .then((data) => {
-        cachedEnvironments = data.items ?? [];
+        cachedEnvironments = Array.isArray(data) ? data : (data.items ?? []);
         setEnvironments(cachedEnvironments!);
       })
       .catch(() => {
