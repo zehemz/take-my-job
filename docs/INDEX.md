@@ -24,6 +24,7 @@
 | [Agent Management](./features/agent-management/) | 🟠 In Progress | ✓ | — | ✓ | — |
 | [Board-level GitHub Repo](./features/board-github-repo/TECH_SPEC.md) | ✅ Shipped | — | — | ✓ | — |
 | [Sessions List](./features/sessions/) | 🟠 In Progress | — | — | — | — |
+| [Notifications Popup](./features/notifications-popup/) | ✅ Shipped | ✓ | ✓ | ✓ | — |
 
 **Status legend:** ✅ Shipped · 🔵 In Design · 🟠 In Progress · 🟡 Planned · ⛔ Blocked
 

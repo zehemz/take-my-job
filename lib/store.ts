@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { Board, Card, Column, ColumnType } from './kanban-types';
+import type { ApiNotification } from './api-types';
 
 interface KobaniState {
   boards: Board[];
@@ -7,6 +8,11 @@ interface KobaniState {
   cards: Card[];
   selectedCardId: string | null;
   attentionDrawerOpen: boolean;
+  notifications: ApiNotification[];
+  unreadNotificationCount: number;
+  notificationPopupOpen: boolean;
+  /** Incremented while a card move is in-flight; fetchBoard skips when > 0. */
+  _moveInFlight: number;
 
   // Board operations
   createBoard: (name: string) => void;
@@ -37,6 +43,13 @@ interface KobaniState {
   openAttentionDrawer: () => void;
   closeAttentionDrawer: () => void;
 
+  // Notification actions
+  fetchNotifications: () => Promise<void>;
+  markNotificationsRead: (ids: string[]) => Promise<void>;
+  markAllNotificationsRead: () => Promise<void>;
+  openNotificationPopup: () => void;
+  closeNotificationPopup: () => void;
+
   // Async API actions
   fetchBoard: (boardId: string) => Promise<void>;
   fetchBoards: () => Promise<void>;
@@ -65,6 +78,10 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
   cards: [],
   selectedCardId: null,
   attentionDrawerOpen: false,
+  notifications: [],
+  unreadNotificationCount: 0,
+  notificationPopupOpen: false,
+  _moveInFlight: 0,
 
   createBoard: (name) =>
     set((state) => ({
@@ -259,7 +276,50 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
   openAttentionDrawer: () => set({ attentionDrawerOpen: true }),
   closeAttentionDrawer: () => set({ attentionDrawerOpen: false }),
 
+  fetchNotifications: async () => {
+    const res = await fetch('/api/notifications', { credentials: 'include' });
+    if (!res.ok) return;
+    const data = await res.json();
+    set({ notifications: data.notifications, unreadNotificationCount: data.unreadCount });
+  },
+
+  markNotificationsRead: async (ids: string[]) => {
+    const res = await fetch('/api/notifications', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ notificationIds: ids }),
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    set((state) => ({
+      notifications: state.notifications.map((n) =>
+        ids.includes(n.id) ? { ...n, isRead: true } : n
+      ),
+      unreadNotificationCount: data.unreadCount,
+    }));
+  },
+
+  markAllNotificationsRead: async () => {
+    const res = await fetch('/api/notifications', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ notificationIds: [] }),
+    });
+    if (!res.ok) return;
+    const data = await res.json();
+    set((state) => ({
+      notifications: state.notifications.map((n) => ({ ...n, isRead: true })),
+      unreadNotificationCount: data.unreadCount,
+    }));
+  },
+
+  openNotificationPopup: () => set({ notificationPopupOpen: true }),
+  closeNotificationPopup: () => set({ notificationPopupOpen: false }),
+
   fetchBoard: async (boardId: string) => {
+    if (get()._moveInFlight > 0) return; // skip poll while move is in-flight
     const res = await fetch(`/api/boards/${boardId}`, { credentials: 'include' });
     if (!res.ok) return;
     const data = await res.json(); // ApiBoardDetail
@@ -346,20 +406,25 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
   },
 
   moveCardApi: async (cardId: string, columnId: string, position?: number) => {
-    const res = await fetch(`/api/cards/${cardId}/move`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ columnId, position }),
-    });
-    if (!res.ok) return false;
-    const card = await res.json();
-    get().updateCard(card.id, {
-      columnId: card.columnId,
-      position: card.position,
-      movedToColumnAt: card.movedToColumnAt,
-    });
-    return true;
+    set((s) => ({ _moveInFlight: s._moveInFlight + 1 }));
+    try {
+      const res = await fetch(`/api/cards/${cardId}/move`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ columnId, position }),
+      });
+      if (!res.ok) return false;
+      const card = await res.json();
+      get().updateCard(card.id, {
+        columnId: card.columnId,
+        position: card.position,
+        movedToColumnAt: card.movedToColumnAt,
+      });
+      return true;
+    } finally {
+      set((s) => ({ _moveInFlight: s._moveInFlight - 1 }));
+    }
   },
 
   createCardApi: async (boardId: string, payload: {

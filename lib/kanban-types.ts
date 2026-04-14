@@ -16,6 +16,7 @@ export const VALID_TRANSITIONS: Record<ColumnType, ColumnType[]> = {
 
 export type AgentStatus =
   | 'idle'
+  | 'queued'
   | 'running'
   | 'blocked'
   | 'failed'

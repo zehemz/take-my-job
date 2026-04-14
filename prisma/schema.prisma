@@ -8,12 +8,13 @@ datasource db {
 }
 
 model Board {
-  id        String   @id @default(cuid())
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  columns   Column[]
-  cards     Card[]
+  id            String         @id @default(cuid())
+  name          String
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  columns       Column[]
+  cards         Card[]
+  notifications Notification[]
 }
 
 model Column {
@@ -48,9 +49,10 @@ model Card {
   approvedAt          DateTime?
   createdAt           DateTime   @default(now())
   updatedAt           DateTime   @updatedAt
-  board               Board      @relation(fields: [boardId], references: [id])
-  column              Column     @relation(fields: [columnId], references: [id])
+  board               Board          @relation(fields: [boardId], references: [id])
+  column              Column         @relation(fields: [columnId], references: [id])
   agentRuns           AgentRun[]
+  notifications       Notification[]
 }
 
 enum AgentRunStatus {
@@ -96,4 +98,19 @@ model AgentConfig {
   anthropicAgentVersion  String
   anthropicEnvironmentId String
   createdAt              DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  cardId    String
+  boardId   String
+  type      String   // 'blocked' | 'evaluation-failed' | 'pending-approval'
+  message   String
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+  card      Card     @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  board     Board    @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  @@index([isRead, createdAt])
+  @@index([cardId])
 }

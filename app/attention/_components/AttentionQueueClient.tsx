@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useKobaniStore } from '@/lib/store';
 import type { Card, Column, Board } from '@/lib/kanban-types';
 import AgentStatusBadge from '@/app/_components/AgentStatusBadge';
@@ -168,9 +168,10 @@ function AttentionItemCard({
 }
 
 const GROUPS: Array<{
-  key: 'blocked' | 'evaluation-failed' | 'pending-approval';
+  key: 'blocked' | 'evaluation-failed' | 'pending-approval' | 'failed';
   label: string;
 }> = [
+  { key: 'failed', label: 'Failed' },
   { key: 'blocked', label: 'Blocked' },
   { key: 'evaluation-failed', label: 'Revision Needed' },
   { key: 'pending-approval', label: 'Pending Approval' },
@@ -182,9 +183,20 @@ export default function AttentionQueueClient() {
   const boards = useKobaniStore((s) => s.boards);
   const openCardDetail = useKobaniStore((s) => s.openCardDetail);
   const selectedCardId = useKobaniStore((s) => s.selectedCardId);
+  const fetchBoards = useKobaniStore((s) => s.fetchBoards);
+  const fetchBoard = useKobaniStore((s) => s.fetchBoard);
+
+  // Load all boards + their cards/columns so attention items can resolve
+  useEffect(() => {
+    fetchBoards().then(() => {
+      const currentBoards = useKobaniStore.getState().boards;
+      currentBoards.forEach((b) => fetchBoard(b.id));
+    });
+  }, [fetchBoards, fetchBoard]);
 
   const attentionCards = cards.filter(
     (c) =>
+      c.agentStatus === 'failed' ||
       c.agentStatus === 'blocked' ||
       c.agentStatus === 'evaluation-failed' ||
       c.agentStatus === 'pending-approval'
