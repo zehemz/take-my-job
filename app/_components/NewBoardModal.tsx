@@ -336,8 +336,8 @@ export default function NewBoardModal({ onClose }: Props) {
                     <span className="text-xs text-zinc-500">Env:</span>
                     {envLoading ? (
                       <span className="text-xs text-zinc-600">Loading...</span>
-                    ) : environments.length === 0 ? (
-                      <span className="text-xs text-zinc-600">{environmentId ? environments.find((e) => e.id === environmentId)?.name ?? 'Board default' : 'Default (from role)'}</span>
+                    ) : !environments || environments.length === 0 ? (
+                      <span className="text-xs text-zinc-600">{environmentId ? (environments ?? []).find((e) => e.id === environmentId)?.name ?? 'Board default' : 'Default (from role)'}</span>
                     ) : (
                       <select
                         value={draft.environmentId ?? environmentId ?? ''}

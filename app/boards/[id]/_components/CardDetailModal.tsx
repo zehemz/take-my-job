@@ -845,7 +845,7 @@ export default function CardDetailModal() {
                   onChange={(e) => setEnvDraft(e.target.value || null)}
                 >
                   <option value="">Default (from role)</option>
-                  {environments.map((env) => (
+                  {(environments ?? []).map((env) => (
                     <option key={env.id} value={env.id}>{env.name}</option>
                   ))}
                 </select>

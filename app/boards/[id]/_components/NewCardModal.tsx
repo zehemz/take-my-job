@@ -29,8 +29,8 @@ export default function NewCardModal({ columnId, boardId, onClose }: Props) {
   useEffect(() => {
     fetch('/api/environments')
       .then((res) => res.ok ? res.json() : null)
-      .then((data: EnvironmentRow[] | null) => {
-        if (data) setEnvironments(data);
+      .then((data) => {
+        if (Array.isArray(data)) setEnvironments(data);
       })
       .catch(() => {});
   }, []);
@@ -128,7 +128,7 @@ export default function NewCardModal({ columnId, boardId, onClose }: Props) {
             </select>
           </div>
 
-          {environments.length > 0 && (
+          {environments && environments.length > 0 && (
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
                 Environment
