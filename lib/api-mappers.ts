@@ -85,6 +85,7 @@ export function mapBoardSummary(board: {
   name: string;
   githubRepo?: string | null;
   workspacePath?: string | null;
+  anthropicEnvironmentId?: string | null;
   createdAt: Date;
   _count?: { columns: number; cards: number };
 }): ApiBoardSummary {
@@ -93,6 +94,7 @@ export function mapBoardSummary(board: {
     name: board.name,
     githubRepo: board.githubRepo ?? null,
     workspacePath: board.workspacePath ?? null,
+    environmentId: board.anthropicEnvironmentId ?? null,
     createdAt: board.createdAt.toISOString(),
     columnCount: board._count?.columns ?? 0,
     cardCount: board._count?.cards ?? 0,

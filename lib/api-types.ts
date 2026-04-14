@@ -15,6 +15,7 @@ export interface ApiBoardSummary {
   name: string;
   githubRepo: string | null;
   workspacePath: string | null;
+  environmentId: string | null;
   createdAt: string;
   columnCount: number;
   cardCount: number;
@@ -93,6 +94,7 @@ export interface ApiBoardDetail {
 export interface CreateBoardRequest {
   name: string;
   workspacePath?: string;
+  environmentId?: string;
 }
 
 export interface CreateCardRequest {

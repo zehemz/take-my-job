@@ -41,9 +41,12 @@ export async function POST(req: Request) {
     }
   }
 
+  const environmentId = body.environmentId?.trim() || undefined;
+
   const board = await prisma.board.create({
     data: {
       name,
+      ...(environmentId ? { anthropicEnvironmentId: environmentId } : {}),
       ...(workspacePath ? { githubRepo: config.WORKSPACE_REPO_URL, workspacePath } : {}),
       columns: {
         create: [
