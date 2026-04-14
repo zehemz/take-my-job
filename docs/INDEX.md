@@ -13,6 +13,7 @@
 | [Auth — GitHub OAuth + Whitelist](./features/auth/) | ✅ Shipped | ✓ | ✓ | ✓ | ✓ |
 | Kanban ↔ DB wiring (Zustand → API) | ✅ Shipped | — | — | — | — |
 | Card creation UI | ✅ Shipped | — | — | — | — |
+| [Create Board UI](./features/create-board/TECH_SPEC.md) | ✅ Shipped | — | — | ✓ | — |
 | SSE real-time updates | 🟡 Planned | — | — | — | — |
 | [E2E Testing](./features/e2e-testing/SCENARIOS.md) | 🟠 In Progress | — | — | ✓ | — |
 
