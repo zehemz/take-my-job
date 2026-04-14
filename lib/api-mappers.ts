@@ -84,11 +84,14 @@ export function mapBoardSummary(board: {
   id: string;
   name: string;
   createdAt: Date;
+  _count?: { columns: number; cards: number };
 }): ApiBoardSummary {
   return {
     id: board.id,
     name: board.name,
     createdAt: board.createdAt.toISOString(),
+    columnCount: board._count?.columns ?? 0,
+    cardCount: board._count?.cards ?? 0,
   };
 }
 

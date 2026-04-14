@@ -30,7 +30,10 @@ export async function GET(
   const session = await auth();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const board = await prisma.board.findUnique({ where: { id: params.id } });
+  const board = await prisma.board.findUnique({
+    where: { id: params.id },
+    include: { _count: { select: { columns: true, cards: true } } },
+  });
   if (!board) return NextResponse.json({ error: 'Board not found' }, { status: 404 });
 
   const [columns, cards] = await Promise.all([

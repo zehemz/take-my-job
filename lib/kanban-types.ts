@@ -95,6 +95,8 @@ export interface Board {
   name: string;
   createdAt: string;
   githubRepo: string | null;
+  columnCount?: number;
+  cardCount?: number;
 }
 
 export interface KobaniStore {

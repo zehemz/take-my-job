@@ -8,8 +8,6 @@ import NewBoardModal from './NewBoardModal';
 
 export default function BoardListClient() {
   const boards = useKobaniStore((s) => s.boards);
-  const columns = useKobaniStore((s) => s.columns);
-  const cards = useKobaniStore((s) => s.cards);
   const fetchBoards = useKobaniStore((s) => s.fetchBoards);
   const [showNewBoard, setShowNewBoard] = useState(false);
 
@@ -36,8 +34,6 @@ export default function BoardListClient() {
 
         <div data-testid="board-list" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {boards.map((board) => {
-            const boardColumns = columns.filter((c) => c.boardId === board.id);
-            const boardCards = cards.filter((c) => c.boardId === board.id);
             const createdDate = new Date(board.createdAt).toLocaleDateString();
 
             return (
@@ -54,8 +50,8 @@ export default function BoardListClient() {
                   <span className="text-zinc-600 text-lg">›</span>
                 </div>
                 <div className="flex items-center gap-4 text-xs text-zinc-500">
-                  <span>{boardColumns.length} columns</span>
-                  <span>{boardCards.length} cards</span>
+                  <span>{board.columnCount ?? 0} columns</span>
+                  <span>{board.cardCount ?? 0} cards</span>
                 </div>
                 <div className="text-xs text-zinc-600">Created {createdDate}</div>
               </Link>
