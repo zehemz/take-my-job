@@ -69,4 +69,78 @@ test.describe('Board', () => {
     await page.locator('[data-testid="sign-out-button"]').click();
     await expect(page).toHaveURL(/\/login/, { timeout: 10_000 });
   });
+
+  // ── Board delete ────────────────────────────────────────────────────────────
+
+  test('E2E-BOARD-DELETE-001: delete board button visible on board detail page', async ({ authedPage: page, cookieHeader, request }) => {
+    const api = new KobaniApi(request, cookieHeader);
+    const board = await api.createBoard({ name: `E2E Delete Visible ${Date.now()}` });
+
+    try {
+      await page.goto(`/boards/${board.id}`);
+      await expect(page.locator('[data-testid="delete-board-button"]')).toBeVisible({ timeout: 10_000 });
+    } finally {
+      await api.deleteBoard(board.id).catch(() => { /* may already be deleted */ });
+    }
+  });
+
+  test('E2E-BOARD-DELETE-002: delete modal confirm button disabled until board name typed exactly', async ({ authedPage: page, cookieHeader, request }) => {
+    const api = new KobaniApi(request, cookieHeader);
+    const boardName = `E2E Delete Confirm ${Date.now()}`;
+    const board = await api.createBoard({ name: boardName });
+
+    try {
+      await page.goto(`/boards/${board.id}`);
+      await expect(page.locator('[data-testid="delete-board-button"]')).toBeVisible({ timeout: 10_000 });
+
+      // Open delete modal
+      await page.locator('[data-testid="delete-board-button"]').click();
+      await expect(page.locator('[data-testid="delete-board-modal"]')).toBeVisible({ timeout: 5_000 });
+
+      // Confirm button should be disabled initially
+      const confirmButton = page.locator('[data-testid="delete-board-confirm"]');
+      await expect(confirmButton).toBeDisabled();
+
+      // Type partial name — still disabled
+      await page.locator('[data-testid="delete-board-name-input"]').fill(boardName.slice(0, 5));
+      await expect(confirmButton).toBeDisabled();
+
+      // Type exact name — enabled
+      await page.locator('[data-testid="delete-board-name-input"]').fill(boardName);
+      await expect(confirmButton).toBeEnabled();
+    } finally {
+      await api.deleteBoard(board.id).catch(() => { /* may already be deleted */ });
+    }
+  });
+
+  test('E2E-BOARD-DELETE-003: typing board name and confirming deletes board, redirects to /', async ({ authedPage: page, cookieHeader, request }) => {
+    const api = new KobaniApi(request, cookieHeader);
+    const boardName = `E2E Delete Full ${Date.now()}`;
+    const board = await api.createBoard({ name: boardName });
+
+    // No finally cleanup needed — the test itself deletes the board
+    await page.goto(`/boards/${board.id}`);
+    await expect(page.locator('[data-testid="delete-board-button"]')).toBeVisible({ timeout: 10_000 });
+
+    // Open delete modal
+    await page.locator('[data-testid="delete-board-button"]').click();
+    await expect(page.locator('[data-testid="delete-board-modal"]')).toBeVisible({ timeout: 5_000 });
+
+    // Type exact board name
+    await page.locator('[data-testid="delete-board-name-input"]').fill(boardName);
+
+    // Confirm deletion
+    await page.locator('[data-testid="delete-board-confirm"]').click();
+
+    // Should redirect to home
+    await expect(page).toHaveURL(/^\/$/, { timeout: 10_000 });
+
+    // Board should no longer appear in the list
+    await expect(page.getByRole('heading', { name: 'All Boards' })).toBeVisible({ timeout: 10_000 });
+
+    // Verify via API that the board is gone
+    const boards = await api.getBoards();
+    const found = boards.find((b) => b.id === board.id);
+    expect(found).toBeUndefined();
+  });
 });
