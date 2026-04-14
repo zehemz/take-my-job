@@ -26,7 +26,6 @@ jobs:
         run: npm test
 
   e2e:
-    if: false # disabled until ANTHROPIC_API_KEY is available as a GitHub secret
     runs-on: ubuntu-latest
 
     services:
@@ -47,7 +46,7 @@ jobs:
     env:
       DATABASE_URL: postgresql://kobani:kobani@localhost:5432/kobani
       AUTH_SECRET: ci-test-secret-not-for-production
-      ANTHROPIC_API_KEY: sk-ant-fake-key-for-ci
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       AUTH_TRUST_HOST: "true"
       DEV_AUTH_BYPASS: "false"
 
