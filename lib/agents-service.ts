@@ -7,9 +7,10 @@ export async function listAgents(): Promise<AgentRow[]> {
   const beta = (new Anthropic()).beta as any
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  let anthropicAgents: any[]
-  const result = await beta.agents.list()
-  anthropicAgents = (result.data ?? []) as any[]
+  const anthropicAgents: any[] = []
+  for await (const agent of beta.agents.list()) {
+    anthropicAgents.push(agent)
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const kobaniAgents = anthropicAgents.filter((a: any) =>
@@ -18,6 +19,35 @@ export async function listAgents(): Promise<AgentRow[]> {
 
   const dbRows = await prisma.agentConfig.findMany()
   const dbMap = new Map(dbRows.map((row) => [row.anthropicAgentId, row]))
+  const anthropicIds = new Set(kobaniAgents.map((a: any) => a.id))
+
+  // Auto-heal orphaned DB records: if the agent was recreated on Anthropic
+  // with a new ID, match by role name (kobani-<role>) and update the DB pointer.
+  const dbByRole = new Map(dbRows.map((row) => [row.role, row]))
+  const latestByRole = new Map<string, any>()
+  for (const a of kobaniAgents) {
+    const role = (a.name as string).replace(/^kobani-/, '')
+    if (!dbMap.has(a.id) && dbByRole.has(role)) {
+      const existing = latestByRole.get(role)
+      if (!existing || a.id > existing.id) {
+        latestByRole.set(role, a)
+      }
+    }
+  }
+  for (const [role, agent] of latestByRole) {
+    const dbRecord = dbByRole.get(role)!
+    await prisma.agentConfig.update({
+      where: { id: dbRecord.id },
+      data: {
+        anthropicAgentId: agent.id,
+        anthropicAgentVersion: String(agent.version ?? ''),
+      },
+    })
+    dbMap.delete(dbRecord.anthropicAgentId)
+    dbRecord.anthropicAgentId = agent.id
+    dbRecord.anthropicAgentVersion = String(agent.version ?? '')
+    dbMap.set(agent.id, dbRecord)
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const rows: AgentRow[] = kobaniAgents.map((a: any): AgentRow => {
@@ -43,7 +73,6 @@ export async function listAgents(): Promise<AgentRow[]> {
         }
   })
 
-  const anthropicIds = new Set(kobaniAgents.map((a: any) => a.id))
   for (const dbRecord of dbRows) {
     if (!anthropicIds.has(dbRecord.anthropicAgentId)) {
       rows.push({

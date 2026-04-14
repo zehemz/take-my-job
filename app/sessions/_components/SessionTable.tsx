@@ -143,7 +143,7 @@ export default function SessionTable({ items }: Props) {
                 )}
               </td>
               <td className="px-4 py-3 text-zinc-400">
-                {new Date(item.createdAt).toLocaleString()}
+                {new Date(item.createdAt).toLocaleString('en-GB')}
               </td>
             </tr>
           ))}

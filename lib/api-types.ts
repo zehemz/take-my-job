@@ -14,6 +14,8 @@ export interface ApiBoardSummary {
   id: string;
   name: string;
   createdAt: string;
+  columnCount: number;
+  cardCount: number;
 }
 
 export interface ApiColumn {

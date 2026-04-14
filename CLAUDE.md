@@ -33,6 +33,26 @@ docs/
 
 ---
 
+## Tooling
+
+This project uses [mise](https://mise.jdx.dev/) for runtime version management and task running. The configuration lives in `mise.toml` at the project root.
+
+- **Runtime versions:** Node is pinned via mise (`node = "22"`). Do not use `nvm`, `.nvmrc`, or `.node-version` — mise is the single source of truth for tool versions.
+- **Environment:** mise loads `.env` automatically (`_.file = ".env"`). Do not add `dotenv` or similar packages.
+- **Task runner:** Use `mise run <task>` for common operations instead of calling `npm run` directly:
+  | Task | Command | Description |
+  |------|---------|-------------|
+  | `dev` | `mise run dev` | Start Next.js dev server |
+  | `e2e` | `mise run e2e` | Run Playwright E2E tests (headless) |
+  | `e2e:ui` | `mise run e2e:ui` | Run Playwright E2E tests (interactive) |
+  | `e2e:report` | `mise run e2e:report` | Open last Playwright HTML report |
+  | `db` | `mise run db` | Open Prisma Studio |
+  | `db:migrate` | `mise run db:migrate` | Run pending DB migrations |
+
+If you need to add a new recurring dev task, add it to `mise.toml` under `[tasks]` rather than creating a standalone script.
+
+---
+
 ## Development process
 
 - **Spec before code.** Before implementing any feature, check `docs/features/` for an existing PRD or TECH_SPEC. If none exists, create the spec first (or ask). Never implement reactively without a spec.

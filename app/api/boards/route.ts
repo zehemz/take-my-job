@@ -8,7 +8,10 @@ export async function GET() {
   const session = await auth();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const boards = await prisma.board.findMany({ orderBy: { createdAt: 'desc' } });
+  const boards = await prisma.board.findMany({
+    orderBy: { createdAt: 'desc' },
+    include: { _count: { select: { columns: true, cards: true } } },
+  });
   return NextResponse.json(boards.map(mapBoardSummary));
 }
 
@@ -34,6 +37,7 @@ export async function POST(req: Request) {
         ],
       },
     },
+    include: { _count: { select: { columns: true, cards: true } } },
   });
 
   return NextResponse.json(mapBoardSummary(board), { status: 201 });
