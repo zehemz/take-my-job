@@ -181,12 +181,12 @@ test.describe('Environments — Detail & Edit', () => {
       await page.locator('button[title="Edit name"]').click();
 
       // Clear the input and type the new name
-      const nameInput = page.locator('input[type="text"]');
+      const nameInput = page.locator('input[type="text"]').first();
       await expect(nameInput).toBeVisible({ timeout: 3_000 });
       await nameInput.fill(updatedName);
 
-      // Click Save
-      await page.getByRole('button', { name: 'Save' }).click();
+      // Click Save (exact match to avoid "Save Network" / "Save Packages")
+      await page.getByRole('button', { name: 'Save', exact: true }).click();
 
       // Wait for save to complete — the updated name should appear
       await expect(page.getByText(updatedName)).toBeVisible({ timeout: 10_000 });
@@ -229,8 +229,8 @@ test.describe('Environments — Detail & Edit', () => {
       await expect(descTextarea).toBeVisible({ timeout: 3_000 });
       await descTextarea.fill(newDescription);
 
-      // Click Save
-      await page.getByRole('button', { name: 'Save' }).click();
+      // Click Save (exact match to avoid "Save Network" / "Save Packages")
+      await page.getByRole('button', { name: 'Save', exact: true }).click();
 
       // Wait for save to complete — the updated description should appear
       await expect(page.getByText(newDescription)).toBeVisible({ timeout: 10_000 });

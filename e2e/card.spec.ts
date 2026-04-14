@@ -41,35 +41,38 @@ test.describe('Cards', () => {
       return;
     }
 
-    await page.goto(`/boards/${board.id}`);
-    await expect(page.locator('[data-testid="column"]').first()).toBeVisible({ timeout: 10_000 });
+    // Create a dedicated environment so the dropdown is never empty
+    const testEnv = await api.createEnvironment({ name: `E2E Card Env ${Date.now()}` });
 
-    // Click Add card in first column
-    await page.locator('[data-testid="add-card-button"]').first().click();
-    await expect(page.locator('[data-testid="new-card-modal"]')).toBeVisible();
+    try {
+      await page.goto(`/boards/${board.id}`);
+      await expect(page.locator('[data-testid="column"]').first()).toBeVisible({ timeout: 10_000 });
 
-    const cardTitle = `E2E Test Card ${Date.now()}`;
-    await page.locator('[data-testid="new-card-title-input"]').fill(cardTitle);
+      // Click Add card in first column
+      await page.locator('[data-testid="add-card-button"]').first().click();
+      await expect(page.locator('[data-testid="new-card-modal"]')).toBeVisible();
 
-    // Environment is required — select the first available option
-    const envSelect = page.locator('[data-testid="new-card-modal"] select').last();
-    const envOptions = envSelect.locator('option:not([disabled])');
-    const optionCount = await envOptions.count();
-    if (optionCount > 0) {
-      const firstValue = await envOptions.first().getAttribute('value');
-      if (firstValue) await envSelect.selectOption(firstValue);
+      const cardTitle = `E2E Test Card ${Date.now()}`;
+      await page.locator('[data-testid="new-card-title-input"]').fill(cardTitle);
+
+      // Environment is required — wait for options to load, then select our test env
+      const envSelect = page.locator('[data-testid="new-card-modal"] select').last();
+      await expect(envSelect.locator(`option[value="${testEnv.id}"]`)).toBeAttached({ timeout: 10_000 });
+      await envSelect.selectOption(testEnv.id);
+
+      await page.locator('[data-testid="new-card-submit"]').click();
+
+      // Modal closes and card appears
+      await expect(page.locator('[data-testid="new-card-modal"]')).not.toBeVisible({ timeout: 5_000 });
+      await expect(page.getByText(cardTitle)).toBeVisible({ timeout: 10_000 });
+
+      // Cleanup: find and delete the created card
+      const { cards } = await api.getBoard(board.id);
+      const created = cards.find((c: ApiCard) => c.title === cardTitle);
+      if (created) await api.deleteCard(created.id);
+    } finally {
+      await api.deleteEnvironment(testEnv.id).catch(() => {});
     }
-
-    await page.locator('[data-testid="new-card-submit"]').click();
-
-    // Modal closes and card appears
-    await expect(page.locator('[data-testid="new-card-modal"]')).not.toBeVisible({ timeout: 5_000 });
-    await expect(page.getByText(cardTitle)).toBeVisible({ timeout: 10_000 });
-
-    // Cleanup: find and delete the created card
-    const { cards } = await api.getBoard(board.id);
-    const created = cards.find((c: ApiCard) => c.title === cardTitle);
-    if (created) await api.deleteCard(created.id);
   });
 
   test('E2E-CARD-003: move card via API and verify new column', async ({ cookieHeader, request }) => {
