@@ -210,3 +210,18 @@ export interface NotificationsResponse {
 export interface MarkNotificationsReadRequest {
   notificationIds: string[]; // empty array = mark ALL read
 }
+
+// ─── Agent detail ────────────────────────────────────────────────────────────
+
+export interface AgentDetail {
+  anthropicAgentId: string;
+  name: string;
+  model: string;
+  anthropicVersion: string;
+  role: string | null;
+  dbId: string | null;
+  syncStatus: AgentSyncStatus;
+  description: string | null;
+  createdAt: string;
+  archivedAt: string | null;
+}
