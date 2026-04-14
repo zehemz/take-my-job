@@ -613,6 +613,7 @@ export default function CardDetailModal() {
         movedToColumnAt: apiCard.movedToColumnAt ?? storeCard.movedToColumnAt,
         revisionContextNote: apiCard.revisionContextNote,
         maxAttempts: apiCard.maxAttempts,
+        canInteract: apiCard.canInteract ?? storeCard.canInteract,
       }
     : storeCard;
 
@@ -620,7 +621,8 @@ export default function CardDetailModal() {
   const isLive = card.agentStatus === 'running' || card.agentStatus === 'evaluating';
   const blockedRun = card.agentRuns.find((r) => r.status === 'blocked');
   const isInRevisionColumn = column.type === 'revision';
-  const isEditable = column.type === 'inactive';
+  const isEditable = column.type === 'inactive' && card.canInteract !== false;
+  const canInteract = card.canInteract !== false;
   const liveOutput = sseOutput || currentRun?.output || '';
 
   // ── Edit helpers ───────────────────────────────────────────────────────────
@@ -816,6 +818,13 @@ export default function CardDetailModal() {
           </button>
         </div>
 
+        {/* RBAC no-access banner */}
+        {!canInteract && (
+          <div className="mx-6 mt-2 bg-red-950 border border-red-800 rounded-lg px-4 py-3 shrink-0">
+            <p className="text-sm text-red-200 font-medium">You don&apos;t have access to this card&apos;s agent/environment.</p>
+          </div>
+        )}
+
         {/* Pending-approval banner */}
         {card.agentStatus === 'pending-approval' && <PendingApprovalBanner />}
 
@@ -981,7 +990,7 @@ export default function CardDetailModal() {
         </div>
 
         {/* Blocked banner */}
-        {card.agentStatus === 'blocked' && blockedRun?.blockedReason && (
+        {card.agentStatus === 'blocked' && blockedRun?.blockedReason && canInteract && (
           <BlockedBanner
             cardId={card.id}
             blockedReason={blockedRun.blockedReason}
@@ -1069,7 +1078,7 @@ export default function CardDetailModal() {
         </div>
 
         {/* Retry schedule (failed) */}
-        {card.agentStatus === 'failed' && card.agentRuns.length > 0 && (
+        {card.agentStatus === 'failed' && card.agentRuns.length > 0 && canInteract && (
           <RetrySchedulePanel
             cardId={card.id}
             agentRuns={card.agentRuns}
@@ -1079,14 +1088,15 @@ export default function CardDetailModal() {
         )}
 
         {/* Revision context form (revision column) */}
-        {isInRevisionColumn && <RevisionContextForm cardId={card.id} />}
+        {isInRevisionColumn && canInteract && <RevisionContextForm cardId={card.id} />}
 
         {/* Pending approval actions */}
-        {card.agentStatus === 'pending-approval' && (
+        {card.agentStatus === 'pending-approval' && canInteract && (
           <PendingApprovalActions cardId={card.id} criteria={card.acceptanceCriteria} />
         )}
 
         {/* Footer — delete affordance + retry */}
+        {canInteract && (
         <div className="border-t border-zinc-800 px-6 py-3 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             {deleteConfirm ? (
@@ -1121,6 +1131,7 @@ export default function CardDetailModal() {
             )}
           </div>
         </div>
+        )}
       </div>
     </div>
   );

@@ -80,6 +80,8 @@ export interface Card {
   movedToColumnAt: string;
   /** Maximum agent attempts, from MAX_ATTEMPTS env var (passed through API). Defaults to 5. */
   maxAttempts?: number;
+  /** Whether the current user has RBAC access to interact with this card. Defaults to true when omitted. */
+  canInteract?: boolean;
 }
 
 export interface Column {

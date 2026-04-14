@@ -2,6 +2,8 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { useKobaniStore } from '@/lib/store';
 import NotificationBell from './NotificationBell';
 import UserMenu from './UserMenu';
@@ -14,6 +16,8 @@ interface Props {
 export default function TopNav({ boardId, showAttentionBreadcrumb }: Props) {
   const boards = useKobaniStore((s) => s.boards);
   const board = boardId ? boards.find((b) => b.id === boardId) : null;
+  const pathname = usePathname();
+  const { data: session } = useSession();
 
   return (
     <nav className="h-12 bg-zinc-900 border-b border-zinc-800 flex items-center px-4 gap-3 shrink-0">
@@ -49,9 +53,31 @@ export default function TopNav({ boardId, showAttentionBreadcrumb }: Props) {
           Sessions
         </Link>
         <span className="text-zinc-700 mx-1 shrink-0">·</span>
-        <Link href="/environments" className="text-zinc-400 hover:text-zinc-100 transition-colors text-sm shrink-0">
+        <Link
+          href="/environments"
+          className={`shrink-0 text-sm transition-colors ${
+            pathname.startsWith('/environments')
+              ? 'text-zinc-100'
+              : 'text-zinc-400 hover:text-zinc-100'
+          }`}
+        >
           Environments
         </Link>
+        {session?.user?.isAdmin && (
+          <>
+            <span className="text-zinc-700 mx-1 shrink-0">·</span>
+            <Link
+              href="/access"
+              className={`shrink-0 text-sm transition-colors ${
+                pathname.startsWith('/access')
+                  ? 'text-zinc-100'
+                  : 'text-zinc-400 hover:text-zinc-100'
+              }`}
+            >
+              Access
+            </Link>
+          </>
+        )}
       </div>
 
       {/* Right: bell + avatar + overflow */}

@@ -176,6 +176,7 @@ export function mapCard(
   mappedRuns: ApiAgentRun[],
   agentStatus: AgentStatus,
   columnType?: string,
+  canInteract?: boolean,
 ): ApiCard {
   // Post-hoc override: if the agent completed and the card is in a review column,
   // surface 'pending-approval' status to the client.
@@ -204,6 +205,7 @@ export function mapCard(
     agentStatus: effectiveAgentStatus,
     currentAgentRunId: currentRun?.id ?? null,
     agentRuns: mappedRuns,
+    canInteract: canInteract ?? true,
     revisionContextNote: card.revisionContextNote,
     approvedBy: card.approvedBy,
     approvedAt: card.approvedAt?.toISOString() ?? null,

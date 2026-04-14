@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { mapAgentRun, mapCard, deriveCardAgentStatus } from '@/lib/api-mappers';
 import type { UpdateCardRequest } from '@/lib/api-types';
 import { devAuth as auth } from '@/lib/dev-auth';
+import { guardCardAccess } from '@/lib/rbac';
 
 export async function GET(
   _req: Request,
@@ -19,6 +20,15 @@ export async function GET(
     },
   });
   if (!card) return NextResponse.json({ error: 'Card not found' }, { status: 404 });
+
+  // RBAC check
+  const hasAccess = await guardCardAccess(session.user.githubUsername, card);
+  if (!hasAccess) {
+    return NextResponse.json(
+      { error: 'Forbidden: no access to this agent role/environment' },
+      { status: 403 },
+    );
+  }
 
   const mappedRuns = card.agentRuns.map(mapAgentRun);
   const agentStatus = deriveCardAgentStatus(card.agentRuns);
@@ -40,6 +50,16 @@ export async function PATCH(
     include: { column: { select: { columnType: true } } },
   });
   if (!existing) return NextResponse.json({ error: 'Card not found' }, { status: 404 });
+
+  // RBAC check
+  const hasAccessPatch = await guardCardAccess(session.user.githubUsername, existing);
+  if (!hasAccessPatch) {
+    return NextResponse.json(
+      { error: 'Forbidden: no access to this agent role/environment' },
+      { status: 403 },
+    );
+  }
+
   if (existing.column.columnType !== 'inactive') {
     return NextResponse.json(
       { error: 'Cards can only be edited while in the backlog' },
@@ -83,6 +103,22 @@ export async function DELETE(
 ) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  // Fetch card for RBAC check
+  const cardToDelete = await prisma.card.findUnique({
+    where: { id: params.id },
+    select: { role: true },
+  });
+  if (!cardToDelete) return NextResponse.json({ error: 'Card not found' }, { status: 404 });
+
+  // RBAC check
+  const hasAccessDelete = await guardCardAccess(session.user.githubUsername, cardToDelete);
+  if (!hasAccessDelete) {
+    return NextResponse.json(
+      { error: 'Forbidden: no access to this agent role/environment' },
+      { status: 403 },
+    );
+  }
 
   await prisma.agentRun.deleteMany({ where: { cardId: params.id } });
   await prisma.card.delete({ where: { id: params.id } });

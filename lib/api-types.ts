@@ -68,6 +68,7 @@ export interface ApiCard {
   agentStatus: AgentStatus;
   currentAgentRunId: string | null;
   agentRuns: ApiAgentRun[];
+  canInteract: boolean;
   requiresApproval: boolean;
   revisionContextNote: string | null;
   approvedBy: string | null;
@@ -327,4 +328,50 @@ export interface PatchEnvironmentResponse {
 export interface PaginatedResponse<T> {
   items: T[];
   nextPage: string | null;
+}
+
+// ── RBAC Admin types ──────────────────────────────────────────────────────────
+
+export interface AdminUserRow {
+  id: string;
+  githubUsername: string;
+  isAdmin: boolean;
+  createdAt: string;
+  groups: { id: string; name: string }[];
+}
+
+export type AdminUserListResponse = AdminUserRow[];
+
+export interface UpdateUserRequest {
+  isAdmin?: boolean;
+}
+
+export interface AdminGroupRow {
+  id: string;
+  name: string;
+  description: string | null;
+  memberCount: number;
+  agentRoles: string[];
+  environments: string[];
+  createdAt: string;
+}
+
+export type AdminGroupListResponse = AdminGroupRow[];
+
+export interface CreateGroupRequest {
+  name: string;
+  description?: string;
+  agentRoles: string[];
+  environmentIds: string[];
+}
+
+export interface UpdateGroupRequest {
+  name?: string;
+  description?: string;
+  agentRoles?: string[];
+  environmentIds?: string[];
+}
+
+export interface AddGroupMemberRequest {
+  userId: string;
 }

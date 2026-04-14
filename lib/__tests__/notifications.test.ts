@@ -37,6 +37,7 @@ function makeCard(overrides: Partial<ApiCard>): ApiCard {
     agentStatus: 'idle',
     currentAgentRunId: null,
     agentRuns: [],
+    canInteract: true,
     requiresApproval: false,
     revisionContextNote: null,
     approvedBy: null,
