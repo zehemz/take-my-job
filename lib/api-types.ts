@@ -166,3 +166,13 @@ export interface AgentRow {
 }
 
 export type AgentListResponse = AgentRow[]
+
+export interface EnvironmentRow {
+  id: string;
+  name: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+  networkType: 'unrestricted' | 'limited';
+}
+export type EnvironmentListResponse = EnvironmentRow[]
