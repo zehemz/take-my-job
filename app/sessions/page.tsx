@@ -3,18 +3,26 @@
 import { useState, useEffect, useCallback } from 'react';
 import TopNav from '@/app/_components/TopNav';
 import SessionTable from './_components/SessionTable';
-import type { SessionRow } from '@/lib/api-types';
+import type { SessionRow, PaginatedResponse } from '@/lib/api-types';
 
 export default function SessionsPage() {
   const [items, setItems] = useState<SessionRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [nextPage, setNextPage] = useState<string | null>(null);
 
-  const fetchSessions = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const fetchSessions = useCallback(async (page?: string) => {
+    if (page) {
+      setLoadingMore(true);
+    } else {
+      setLoading(true);
+      setError(null);
+    }
     try {
-      const res = await fetch('/api/sessions');
+      const params = new URLSearchParams();
+      if (page) params.set('page', page);
+      const res = await fetch(`/api/sessions?${params.toString()}`);
       if (res.status === 401) {
         window.location.href = '/login';
         return;
@@ -22,12 +30,14 @@ export default function SessionsPage() {
       if (!res.ok) {
         throw new Error('Failed to load sessions from Anthropic.');
       }
-      const data: SessionRow[] = await res.json();
-      setItems(data);
+      const data: PaginatedResponse<SessionRow> = await res.json();
+      setItems((prev) => page ? [...prev, ...data.items] : data.items);
+      setNextPage(data.nextPage);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load sessions from Anthropic.');
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   }, []);
 
@@ -48,7 +58,20 @@ export default function SessionsPage() {
         ) : error ? (
           <p className="text-sm text-red-400">{error}</p>
         ) : (
-          <SessionTable items={items} />
+          <>
+            <SessionTable items={items} />
+            {nextPage && (
+              <div className="mt-4 flex justify-center">
+                <button
+                  onClick={() => fetchSessions(nextPage)}
+                  disabled={loadingMore}
+                  className="text-sm text-zinc-400 hover:text-zinc-100 transition-colors cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                >
+                  {loadingMore ? 'Loading…' : 'Load more'}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
