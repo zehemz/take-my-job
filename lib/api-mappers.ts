@@ -125,7 +125,6 @@ export function mapAgentRun(run: {
   blockedReason: string | null;
   retryAfterMs: bigint | null;
   criteriaResults: string | null;
-  sessionId?: string | null;
   error?: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -143,7 +142,6 @@ export function mapAgentRun(run: {
     blockedReason: run.blockedReason,
     sessionId: run.sessionId ?? null,
     retryAfterMs: run.retryAfterMs !== null ? Number(run.retryAfterMs) : null,
-    sessionId: run.sessionId ?? null,
     error: run.error ?? null,
   };
 }

@@ -45,10 +45,9 @@ export interface ApiAgentRun {
   endedAt: string | null;  // ISO 8601, null if still active
   output: string;
   blockedReason: string | null;
-  sessionId: string | null;
-  retryAfterMs: number | null;
   /** Anthropic Managed Agents session ID, if the run was backed by one. */
   sessionId: string | null;
+  retryAfterMs: number | null;
   /** Internal error message recorded when the run failed. */
   error: string | null;
 }
