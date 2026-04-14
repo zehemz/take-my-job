@@ -96,9 +96,7 @@ export async function run(
     await runEventLoop(stream, card, currentRun, sessionId, boardColumns, deps, signal);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    await deps.db.updateAgentRunStatus(agentRun.id, AgentRunStatus.failed, {
-      error: message,
-    });
+    await deps.db.updateAgentRunStatus(agentRun.id, AgentRunStatus.failed, { error: message });
     await scheduleRetry(agentRun, deps.db);
   }
 }

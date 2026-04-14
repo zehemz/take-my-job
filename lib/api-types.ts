@@ -235,3 +235,22 @@ export interface AgentDetail {
 export interface CardReplyRequest {
   message: string;
 }
+
+// ─── Environments ────────────────────────────────────────────────────────────
+
+export interface EnvironmentRow {
+  id: string;
+  name: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+  networkType: 'unrestricted' | 'limited';
+}
+export type EnvironmentListResponse = EnvironmentRow[]
+
+// ─── Paginated response wrapper ──────────────────────────────────────────────
+
+export interface PaginatedResponse<T> {
+  items: T[];
+  nextPage: string | null;
+}
