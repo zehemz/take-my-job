@@ -150,8 +150,15 @@ export class Orchestrator implements IOrchestrator {
 
     const column = card.column
 
-    // Only act if the card moved to a terminal or inactive column
-    if (!column.isTerminalState && column.isActiveState) return
+    // Card moved to an active column — eagerly dispatch instead of waiting
+    // for the next poll tick (which may never fire in serverless environments).
+    if (column.isActiveState && !column.isTerminalState) {
+      if (!this.state.claimed.has(cardId)) {
+        const { dispatchPending } = await import('./orchestrator/dispatch')
+        await dispatchPending(this.state, this.deps, this.spawnRunner)
+      }
+      return
+    }
 
     const entry = this.state.running.get(cardId)
     if (entry) {
