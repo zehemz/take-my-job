@@ -112,3 +112,13 @@ export type BroadcastEvent =
   | { type: "status_change"; status: AgentRunStatus }
   | { type: "error"; message: string }
   | { type: "done" };
+
+export interface OrchestratorEvent {
+  id: string;
+  boardId: string;
+  cardId: string;
+  runId: string | null;
+  type: string;
+  payload: Record<string, unknown>;
+  createdAt: Date;
+}

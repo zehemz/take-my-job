@@ -1,6 +1,6 @@
 import type { Card, Column, AgentRun, UpdateCardInput } from "../types";
 import { AgentRunStatus } from "../types";
-import type { IDbQueries, IBroadcaster } from "../interfaces";
+import type { IDbQueries } from "../interfaces";
 import { renderCliCommand } from "../config";
 
 // ---------------------------------------------------------------------------
@@ -12,7 +12,6 @@ export interface UpdateCardContext {
   run: AgentRun;
   boardColumns: Column[];
   db: IDbQueries;
-  broadcaster: IBroadcaster;
   sessionId: string;
 }
 
@@ -34,17 +33,19 @@ export async function handleUpdateCard(
   input: UpdateCardInput,
   ctx: UpdateCardContext
 ): Promise<UpdateCardResult> {
-  const { card, run, boardColumns, db, broadcaster, sessionId } = ctx;
+  const { card, run, boardColumns, db, sessionId } = ctx;
 
   switch (input.status) {
     // -----------------------------------------------------------------------
     case "in_progress": {
       await db.appendAgentRunOutput(run.id, input.summary);
 
-      broadcaster.emit(card.id, {
+      await db.insertOrchestratorEvent({
+        boardId: card.boardId,
+        cardId: card.id,
+        runId: run.id,
         type: "card_update",
-        status: "in_progress",
-        summary: input.summary,
+        payload: { status: "in_progress", summary: input.summary },
       });
 
       return { success: true };
@@ -92,17 +93,25 @@ export async function handleUpdateCard(
 
       await db.moveCard(card.id, targetColumn.id);
 
-      broadcaster.emit(card.id, {
+      await db.insertOrchestratorEvent({
+        boardId: card.boardId,
+        cardId: card.id,
+        runId: run.id,
         type: "card_update",
-        status: "completed",
-        summary: input.summary,
-        next_column: targetColumn.name,
-        criteria_results: input.criteria_results,
+        payload: {
+          status: "completed",
+          summary: input.summary,
+          next_column: targetColumn.name,
+          criteria_results: input.criteria_results ?? null,
+        },
       });
 
-      broadcaster.emit(card.id, {
+      await db.insertOrchestratorEvent({
+        boardId: card.boardId,
+        cardId: card.id,
+        runId: run.id,
         type: "status_change",
-        status: AgentRunStatus.completed,
+        payload: { status: AgentRunStatus.completed },
       });
 
       return { success: true };
@@ -124,11 +133,16 @@ export async function handleUpdateCard(
         console.error('[update_card] failed to move card to blocked column:', err);
       }
 
-      broadcaster.emit(card.id, {
+      await db.insertOrchestratorEvent({
+        boardId: card.boardId,
+        cardId: card.id,
+        runId: run.id,
         type: "card_blocked",
-        reason: blockedReason,
-        session_id: sessionId,
-        cli_command: renderCliCommand(sessionId),
+        payload: {
+          reason: blockedReason,
+          session_id: sessionId,
+          cli_command: renderCliCommand(sessionId),
+        },
       });
 
       return { success: true, shouldExitLoop: true };

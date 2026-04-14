@@ -32,6 +32,7 @@
 | [Agent Tools & MCP](./features/agent-edit/PRD.md) | 🟠 In Progress | — | — | — | — |
 | [Environment Detail & Edit](./features/environments/TECH_SPEC.md) | 🟠 In Progress | — | — | — | — |
 | [RBAC — Role-Based Access Control](./features/rbac/) | 🔵 In Design | ✓ | ✓ | ✓ | ✓ |
+| [Stateless Orchestrator](./features/stateless-orchestrator/TECH_SPEC.md) | 🟠 In Progress | — | — | ✓ | — |
 
 **Status legend:** ✅ Shipped · 🔵 In Design · 🟠 In Progress · 🟡 Planned · ⛔ Blocked
 
