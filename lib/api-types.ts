@@ -166,3 +166,22 @@ export interface AgentRow {
 }
 
 export type AgentListResponse = AgentRow[]
+
+export type SessionStatus = 'rescheduling' | 'running' | 'idle' | 'terminated';
+
+export interface SessionRow {
+  id: string;
+  title: string | null;
+  status: SessionStatus;
+  agentName: string;
+  agentId: string;
+  environmentId: string;
+  createdAt: string;
+  updatedAt: string;
+  cardId: string | null;
+  boardId: string | null;
+  agentRole: string | null;
+  agentRunStatus: string | null;
+}
+
+export type SessionListResponse = SessionRow[];
