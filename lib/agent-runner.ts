@@ -62,7 +62,7 @@ export async function run(
       : [];
 
     // Card-level env > role-level env > board-level env
-    const environmentId = card.environmentId || agentConfig.anthropicEnvironmentId || board?.anthropicEnvironmentId;
+    const environmentId = card.environmentId || agentConfig.anthropicEnvironmentId || board?.anthropicEnvironmentId || null;
 
     const session = await anthropicClient.createSession({
       agentId: agentConfig.anthropicAgentId,
