@@ -155,7 +155,7 @@ export async function DELETE(
   const beta = (new Anthropic()).beta as any
 
   try {
-    await beta.environments.delete(id)
+    await beta.environments.archive(id)
   } catch (e: unknown) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const err = e as any

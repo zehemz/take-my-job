@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { devAuth as auth } from '@/lib/dev-auth'
 import { requireAdmin } from '@/lib/rbac'
-import type { EnvironmentRow, PaginatedResponse, CreateEnvironmentRequest } from '@/lib/api-types'
+import type { EnvironmentRow, CreateEnvironmentRequest } from '@/lib/api-types'
 
 // Shared mapper (same as in [id]/route.ts — kept co-located to avoid circular deps)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -36,40 +36,22 @@ function mapEnvDetail(env: any) {
   }
 }
 
-const DEFAULT_LIMIT = 20
-
-export async function GET(req: Request) {
+export async function GET() {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
-  const url = new URL(req.url)
-  const limit = Math.min(Number(url.searchParams.get('limit')) || DEFAULT_LIMIT, 100)
-  const page = url.searchParams.get('page') || undefined
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const beta = (new Anthropic()).beta as any
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let allEnvironments: any[]
   try {
-    const result = await beta.environments.list({ limit, ...(page ? { page } : {}) })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data = (result.data ?? []) as any[]
-    const nextPage: string | null = result.next_page ?? null
-
-    const items: EnvironmentRow[] = data
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .filter((env: any) => env.archived_at === null)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      .map((env: any) => ({
-        id: env.id,
-        name: env.name,
-        description: env.description ?? '',
-        createdAt: env.created_at,
-        updatedAt: env.updated_at,
-        networkType: env.config?.networking?.type ?? 'unrestricted',
-      }))
-
-    const response: PaginatedResponse<EnvironmentRow> = { items, nextPage }
-    return NextResponse.json(response)
+    const collected: any[] = []
+    for await (const env of beta.environments.list()) {
+      collected.push(env)
+    }
+    allEnvironments = collected
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Unknown error'
     return NextResponse.json(
@@ -77,6 +59,21 @@ export async function GET(req: Request) {
       { status: 502 },
     )
   }
+
+  const rows: EnvironmentRow[] = allEnvironments
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .filter((env: any) => env.archived_at === null)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .map((env: any): EnvironmentRow => ({
+      id: env.id,
+      name: env.name,
+      description: env.description ?? '',
+      createdAt: env.created_at,
+      updatedAt: env.updated_at,
+      networkType: env.config?.networking?.type ?? 'unrestricted',
+    }))
+
+  return NextResponse.json(rows)
 }
 
 export async function POST(req: Request) {
