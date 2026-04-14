@@ -48,6 +48,7 @@ export default function NewBoardModal({ onClose }: Props) {
 
   const [step, setStep] = useState<Step>('input');
   const [name, setName] = useState('');
+  const [workspacePath, setWorkspacePath] = useState('');
   const [spec, setSpec] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -60,10 +61,16 @@ export default function NewBoardModal({ onClose }: Props) {
     // No spec — fast path, create board immediately
     if (!spec.trim()) {
       setLoading(true);
-      const id = await createBoardApi(name.trim());
-      setLoading(false);
-      if (id) router.push(`/boards/${id}`);
-      onClose();
+      setError(null);
+      try {
+        const id = await createBoardApi(name.trim(), workspacePath.trim() || undefined);
+        if (id) router.push(`/boards/${id}`);
+        onClose();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : String(err));
+      } finally {
+        setLoading(false);
+      }
       return;
     }
 
@@ -91,7 +98,7 @@ export default function NewBoardModal({ onClose }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const boardId = await createBoardApi(name.trim());
+      const boardId = await createBoardApi(name.trim(), workspacePath.trim() || undefined);
       if (!boardId) throw new Error('Failed to create board');
 
       await fetchBoard(boardId);
@@ -177,6 +184,22 @@ export default function NewBoardModal({ onClose }: Props) {
               />
               <p className="text-xs text-zinc-600">
                 Creates with 6 default columns: Backlog · In Progress · Blocked · Review · Revision · Done
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+                Workspace path <span className="text-zinc-600 font-normal normal-case">(optional)</span>
+              </label>
+              <input
+                type="text"
+                value={workspacePath}
+                onChange={(e) => setWorkspacePath(e.target.value)}
+                placeholder="e.g. boards/my-project"
+                className="bg-zinc-950 border border-zinc-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 outline-none transition-colors font-mono"
+              />
+              <p className="text-xs text-zinc-600">
+                Folder path in the workspace repo. Auto-generated from name if left blank.
               </p>
             </div>
 

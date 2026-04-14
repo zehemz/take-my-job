@@ -95,6 +95,7 @@ export interface Board {
   name: string;
   createdAt: string;
   githubRepo: string | null;
+  workspacePath: string | null;
   columnCount?: number;
   cardCount?: number;
 }

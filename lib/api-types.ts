@@ -13,6 +13,8 @@ import type { AgentRole, AgentStatus, ColumnType } from './kanban-types';
 export interface ApiBoardSummary {
   id: string;
   name: string;
+  githubRepo: string | null;
+  workspacePath: string | null;
   createdAt: string;
   columnCount: number;
   cardCount: number;
@@ -89,6 +91,7 @@ export interface ApiBoardDetail {
 
 export interface CreateBoardRequest {
   name: string;
+  workspacePath?: string;
 }
 
 export interface CreateCardRequest {

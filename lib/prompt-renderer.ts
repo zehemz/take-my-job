@@ -23,10 +23,11 @@ export interface PromptRenderInput {
   currentColumn: Column;
   boardColumns: Column[];
   roleDisplayName: string;
+  workspacePath?: string | null;
 }
 
 export function renderTurnPrompt(input: PromptRenderInput): string {
-  const { card, run, currentColumn, boardColumns, roleDisplayName } = input;
+  const { card, run, currentColumn, boardColumns, roleDisplayName, workspacePath } = input;
 
   const lines: string[] = [];
 
@@ -50,6 +51,14 @@ export function renderTurnPrompt(input: PromptRenderInput): string {
     lines.push(
       `**Repository:** ${card.githubRepoUrl} (mounted at /workspace/repo, branch: ${branch})`
     );
+    if (workspacePath) {
+      lines.push("");
+      lines.push(`**Working directory:** /workspace/repo/${workspacePath}`);
+      lines.push(
+        "All your work MUST be done inside this directory. `cd` into it before starting."
+      );
+      lines.push("Do NOT modify files outside this directory.");
+    }
   }
 
   const parsedCriteria = parseCriteria(card.acceptanceCriteria);

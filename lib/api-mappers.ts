@@ -83,12 +83,16 @@ export function mapColumn(col: {
 export function mapBoardSummary(board: {
   id: string;
   name: string;
+  githubRepo?: string | null;
+  workspacePath?: string | null;
   createdAt: Date;
   _count?: { columns: number; cards: number };
 }): ApiBoardSummary {
   return {
     id: board.id,
     name: board.name,
+    githubRepo: board.githubRepo ?? null,
+    workspacePath: board.workspacePath ?? null,
     createdAt: board.createdAt.toISOString(),
     columnCount: board._count?.columns ?? 0,
     cardCount: board._count?.cards ?? 0,

@@ -145,6 +145,11 @@ export const dbQueries: IDbQueries = {
     return column as unknown as Column | null;
   },
 
+  async getBoard(id: string) {
+    const board = await prisma.board.findUnique({ where: { id } });
+    return board as unknown as import("./types").Board | null;
+  },
+
   async getBoardColumns(boardId: string): Promise<Column[]> {
     const columns = await prisma.column.findMany({
       where: { boardId },

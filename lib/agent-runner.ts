@@ -38,8 +38,11 @@ export async function run(
       throw new Error(`No AgentConfig found for role: ${agentRun.role}`);
     }
 
-    // 2. Load board columns
-    const boardColumns = await db.getBoardColumns(card.boardId);
+    // 2. Load board columns + board metadata
+    const [boardColumns, board] = await Promise.all([
+      db.getBoardColumns(card.boardId),
+      db.getBoard(card.boardId),
+    ]);
 
     // 3. Create Anthropic session
     const resources: Array<{
@@ -82,6 +85,7 @@ export async function run(
       currentColumn: card.column,
       boardColumns,
       roleDisplayName: agentRun.role,
+      workspacePath: board?.workspacePath ?? null,
     });
 
     // 6. Open stream and send first message concurrently (stream-first per spec §6.3)
