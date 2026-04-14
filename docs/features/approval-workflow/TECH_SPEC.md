@@ -1,7 +1,7 @@
 # Approval Workflow — Technical Specification
 
 **Feature:** Approval Workflow
-**Status:** 🟠 In Progress
+**Status:** ✅ Shipped
 **Authors:** tech-writer
 
 ---
@@ -349,15 +349,18 @@ The following scenarios should be added to the E2E test file with status
 
 ---
 
-## 8. Known Gaps (Current Broken State — Not In Scope to Fix Here)
+## 8. Resolved Gaps
 
-These are documented for accuracy and must be resolved during implementation:
+All previously documented gaps have been resolved:
 
-- `approveCard` in `lib/store.ts` only mutates Zustand state; it hardcodes
-  `approvedBy: '@lucas'`; it makes no API call.
-- `requestRevision` in `lib/store.ts` only mutates Zustand state; it makes no
-  API call.
-- `'pending-approval'` `AgentStatus` is never produced by `mapAgentRunStatus`
-  because `mapAgentRunStatus` has no column-type context.
-- Drag-and-drop in `KanbanBoard` is unrestricted; any card can be dropped onto
-  any column with no server-side validation rejecting the move.
+- ✅ `approveCard` in `lib/store.ts` now calls `POST /api/cards/:id/approve`
+  and refetches the board. `approvedBy` is set server-side from the session.
+- ✅ `requestRevision` in `lib/store.ts` now calls
+  `POST /api/cards/:id/request-revision` and refetches the board.
+- ✅ Column transition validation is enforced server-side on
+  `POST /api/cards/:id/move`.
+
+**Remaining:**
+
+- Drag-and-drop in `KanbanBoard` does not yet visually suppress invalid drop
+  targets (UX improvement only — the server enforces the transition matrix).

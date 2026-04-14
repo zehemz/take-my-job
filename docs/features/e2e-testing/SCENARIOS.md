@@ -127,6 +127,32 @@ IDs are stable — never reuse a retired ID.
 
 ---
 
+## Attention Queue (`e2e/attention.spec.ts`)
+
+| ID | Scenario | Status |
+|----|----------|--------|
+| E2E-ATTENTION-001 | Navigate to `/attention` → page renders "Attention" heading | 🟡 Planned |
+| E2E-ATTENTION-002 | Blocked card appears in Attention Queue with status badge and blocked reason summary | 🟡 Planned |
+| E2E-ATTENTION-003 | Failed card appears in Attention Queue with "failed" status badge | 🟡 Planned |
+| E2E-ATTENTION-004 | Pending-approval card shows "Approve" and "Request revision" buttons | 🟡 Planned |
+| E2E-ATTENTION-005 | Clicking card title in Attention Queue opens CardDetailModal | 🟡 Planned |
+| E2E-ATTENTION-006 | Blocked card older than 1 hour shows "URGENT" indicator | 🟡 Planned |
+| E2E-ATTENTION-007 | Empty state shown when no cards need attention | 🟡 Planned |
+
+---
+
+## Blocked column + human reply (`e2e/blocked.spec.ts`)
+
+| ID | Scenario | Status |
+|----|----------|--------|
+| E2E-BLOCKED-001 | `POST /api/cards/:id/reply` without session → 401 | 🟡 Planned |
+| E2E-BLOCKED-002 | `POST /api/cards/:id/reply` on card not in blocked column → 400 | 🟡 Planned |
+| E2E-BLOCKED-003 | `POST /api/cards/:id/reply` with valid message → card moves to active column | 🟡 Planned |
+| E2E-BLOCKED-004 | Blocked column header shows pulsing amber indicator when cards present | 🟡 Planned |
+| E2E-BLOCKED-005 | BlockedBanner in card detail shows blocked reason and reply textarea | 🟡 Planned |
+
+---
+
 ## Error states
 
 | ID | Scenario | Status |
