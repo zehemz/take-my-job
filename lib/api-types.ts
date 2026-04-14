@@ -283,6 +283,46 @@ export interface EnvironmentRow {
 export type EnvironmentListResponse = EnvironmentRow[]
 
 
+// ─── Environment detail ──────────────────────────────────────────────────────
+
+export interface EnvironmentNetworking {
+  type: 'unrestricted' | 'limited';
+  allowMcpServers?: boolean;
+  allowPackageManagers?: boolean;
+  allowedHosts?: string[];
+}
+
+export interface EnvironmentPackages {
+  apt: string[];
+  npm: string[];
+  pip: string[];
+  cargo: string[];
+  gem: string[];
+  go: string[];
+}
+
+export interface EnvironmentDetail {
+  id: string;
+  name: string;
+  description: string;
+  networking: EnvironmentNetworking;
+  packages: EnvironmentPackages;
+  createdAt: string;
+  updatedAt: string;
+  archivedAt: string | null;
+}
+
+export interface PatchEnvironmentRequest {
+  name?: string;
+  description?: string | null;
+  networking?: EnvironmentNetworking;
+  packages?: EnvironmentPackages;
+}
+
+export interface PatchEnvironmentResponse {
+  environment: EnvironmentDetail;
+}
+
 // ─── Paginated response wrapper ──────────────────────────────────────────────
 
 export interface PaginatedResponse<T> {

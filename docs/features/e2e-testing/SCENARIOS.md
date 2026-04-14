@@ -210,6 +210,19 @@ IDs are stable — never reuse a retired ID.
 
 ---
 
+## Environment Detail & Edit (`e2e/environments.spec.ts`)
+
+| ID | Scenario | Status |
+|----|----------|--------|
+| E2E-ENV-005 | Click environment name in list → navigates to `/environments/[id]` detail page | 🟡 Planned |
+| E2E-ENV-006 | Edit environment name → Save → name updates | 🟡 Planned |
+| E2E-ENV-007 | Edit description → Save → description updates | 🟡 Planned |
+| E2E-ENV-008 | Switch network from unrestricted to limited → configure hosts → Save → persists | 🟡 Planned |
+| E2E-ENV-009 | Edit packages (add npm package) → Save → persists | 🟡 Planned |
+| E2E-ENV-010 | Navigate to `/environments/nonexistent` → shows "not found" | 🟡 Planned |
+
+---
+
 ## RBAC — Role-Based Access Control (`e2e/rbac.spec.ts`)
 
 | ID | Scenario | Status |

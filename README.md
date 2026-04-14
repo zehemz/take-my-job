@@ -1,157 +1,198 @@
+<div align="center">
+
 # Kobani
 
-A Kanban board that dispatches Claude managed agents to fulfill tasks in a prod-tech organization. Column transitions — not manual prompts — drive agent dispatch. Teams manage work instead of supervising agents.
+**A Kanban board that dispatches AI agents to do the work, not just track it.**
 
-Inspired by [Symphony](https://github.com/openai/symphony), substituting Anthropic Managed Agents for OpenAI Codex and Kanban columns for Linear issues.
+Column transitions drive autonomous Claude agent dispatch — teams manage work, not agents.
 
----
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.8-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-14-000?logo=next.js)](https://nextjs.org/)
+[![Anthropic](https://img.shields.io/badge/Anthropic-Managed%20Agents-D4A574?logo=anthropic&logoColor=white)](https://www.anthropic.com/)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/zehemz/take-my-job/pulls)
 
-## Prerequisites
-
-Install [mise](https://mise.jdx.dev) — a polyglot tool version manager:
-
-```bash
-brew install mise
-```
-
-Then activate mise in your shell (add to `~/.zshrc`):
-
-```bash
-echo 'eval "$(mise activate zsh)"' >> ~/.zshrc
-source ~/.zshrc
-```
+</div>
 
 ---
 
-## Setup
+## What is Kobani?
+
+Kobani turns your Kanban board into an AI-powered execution engine. Instead of manually prompting AI assistants, you move cards between columns — and Claude agents pick up the work automatically.
+
+- **Drag a card to "In Progress"** → a Backend Engineer agent starts coding
+- **Move it to "Review"** → a Tech Lead agent reviews the work
+- **Agent gets stuck?** → it moves to "Blocked" and you can chat with it in real time
+
+Inspired by [OpenAI Symphony](https://github.com/openai/symphony), substituting Anthropic Managed Agents for OpenAI Codex and Kanban columns for Linear issues.
+
+## Features
+
+- **Autonomous agent dispatch** — column transitions trigger agent sessions, no manual prompting needed
+- **Multiple agent roles** — Backend Engineer, QA Engineer, and Tech Lead with distinct responsibilities
+- **Real-time streaming** — live SSE output from agents directly in the card UI
+- **Drag-and-drop Kanban** — intuitive board with customizable columns (Inactive, Active, Terminal)
+- **Acceptance criteria** — define what "done" looks like; agents verify before completing
+- **Blocked state & human-in-the-loop** — agents signal when they need help; reply through the UI or attach via CLI
+- **Approval workflow** — require human approval before agents can transition cards
+- **Attention queue & notifications** — surface cards that need human attention with real-time alerts
+- **Agent management** — create, configure, and manage agent definitions with built-in tools and MCP servers
+- **GitHub repo mounting** — agents get the repo at `/workspace/repo` for full code access
+- **Retry with exponential backoff** — failed runs auto-retry up to configurable limits
+- **Concurrency control** — global cap on simultaneous agent runs
+- **GitHub OAuth authentication** — secure access with allowlist-based authorization
+- **Session inspection** — view active agent sessions and attach via the `ant` CLI
+- **Multiple boards** — create and manage separate boards for different projects or teams
+
+## Architecture
+
+```
+┌──────────────────────────────────────────────────────┐
+│                    Kanban Board UI                     │
+│  Drag-and-drop columns → card moves → API routes      │
+│  Real-time agent output ← SSE stream per card         │
+└───────────────────────┬──────────────────────────────┘
+                        │ HTTP
+┌───────────────────────▼──────────────────────────────┐
+│                      API Layer                        │
+│  /api/cards/[id]/move  — triggers orchestrator        │
+│  /api/cards/[id]/events — SSE stream for UI           │
+└───────────────────────┬──────────────────────────────┘
+                        │
+┌───────────────────────▼──────────────────────────────┐
+│                    Orchestrator                        │
+│  Poll loop · dispatch pending · reconcile running     │
+│  Concurrency cap · exponential backoff retries        │
+└───────────────────────┬──────────────────────────────┘
+                        │
+┌───────────────────────▼──────────────────────────────┐
+│                   Agent Runner                        │
+│  Creates session per card+role · SSE stream-first     │
+│  Handles agent output + custom tool calls             │
+└───────────────────────┬──────────────────────────────┘
+                        │ HTTPS
+┌───────────────────────▼──────────────────────────────┐
+│           Anthropic Managed Agents Platform            │
+└──────────────────────────────────────────────────────┘
+```
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Framework | [Next.js 14](https://nextjs.org/) (App Router) |
+| Language | [TypeScript 5.8](https://www.typescriptlang.org/) |
+| Styling | [Tailwind CSS](https://tailwindcss.com/) |
+| Database | [PostgreSQL](https://www.postgresql.org/) (Neon) via [Prisma](https://www.prisma.io/) |
+| AI | [Anthropic Managed Agents API](https://www.anthropic.com/) |
+| Auth | [NextAuth.js](https://next-auth.js.org/) (GitHub OAuth) |
+| State | [Zustand](https://zustand-demo.pmnd.rs/) |
+| Drag & Drop | [dnd-kit](https://dndkit.com/) |
+| Testing | [Vitest](https://vitest.dev/) + [Playwright](https://playwright.dev/) |
+| Tooling | [mise](https://mise.jdx.dev/) (runtime & task management) |
+
+## Getting Started
+
+### Prerequisites
+
+- [mise](https://mise.jdx.dev) — polyglot tool version manager
+- A PostgreSQL database (e.g. [Neon](https://neon.tech/) free tier)
+- An [Anthropic API key](https://console.anthropic.com/)
+
+### Installation
 
 ```bash
-# 1. Clone the repo
-git clone <repo-url>
+# Clone the repo
+git clone https://github.com/zehemz/take-my-job.git
 cd take-my-job
 
-# 2. Trust the mise config and install tools (Node.js 22)
-mise trust
-mise install
+# Trust the mise config and install tools (Node.js 22)
+mise trust && mise install
 
-# 3. Install dependencies
+# Install dependencies
 npm install
 
-# 4. Set up environment variables
+# Set up environment variables
 cp .env.example .env.local
-# Add your Anthropic API key and Neon DATABASE_URL to .env.local
+# Edit .env.local with your Anthropic API key and DATABASE_URL
 
-# 5. Set up the database (requires a running PostgreSQL — e.g. Neon free tier)
+# Run database migrations
 npx prisma migrate dev
 
-# 6. Run one-time agent setup (creates Anthropic agents + environment)
+# Create Anthropic agents + environment (one-time setup)
 npx tsx scripts/setup-agents.ts
 
-# 7. Start the dev server
+# Start the dev server
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
 
----
+### Environment Variables
 
-## Environment Variables
-
-| Variable | Default | Description |
+| Variable | Required | Description |
 |---|---|---|
-| `ANTHROPIC_API_KEY` | required | Anthropic API key ([console.anthropic.com](https://console.anthropic.com)) |
-| `DATABASE_URL` | required | PostgreSQL connection string (e.g. Neon) |
-| `GITHUB_TOKEN` | optional | GitHub PAT for repo mounting (Contents: read+write) |
-| `POLL_INTERVAL_MS` | `3000` | Orchestrator poll cadence (ms) |
-| `MAX_CONCURRENT_AGENTS` | `5` | Global concurrency cap |
-| `MAX_ATTEMPTS` | `5` | Max retry attempts per card |
-| `MAX_RETRY_BACKOFF_MS` | `300000` | Max retry delay (5 min) |
-| `MAX_TURNS` | `10` | Max agent turns per session |
-| `MAX_STALL_MS` | `3600000` | Stall detection threshold (1 hour) |
-| `CLI_ATTACH_COMMAND_TEMPLATE` | `ant sessions connect {session_id}` | Template for the CLI attach command |
+| `ANTHROPIC_API_KEY` | Yes | Anthropic API key |
+| `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `GITHUB_TOKEN` | No | GitHub PAT for repo mounting (Contents: read+write) |
+| `GITHUB_CLIENT_ID` | No | GitHub OAuth app client ID |
+| `GITHUB_CLIENT_SECRET` | No | GitHub OAuth app client secret |
+| `AUTH_SECRET` | No | Session secret — generate with `openssl rand -hex 32` |
+| `ALLOWED_GITHUB_USERS` | No | Comma-separated GitHub usernames allowed access |
+| `DEV_AUTH_BYPASS` | No | Set to `true` to skip OAuth in development |
+| `POLL_INTERVAL_MS` | No | Orchestrator poll cadence (default: `3000`) |
+| `MAX_CONCURRENT_AGENTS` | No | Global concurrency cap (default: `5`) |
+| `MAX_ATTEMPTS` | No | Max retry attempts per card (default: `5`) |
+| `MAX_TURNS` | No | Max agent turns per session (default: `10`) |
 
----
+See [`.env.example`](.env.example) for the full list with defaults.
 
-## Stack
+## Usage
 
-| Layer | Technology |
-|---|---|
-| Framework | Next.js 14 (App Router) |
-| Styling | Tailwind CSS |
-| Database | PostgreSQL (Neon) via Prisma |
-| AI | Anthropic Managed Agents API |
-| Language | TypeScript |
+### Common Tasks (via mise)
 
----
-
-## Architecture
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                       Kanban Board UI                    │
-│   Column transitions → card moves → API routes          │
-│   Real-time agent output ← SSE stream per card          │
-└──────────────────────────┬──────────────────────────────┘
-                           │ HTTP
-┌──────────────────────────▼──────────────────────────────┐
-│                         API Layer                        │
-│   /api/cards/[id]/move  — triggers orchestrator          │
-│   /api/cards/[id]/events — SSE stream for UI             │
-└──────────────────────────┬──────────────────────────────┘
-                           │
-┌──────────────────────────▼──────────────────────────────┐
-│                       Orchestrator                       │
-│   Poll loop · dispatch pending · reconcile running       │
-│   Concurrency cap · exponential backoff retries          │
-└──────────────────────────┬──────────────────────────────┘
-                           │
-┌──────────────────────────▼──────────────────────────────┐
-│                      Agent Runner                        │
-│   Creates session per card+role · SSE stream-first       │
-│   Handles agent output + custom tool calls               │
-└──────────────────────────┬──────────────────────────────┘
-                           │ HTTPS
-┌──────────────────────────▼──────────────────────────────┐
-│              Anthropic Managed Agents Platform           │
-└─────────────────────────────────────────────────────────┘
+```bash
+mise run dev          # Start dev server
+mise run e2e          # Run Playwright E2E tests
+mise run e2e:ui       # Run E2E tests interactively
+mise run db           # Open Prisma Studio
+mise run db:migrate   # Run pending migrations
 ```
 
----
+### Attaching to a Live Agent Session
 
-## How It Works
-
-Each Kanban card represents a unit of work. Columns are typed:
-
-- **Inactive** (e.g. "Backlog") — no agent action
-- **Active** (e.g. "In Progress", "Review") — dispatches an agent on entry
-- **Terminal** (e.g. "Done", "Cancelled") — cleans up sessions on entry
-
-When a card enters an active column, the orchestrator assigns a Claude managed agent with a specific role to work on it. Agents operate autonomously, stream output back to the card in real time via SSE, and transition the card to its next column when work is complete.
-
-### Built-in Roles
-
-| Role | Focus |
-|---|---|
-| Backend Engineer | Implementation: code, APIs, databases, tests |
-| QA Engineer | Testing: test plans, edge cases, regression, automation |
-| Tech Lead | Architecture: design decisions, code review, trade-offs |
-
-### Key Features
-
-- **Acceptance criteria** — cards can include criteria the agent must verify before completing
-- **Blocked state** — agents can signal when they need human input; developers attach via the `ant` CLI or send messages through the card UI
-- **Retry with backoff** — failed runs are retried with exponential backoff (up to `MAX_ATTEMPTS`)
-- **GitHub repo mounting** — cards can reference a repo; the agent session mounts it at `/workspace/repo`
-- **Concurrency control** — the orchestrator enforces a global cap on simultaneous agent runs
-
----
-
-## Developer Terminal Access
-
-When an agent is blocked or you want to inspect a live session, copy the attach command from the card UI:
+When an agent is blocked or you want to inspect its work:
 
 ```bash
 ant sessions connect <session_id>
 ```
 
-This connects to the live Anthropic session, showing full message history and letting you send messages to unblock the agent. The board UI continues receiving updates from the same session.
+Copy the session ID from the card UI. This gives you full message history and lets you send messages to unblock the agent.
+
+## Contributing
+
+Contributions are welcome! Here's how to get started:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feat/amazing-feature`)
+3. Make your changes
+4. Run tests (`npm test && npm run e2e`)
+5. Commit your changes
+6. Push to your branch and open a Pull Request
+
+Please make sure your PR:
+- Includes tests for new functionality
+- Follows the existing code style
+- Updates documentation if needed
+
+## License
+
+This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+
+---
+
+<div align="center">
+
+Built with [Anthropic Managed Agents](https://www.anthropic.com/) and [Next.js](https://nextjs.org/)
+
+</div>

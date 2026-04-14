@@ -53,7 +53,9 @@ export async function handleEvent(
   switch (e.type) {
     // -----------------------------------------------------------------------
     case "agent.message": {
-      const text = (e.text as string) ?? "";
+      // SDK: content is Array<{type:"text", text:string}>
+      const contentBlocks = e.content as Array<{ type: string; text?: string }> | undefined;
+      const text = contentBlocks?.map((b) => b.text ?? "").join("") ?? "";
       if (text) {
         await db.appendAgentRunOutput(run.id, text);
       }
@@ -63,18 +65,20 @@ export async function handleEvent(
 
     // -----------------------------------------------------------------------
     case "agent.thinking": {
+      // SDK: thinking event is a progress signal with no content
       broadcaster.emit(card.id, {
         type: "agent_thinking",
-        thinking: e.thinking as string,
+        thinking: "",
       });
       return { exitLoop: false };
     }
 
     // -----------------------------------------------------------------------
     case "agent.tool_use": {
+      // SDK: tool name is `name`, not `tool_name`
       broadcaster.emit(card.id, {
         type: "tool_use",
-        tool_name: e.tool_name as string,
+        tool_name: e.name as string,
         input: e.input,
       });
       return { exitLoop: false };
@@ -82,8 +86,9 @@ export async function handleEvent(
 
     // -----------------------------------------------------------------------
     case "agent.custom_tool_use": {
-      if (e.tool_name === "update_card") {
-        const toolUseId = e.tool_use_id as string | undefined;
+      // SDK: tool name is `name`, event ID is `id`
+      if (e.name === "update_card") {
+        const toolUseId = e.id as string;
         const toolInput = e.input as UpdateCardInput;
 
         const result = await handleUpdateCard(toolInput, {
@@ -133,13 +138,16 @@ export async function handleEvent(
 
     // -----------------------------------------------------------------------
     case "session.error": {
-      const errorMsg = (e.error as string) ?? "Unknown session error";
+      // SDK: error is an object with a `message` field
+      const errorObj = e.error as { message?: string } | undefined;
+      const errorMsg = errorObj?.message ?? "Unknown session error";
       return { exitLoop: true, outcome: "failed", error: errorMsg };
     }
 
     // -----------------------------------------------------------------------
     case "span.model_request_end": {
-      const usage = e.usage as { input_tokens?: number; output_tokens?: number } | undefined;
+      // SDK: field is `model_usage`, not `usage`
+      const usage = e.model_usage as { input_tokens?: number; output_tokens?: number } | undefined;
       if (usage) {
         tokenUsage.inputTokens += usage.input_tokens ?? 0;
         tokenUsage.outputTokens += usage.output_tokens ?? 0;

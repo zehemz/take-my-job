@@ -47,7 +47,7 @@ export const anthropicClient: IAnthropicClient = {
       await beta.sessions.events.send(sessionId, {
         events: [{
           type: "user.message",
-          content: message.content,
+          content: [{ type: "text", text: message.content as string }],
         }],
       });
       return;
@@ -57,8 +57,8 @@ export const anthropicClient: IAnthropicClient = {
       await beta.sessions.events.send(sessionId, {
         events: [{
           type: "user.custom_tool_result",
-          tool_use_id: message.tool_use_id,
-          content: message.content,
+          custom_tool_use_id: message.tool_use_id,
+          content: [{ type: "text", text: message.content as string }],
         }],
       });
       return;
