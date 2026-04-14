@@ -32,23 +32,37 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (!GITHUB_LOGIN_RE.test(login)) return false;
 
       const username = login.toLowerCase();
-      const prisma = await getPrisma();
 
-      // Look up user in DB (invite-only: user must exist)
-      const user = await prisma.user.findUnique({
-        where: { githubUsername: username },
-      });
+      try {
+        const prisma = await getPrisma();
 
-      if (!user) return false;
+        // Look up user in DB (invite-only: user must exist)
+        const user = await prisma.user.findUnique({
+          where: { githubUsername: username },
+        });
 
-      // User exists — check group membership (admins always pass)
-      if (user.isAdmin) return true;
+        if (!user) {
+          console.warn(`[kobani:auth] sign-in denied: user "${username}" not found in DB`);
+          return false;
+        }
 
-      const membershipCount = await prisma.userGroupMember.count({
-        where: { userId: user.id },
-      });
+        // User exists — check group membership (admins always pass)
+        if (user.isAdmin) return true;
 
-      return membershipCount > 0;
+        const membershipCount = await prisma.userGroupMember.count({
+          where: { userId: user.id },
+        });
+
+        if (membershipCount === 0) {
+          console.warn(`[kobani:auth] sign-in denied: user "${username}" has no group memberships`);
+        }
+
+        return membershipCount > 0;
+      } catch (err) {
+        console.error('[kobani:auth] signIn callback error — allowing sign-in as fallback:', err);
+        // If DB is unreachable, allow sign-in to avoid total lockout
+        return true;
+      }
     },
     async jwt({ token, profile }) {
       if (profile) {
