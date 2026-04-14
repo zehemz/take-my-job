@@ -162,7 +162,7 @@ describe('dispatchPending', () => {
     expect(spawnRunner).toHaveBeenCalledOnce()
   })
 
-  it('dispatches retry-eligible run when card is not in fresh eligible set', async () => {
+  it('skips retry-eligible run when card is in terminal column', async () => {
     const activeCol = makeColumn({ id: 'col-active' })
     const doneCol = makeColumn({ id: 'col-done', isActiveState: false, isTerminalState: true, name: 'Done' })
     db.columns.push(activeCol, doneCol)
@@ -190,17 +190,45 @@ describe('dispatchPending', () => {
 
     await dispatchPending(deps, spawnRunner)
 
-    // Fresh dispatch finds nothing (card not in active column).
-    // Retry picks it up with attempt+1=3.
+    // Card is in terminal column — retry should be skipped
+    expect(db.agentRuns).toHaveLength(1) // only the original failed run
+    expect(spawnRunner).not.toHaveBeenCalled()
+  })
+
+  it('dispatches retry-eligible run when card is in active column', async () => {
+    const activeCol = makeColumn({ id: 'col-active' })
+    db.columns.push(activeCol)
+
+    const card = makeCard('card-r', activeCol.id)
+    db.cards.push(card)
+
+    const failedRun: AgentRun = {
+      id: 'prev-run',
+      cardId: 'card-r',
+      columnId: activeCol.id,
+      role: 'backend_engineer',
+      sessionId: null,
+      status: AgentRunStatus.failed,
+      output: null,
+      criteriaResults: null,
+      blockedReason: null,
+      attempt: 2,
+      retryAfterMs: BigInt(Date.now() - 5000),
+      error: 'transient failure',
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }
+    db.agentRuns.push(failedRun)
+
+    await dispatchPending(deps, spawnRunner)
+
+    // Card is in active column — fresh dispatch claims it first (attempt 1),
+    // then retry path skips because claimAndCreateAgentRun returns null.
     expect(db.agentRuns).toHaveLength(2)
-    const retryRun = db.agentRuns[1]
-    expect(retryRun.cardId).toBe('card-r')
-    expect(retryRun.attempt).toBe(3)
+    const newRun = db.agentRuns[1]
+    expect(newRun.cardId).toBe('card-r')
+    expect(newRun.attempt).toBe(1) // fresh dispatch, not retry
     expect(spawnRunner).toHaveBeenCalledOnce()
-    const calledCard = spawnRunner.mock.calls[0][0]
-    expect(calledCard.id).toBe('card-r')
-    expect(calledCard.column).toBeDefined()
-    expect(spawnRunner.mock.calls[0][1]).toBe(retryRun)
   })
 
   it('skips retry-eligible run when card already has an active run', async () => {

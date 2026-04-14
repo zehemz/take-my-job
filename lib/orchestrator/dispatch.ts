@@ -43,6 +43,9 @@ export async function dispatchPending(
     const card = await deps.db.getCard(prevRun.cardId)
     if (!card) continue
 
+    // Don't retry if card is in a terminal or inactive column
+    if (card.column.isTerminalState || !card.column.isActiveState) continue
+
     const run = await deps.db.claimAndCreateAgentRun(
       prevRun.cardId,
       prevRun.columnId,
