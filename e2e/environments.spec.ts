@@ -50,7 +50,7 @@ test.describe('Environments — List & Delete', () => {
     try {
       // Create a test environment via API
       const created = await api.createEnvironment({ name });
-      envId = created.environment.id;
+      envId = created.id;
 
       await page.goto('/environments');
       await expect(page.getByRole('heading', { name: 'Environments' })).toBeVisible({ timeout: 10_000 });
@@ -91,7 +91,7 @@ test.describe('Environments — List & Delete', () => {
     try {
       // Create a test environment via API
       const created = await api.createEnvironment({ name });
-      envId = created.environment.id;
+      envId = created.id;
 
       await page.goto('/environments');
       await expect(page.getByRole('heading', { name: 'Environments' })).toBeVisible({ timeout: 10_000 });
@@ -149,12 +149,12 @@ test.describe('Environments — Detail & Edit', () => {
     // Should navigate to an environment detail page
     await expect(page).toHaveURL(/\/environments\/.+/, { timeout: 10_000 });
 
-    // Detail page should show the "Environments" back link (confirms detail page loaded)
-    const backLink = page.getByRole('link', { name: 'Environments' });
+    // Detail page should show the "← Environments" back link (confirms detail page loaded)
+    const backLink = page.getByRole('link', { name: /Environments/ });
     await expect(backLink).toBeVisible({ timeout: 10_000 });
 
-    // The NAME field label should be visible
-    await expect(page.getByText('NAME', { exact: false })).toBeVisible({ timeout: 5_000 });
+    // The Name field label should be visible (rendered via CSS uppercase)
+    await expect(page.locator('button[title="Edit name"]')).toBeVisible({ timeout: 5_000 });
   });
 
   test('E2E-ENV-006: edit environment name, save, and verify update', async ({
@@ -170,13 +170,13 @@ test.describe('Environments — Detail & Edit', () => {
     try {
       // Create a test environment via API
       const created = await api.createEnvironment({ name: originalName });
-      envId = created.environment.id;
+      envId = created.id;
 
       // Navigate to the detail page
       await page.goto(`/environments/${envId}`);
 
       // Wait for the page to load (back link as indicator)
-      const backLink = page.getByRole('link', { name: 'Environments' });
+      const backLink = page.getByRole('link', { name: /Environments/ });
       await expect(backLink).toBeVisible({ timeout: 10_000 });
 
       // Verify original name is displayed
@@ -218,13 +218,13 @@ test.describe('Environments — Detail & Edit', () => {
     try {
       // Create a test environment via API
       const created = await api.createEnvironment({ name });
-      envId = created.environment.id;
+      envId = created.id;
 
       // Navigate to the detail page
       await page.goto(`/environments/${envId}`);
 
       // Wait for the page to load
-      const backLink = page.getByRole('link', { name: 'Environments' });
+      const backLink = page.getByRole('link', { name: /Environments/ });
       await expect(backLink).toBeVisible({ timeout: 10_000 });
 
       // Click the pencil/edit icon for the Description field
