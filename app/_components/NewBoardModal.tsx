@@ -1,11 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { useKobaniStore } from '@/lib/store';
 import type { AgentRole } from '@/lib/kanban-types';
 import type { CardDraft } from '@/app/api/projects/parse/route';
+import type { EnvironmentRow } from '@/lib/api-types';
 
 const AGENT_ROLES: AgentRole[] = [
   'backend-engineer',
@@ -49,10 +50,21 @@ export default function NewBoardModal({ onClose }: Props) {
   const [step, setStep] = useState<Step>('input');
   const [name, setName] = useState('');
   const [workspacePath, setWorkspacePath] = useState('');
+  const [environmentId, setEnvironmentId] = useState('');
+  const [environments, setEnvironments] = useState<EnvironmentRow[]>([]);
+  const [envLoading, setEnvLoading] = useState(true);
   const [spec, setSpec] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<CardDraft[]>([]);
+
+  useEffect(() => {
+    fetch('/api/environments', { credentials: 'include' })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data?.items) setEnvironments(data.items); })
+      .catch(() => {})
+      .finally(() => setEnvLoading(false));
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -63,7 +75,7 @@ export default function NewBoardModal({ onClose }: Props) {
       setLoading(true);
       setError(null);
       try {
-        const id = await createBoardApi(name.trim(), workspacePath.trim() || undefined);
+        const id = await createBoardApi(name.trim(), workspacePath.trim() || undefined, environmentId || undefined);
         if (id) router.push(`/boards/${id}`);
         onClose();
       } catch (err) {
@@ -98,7 +110,7 @@ export default function NewBoardModal({ onClose }: Props) {
     setLoading(true);
     setError(null);
     try {
-      const boardId = await createBoardApi(name.trim(), workspacePath.trim() || undefined);
+      const boardId = await createBoardApi(name.trim(), workspacePath.trim() || undefined, environmentId || undefined);
       if (!boardId) throw new Error('Failed to create board');
 
       await fetchBoard(boardId);
@@ -200,6 +212,34 @@ export default function NewBoardModal({ onClose }: Props) {
               />
               <p className="text-xs text-zinc-600">
                 Folder path in the workspace repo. Auto-generated from name if left blank.
+              </p>
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
+                Environment <span className="text-zinc-600 font-normal normal-case">(optional)</span>
+              </label>
+              {envLoading ? (
+                <div className="flex items-center gap-2 px-3 py-2 bg-zinc-950 border border-zinc-700 rounded-lg">
+                  <span className="inline-block w-3.5 h-3.5 border-2 border-zinc-600 border-t-zinc-300 rounded-full animate-spin shrink-0" />
+                  <span className="text-sm text-zinc-500">Loading environments…</span>
+                </div>
+              ) : (
+                <select
+                  value={environmentId}
+                  onChange={(e) => setEnvironmentId(e.target.value)}
+                  className="bg-zinc-950 border border-zinc-700 focus:border-indigo-500 rounded-lg px-3 py-2 text-sm text-zinc-100 outline-none cursor-pointer"
+                >
+                  <option value="">— No environment —</option>
+                  {environments.map((env) => (
+                    <option key={env.id} value={env.id}>
+                      {env.name}
+                    </option>
+                  ))}
+                </select>
+              )}
+              <p className="text-xs text-zinc-600">
+                Anthropic environment agents on this board will run in.
               </p>
             </div>
 

@@ -28,8 +28,6 @@ export default function NewCardModal({ columnId, boardId, onClose }: Props) {
   const [role, setRole] = useState<AgentRole>('backend-engineer');
   const [description, setDescription] = useState('');
   const [criteriaText, setCriteriaText] = useState('');
-  const [githubRepo, setGithubRepo] = useState('');
-  const [githubBranch, setGithubBranch] = useState('');
   const [requiresApproval, setRequiresApproval] = useState(true);
   const [loading, setLoading] = useState(false);
 
@@ -56,8 +54,6 @@ export default function NewCardModal({ columnId, boardId, onClose }: Props) {
         role,
         description: description.trim(),
         acceptanceCriteria: criteria,
-        githubRepo: githubRepo.trim() || undefined,
-        githubBranch: githubBranch.trim() || undefined,
         requiresApproval,
       });
 
@@ -148,33 +144,6 @@ export default function NewCardModal({ columnId, boardId, onClose }: Props) {
               rows={4}
               className="bg-zinc-950 border border-zinc-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 resize-none outline-none transition-colors"
             />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-                GitHub Repo
-              </label>
-              <input
-                type="text"
-                value={githubRepo}
-                onChange={(e) => setGithubRepo(e.target.value)}
-                placeholder="org/repo"
-                className="bg-zinc-950 border border-zinc-700 focus:border-indigo-500 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 outline-none transition-colors"
-              />
-            </div>
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-                Branch
-              </label>
-              <input
-                type="text"
-                value={githubBranch}
-                onChange={(e) => setGithubBranch(e.target.value)}
-                placeholder="feat/my-branch"
-                className="bg-zinc-950 border border-zinc-700 focus:border-indigo-500 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 outline-none transition-colors"
-              />
-            </div>
           </div>
 
           <div className="flex flex-col gap-1.5 py-3 border-t border-zinc-800">

@@ -5,6 +5,7 @@ import type { CreateBoardRequest } from '@/lib/api-types';
 import { devAuth as auth } from '@/lib/dev-auth';
 import { config } from '@/lib/config';
 import { slugify, ensureBoardFolder } from '@/lib/workspace';
+import { checkCardAccess } from '@/lib/rbac';
 
 export async function GET() {
   const session = await auth();
@@ -41,9 +42,22 @@ export async function POST(req: Request) {
     }
   }
 
+  const environmentId = body.environmentId?.trim() || undefined;
+
+  if (environmentId) {
+    const hasAccess = await checkCardAccess(session.user.githubUsername, null, environmentId);
+    if (!hasAccess) {
+      return NextResponse.json(
+        { error: 'Forbidden: no access to this environment' },
+        { status: 403 }
+      );
+    }
+  }
+
   const board = await prisma.board.create({
     data: {
       name,
+      ...(environmentId ? { anthropicEnvironmentId: environmentId } : {}),
       ...(workspacePath ? { githubRepo: config.WORKSPACE_REPO_URL, workspacePath } : {}),
       columns: {
         create: [
