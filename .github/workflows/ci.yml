@@ -10,6 +10,9 @@ jobs:
   check:
     runs-on: ubuntu-latest
 
+    env:
+      ANTHROPIC_API_KEY: sk-ant-fake-key-for-ci
+
     steps:
       - uses: actions/checkout@v4
 
