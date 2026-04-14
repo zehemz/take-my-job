@@ -210,4 +210,10 @@ async function runEventLoop(
     await db.updateAgentRunStatus(currentRun.id, AgentRunStatus.cancelled);
   }
   // "completed" and "blocked" are already written by handleUpdateCard
+
+  // Always interrupt the Anthropic session when the event loop exits,
+  // otherwise it keeps running on the platform even after we stop reading.
+  if (finalOutcome === "completed" || finalOutcome === "failed") {
+    await anthropicClient.interruptSession(sessionId).catch(() => {});
+  }
 }
