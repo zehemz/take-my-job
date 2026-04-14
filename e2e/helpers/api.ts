@@ -86,4 +86,79 @@ export class KobaniApi {
     const res = await this.req.delete(`/api/boards/${id}`, { headers: this.headers() });
     if (res.status() !== 204) throw new Error(`DELETE /api/boards/${id} → ${res.status()}`);
   }
+
+  // ─── Admin: Users ───────────────────────────────────────────────────────
+  async getUsers(): Promise<any[]> {
+    const res = await this.req.get('/api/admin/users', { headers: this.headers() });
+    if (!res.ok()) throw new Error(`GET /api/admin/users → ${res.status()}`);
+    return res.json();
+  }
+
+  async createUser(githubUsername: string): Promise<any> {
+    const res = await this.req.post('/api/admin/users', {
+      headers: this.headers(),
+      data: { githubUsername },
+    });
+    if (!res.ok()) throw new Error(`POST /api/admin/users → ${res.status()}: ${await res.text()}`);
+    return res.json();
+  }
+
+  async updateUser(id: string, data: { isAdmin?: boolean }): Promise<any> {
+    const res = await this.req.patch(`/api/admin/users/${id}`, {
+      headers: this.headers(),
+      data,
+    });
+    if (!res.ok()) throw new Error(`PATCH /api/admin/users/${id} → ${res.status()}: ${await res.text()}`);
+    return res.json();
+  }
+
+  async deleteUser(id: string): Promise<void> {
+    const res = await this.req.delete(`/api/admin/users/${id}`, { headers: this.headers() });
+    if (res.status() !== 204 && !res.ok()) throw new Error(`DELETE /api/admin/users/${id} → ${res.status()}`);
+  }
+
+  // ─── Admin: Groups ──────────────────────────────────────────────────────
+  async getGroups(): Promise<any[]> {
+    const res = await this.req.get('/api/admin/groups', { headers: this.headers() });
+    if (!res.ok()) throw new Error(`GET /api/admin/groups → ${res.status()}`);
+    return res.json();
+  }
+
+  async createGroup(data: { name: string; description?: string; agentRoles: string[]; environmentIds: string[] }): Promise<any> {
+    const res = await this.req.post('/api/admin/groups', {
+      headers: this.headers(),
+      data,
+    });
+    if (!res.ok()) throw new Error(`POST /api/admin/groups → ${res.status()}: ${await res.text()}`);
+    return res.json();
+  }
+
+  async updateGroup(id: string, data: { name?: string; description?: string; agentRoles?: string[]; environmentIds?: string[] }): Promise<any> {
+    const res = await this.req.patch(`/api/admin/groups/${id}`, {
+      headers: this.headers(),
+      data,
+    });
+    if (!res.ok()) throw new Error(`PATCH /api/admin/groups/${id} → ${res.status()}: ${await res.text()}`);
+    return res.json();
+  }
+
+  async deleteGroup(id: string): Promise<void> {
+    const res = await this.req.delete(`/api/admin/groups/${id}`, { headers: this.headers() });
+    if (res.status() !== 204 && !res.ok()) throw new Error(`DELETE /api/admin/groups/${id} → ${res.status()}`);
+  }
+
+  async addGroupMember(groupId: string, userId: string): Promise<void> {
+    const res = await this.req.post(`/api/admin/groups/${groupId}/members`, {
+      headers: this.headers(),
+      data: { userId },
+    });
+    if (!res.ok()) throw new Error(`POST /api/admin/groups/${groupId}/members → ${res.status()}: ${await res.text()}`);
+  }
+
+  async removeGroupMember(groupId: string, userId: string): Promise<void> {
+    const res = await this.req.delete(`/api/admin/groups/${groupId}/members/${userId}`, {
+      headers: this.headers(),
+    });
+    if (res.status() !== 204 && !res.ok()) throw new Error(`DELETE /api/admin/groups/${groupId}/members/${userId} → ${res.status()}`);
+  }
 }
