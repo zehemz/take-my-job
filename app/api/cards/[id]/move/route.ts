@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { mapAgentRun, mapCard, deriveCardAgentStatus } from '@/lib/api-mappers';
 import type { MoveCardRequest } from '@/lib/api-types';
 import { auth } from '@/auth';
+import { orchestrator } from '@/lib/orchestrator-instance';
 
 export async function POST(
   req: Request,
@@ -43,6 +44,8 @@ export async function POST(
     },
     include: { agentRuns: { orderBy: { createdAt: 'asc' } } },
   });
+
+  await orchestrator.notifyCardMoved(params.id, columnId);
 
   const mappedRuns = card.agentRuns.map(mapAgentRun);
   const agentStatus = deriveCardAgentStatus(card.agentRuns);

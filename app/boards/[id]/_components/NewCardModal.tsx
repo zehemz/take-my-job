@@ -21,7 +21,8 @@ interface Props {
 }
 
 export default function NewCardModal({ columnId, boardId, onClose }: Props) {
-  const createCard = useKobaniStore((s) => s.createCard);
+  const createCardApi = useKobaniStore((s) => s.createCardApi);
+  const fetchBoard = useKobaniStore((s) => s.fetchBoard);
 
   const [title, setTitle] = useState('');
   const [role, setRole] = useState<AgentRole>('backend-engineer');
@@ -30,7 +31,7 @@ export default function NewCardModal({ columnId, boardId, onClose }: Props) {
   const [githubRepo, setGithubRepo] = useState('');
   const [githubBranch, setGithubBranch] = useState('');
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
 
@@ -41,19 +42,23 @@ export default function NewCardModal({ columnId, boardId, onClose }: Props) {
       .map((text, i) => ({
         id: `ac-new-${Date.now()}-${i}`,
         text,
-        passed: null,
-        evidence: null,
+        passed: null as null,
+        evidence: null as null,
       }));
 
-    createCard(columnId, boardId, {
+    const result = await createCardApi(boardId, {
       title: title.trim(),
+      columnId,
       role,
       description: description.trim(),
       acceptanceCriteria: criteria,
-      githubRepo: githubRepo.trim() || null,
-      githubBranch: githubBranch.trim() || null,
-      assignee: '@lucas',
+      githubRepo: githubRepo.trim() || undefined,
+      githubBranch: githubBranch.trim() || undefined,
     });
+
+    if (result) {
+      await fetchBoard(boardId);
+    }
 
     onClose();
   }

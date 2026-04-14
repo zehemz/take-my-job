@@ -29,6 +29,7 @@ export default function KanbanBoard({ boardId }: Props) {
   const cards = useKobaniStore((s) => s.cards);
   const moveCard = useKobaniStore((s) => s.moveCard);
   const reorderCard = useKobaniStore((s) => s.reorderCard);
+  const moveCardApi = useKobaniStore((s) => s.moveCardApi);
 
   const [activeCard, setActiveCard] = useState<Card | null>(null);
 
@@ -62,6 +63,7 @@ export default function KanbanBoard({ boardId }: Props) {
           .filter((c) => c.columnId === targetColumnId)
           .sort((a, b) => a.position - b.position);
         moveCard(activeId, targetColumnId, colCards.length);
+        moveCardApi(activeId, targetColumnId, colCards.length);
       }
       return;
     }
@@ -74,9 +76,11 @@ export default function KanbanBoard({ boardId }: Props) {
     if (activeCardItem.columnId === overCard.columnId) {
       // Same column — reorder
       reorderCard(activeId, overCard.position);
+      moveCardApi(activeId, activeCardItem.columnId, overCard.position);
     } else {
       // Different column — move to that position
       moveCard(activeId, overCard.columnId, overCard.position);
+      moveCardApi(activeId, overCard.columnId, overCard.position);
     }
   }
 

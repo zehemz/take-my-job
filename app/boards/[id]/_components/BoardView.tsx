@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useKobaniStore } from '@/lib/store';
 import TopNav from '@/app/_components/TopNav';
 import KanbanBoard from './KanbanBoard';
@@ -12,6 +13,11 @@ interface Props {
 export default function BoardView({ boardId }: Props) {
   const boards = useKobaniStore((s) => s.boards);
   const selectedCardId = useKobaniStore((s) => s.selectedCardId);
+  const fetchBoard = useKobaniStore((s) => s.fetchBoard);
+
+  useEffect(() => {
+    fetchBoard(boardId);
+  }, [boardId, fetchBoard]);
 
   const board = boards.find((b) => b.id === boardId);
 

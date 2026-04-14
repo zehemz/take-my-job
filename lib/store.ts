@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import type { Board, Card, Column, ColumnType } from './kanban-types';
-import { initialState } from './seed';
 
 interface KobaniState {
   boards: Board[];
@@ -37,16 +36,30 @@ interface KobaniState {
   sendRevisionContext: (cardId: string, note: string) => void;
   openAttentionDrawer: () => void;
   closeAttentionDrawer: () => void;
+
+  // Async API actions
+  fetchBoard: (boardId: string) => Promise<void>;
+  fetchBoards: () => Promise<void>;
+  moveCardApi: (cardId: string, columnId: string, position?: number) => Promise<void>;
+  createCardApi: (boardId: string, payload: {
+    title: string;
+    columnId: string;
+    description?: string;
+    acceptanceCriteria?: { id: string; text: string; passed: boolean | null; evidence: string | null }[];
+    role?: string;
+    githubRepo?: string;
+    githubBranch?: string;
+  }) => Promise<unknown>;
 }
 
 function generateId(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 
-export const useKobaniStore = create<KobaniState>()((set) => ({
-  boards: initialState.boards,
-  columns: initialState.columns,
-  cards: initialState.cards,
+export const useKobaniStore = create<KobaniState>()((set, get) => ({
+  boards: [],
+  columns: [],
+  cards: [],
   selectedCardId: null,
   attentionDrawerOpen: false,
 
@@ -250,4 +263,99 @@ export const useKobaniStore = create<KobaniState>()((set) => ({
 
   openAttentionDrawer: () => set({ attentionDrawerOpen: true }),
   closeAttentionDrawer: () => set({ attentionDrawerOpen: false }),
+
+  fetchBoard: async (boardId: string) => {
+    const res = await fetch(`/api/boards/${boardId}`, { credentials: 'include' });
+    if (!res.ok) return;
+    const data = await res.json(); // ApiBoardDetail
+    set((state) => ({
+      boards: [...state.boards.filter(b => b.id !== data.board.id), {
+        id: data.board.id,
+        name: data.board.name,
+        createdAt: data.board.createdAt,
+      }],
+      columns: [...state.columns.filter(c => c.boardId !== boardId), ...data.columns.map((col: any) => ({
+        id: col.id,
+        boardId: col.boardId,
+        name: col.name,
+        position: col.position,
+        type: col.type,
+      }))],
+      cards: [...state.cards.filter(c => c.boardId !== boardId), ...data.cards.map((card: any) => ({
+        id: card.id,
+        columnId: card.columnId,
+        boardId: card.boardId,
+        position: card.position,
+        title: card.title,
+        description: card.description,
+        acceptanceCriteria: card.acceptanceCriteria,
+        role: card.role,
+        assignee: card.role, // derive from role
+        githubRepo: card.githubRepo,
+        githubBranch: card.githubBranch,
+        agentStatus: card.agentStatus,
+        currentAgentRunId: card.currentAgentRunId,
+        agentRuns: card.agentRuns.map((r: any) => ({
+          id: r.id,
+          cardId: r.cardId,
+          role: r.role,
+          status: r.status,
+          attempt: r.attempt,
+          startedAt: r.startedAt,
+          endedAt: r.endedAt,
+          output: r.output,
+          blockedReason: r.blockedReason,
+          retryAfterMs: r.retryAfterMs,
+        })),
+        revisionContextNote: card.revisionContextNote,
+        approvedBy: card.approvedBy,
+        approvedAt: card.approvedAt,
+        createdAt: card.createdAt,
+        updatedAt: card.updatedAt,
+        movedToColumnAt: card.movedToColumnAt ?? card.createdAt,
+      }))],
+    }));
+  },
+
+  fetchBoards: async () => {
+    const res = await fetch('/api/boards', { credentials: 'include' });
+    if (!res.ok) return;
+    const data = await res.json();
+    set({ boards: data });
+  },
+
+  moveCardApi: async (cardId: string, columnId: string, position?: number) => {
+    const res = await fetch(`/api/cards/${cardId}/move`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ columnId, position }),
+    });
+    if (!res.ok) return;
+    const card = await res.json();
+    get().updateCard(card.id, {
+      columnId: card.columnId,
+      position: card.position,
+      movedToColumnAt: card.movedToColumnAt,
+    });
+  },
+
+  createCardApi: async (boardId: string, payload: {
+    title: string;
+    columnId: string;
+    description?: string;
+    acceptanceCriteria?: { id: string; text: string; passed: boolean | null; evidence: string | null }[];
+    role?: string;
+    githubRepo?: string;
+    githubBranch?: string;
+  }) => {
+    const res = await fetch(`/api/boards/${boardId}/cards`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok) return null;
+    return res.json();
+  },
 }));

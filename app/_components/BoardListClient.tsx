@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import Link from 'next/link';
 import { useKobaniStore } from '@/lib/store';
 import TopNav from './TopNav';
@@ -8,6 +9,11 @@ export default function BoardListClient() {
   const boards = useKobaniStore((s) => s.boards);
   const columns = useKobaniStore((s) => s.columns);
   const cards = useKobaniStore((s) => s.cards);
+  const fetchBoards = useKobaniStore((s) => s.fetchBoards);
+
+  useEffect(() => {
+    fetchBoards();
+  }, [fetchBoards]);
 
   return (
     <div className="flex flex-col min-h-screen">
