@@ -21,11 +21,14 @@ export async function dispatchPending(
   const candidates = await deps.db.getEligibleCards(available, [...state.claimed])
 
   for (const card of candidates) {
+    // Use prior run count so the attempt counter never resets to 1
+    // and the MAX_ATTEMPTS cap is respected across dispatch cycles.
+    const priorRuns = await deps.db.getCardRunCount(card.id)
     const run = await deps.db.createAgentRun(
       card.id,
       card.columnId,
       card.role ?? 'backend-engineer',
-      1,
+      priorRuns + 1,
     )
     state.claimed.add(card.id)
     spawnRunner(card, run) // non-blocking

@@ -2,6 +2,8 @@ import type { IDbQueries } from "../interfaces.js";
 import type { AgentConfig, AgentRun, AgentRunStatus, Board, Card, Column } from "../types.js";
 import { AgentRunStatus as Status } from "../types.js";
 
+const MAX_ATTEMPTS = parseInt(process.env.MAX_ATTEMPTS ?? "5", 10);
+
 let idCounter = 0;
 function nextId(): string {
   return `stub-${++idCounter}`;
@@ -30,7 +32,10 @@ export class StubDbQueries implements IDbQueries {
         const hasActive = this.agentRuns.some(
           (r) => r.cardId === c.id && (r.status === Status.running || r.status === Status.idle),
         );
-        return !hasActive;
+        if (hasActive) return false;
+        const totalRuns = this.agentRuns.filter((r) => r.cardId === c.id).length;
+        if (totalRuns >= MAX_ATTEMPTS) return false;
+        return true;
       })
       .sort((a, b) => a.position - b.position || a.createdAt.getTime() - b.createdAt.getTime())
       .slice(0, maxConcurrent);
@@ -121,6 +126,10 @@ export class StubDbQueries implements IDbQueries {
 
   async getBoardColumns(boardId: string): Promise<Column[]> {
     return this.columns.filter((c) => c.boardId === boardId).sort((a, b) => a.position - b.position);
+  }
+
+  async getCardRunCount(cardId: string): Promise<number> {
+    return this.agentRuns.filter((r) => r.cardId === cardId).length;
   }
 
   async moveCardToColumnType(cardId: string, boardId: string, targetColumnType: 'review' | 'terminal' | 'blocked'): Promise<void> {

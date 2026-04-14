@@ -154,10 +154,10 @@ describe('dispatchPending', () => {
     // Retry loop then skips because card-r is already claimed.
     // So we expect exactly 1 run created (fresh) + the original failed run.
     expect(db.agentRuns).toHaveLength(2)
-    // The fresh dispatch creates a run with attempt=1
+    // The fresh dispatch creates a run with attempt=priorRuns+1 (=2)
     const createdRun = db.agentRuns[1]
     expect(createdRun.cardId).toBe('card-r')
-    expect(createdRun.attempt).toBe(1)
+    expect(createdRun.attempt).toBe(2)
     expect(state.claimed.has('card-r')).toBe(true)
     expect(spawnRunner).toHaveBeenCalledOnce()
   })
@@ -266,6 +266,41 @@ describe('dispatchPending', () => {
     await dispatchPending(state, deps, spawnRunner)
 
     expect(db.agentRuns).toHaveLength(0)
+    expect(spawnRunner).not.toHaveBeenCalled()
+    expect(state.claimed.size).toBe(0)
+  })
+
+  it('skips cards that have exhausted max attempts (rate limit)', async () => {
+    const col = makeColumn()
+    db.columns.push(col)
+
+    const card = makeCard('card-exhausted', col.id)
+    db.cards.push(card)
+
+    // Add MAX_ATTEMPTS (default=5) failed runs — the card is exhausted
+    for (let i = 0; i < 5; i++) {
+      db.agentRuns.push({
+        id: `run-${i}`,
+        cardId: 'card-exhausted',
+        columnId: col.id,
+        role: 'backend_engineer',
+        sessionId: null,
+        status: AgentRunStatus.failed,
+        output: null,
+        criteriaResults: null,
+        blockedReason: null,
+        attempt: i + 1,
+        retryAfterMs: null,
+        error: `attempt ${i + 1} failed`,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+    }
+
+    await dispatchPending(state, deps, spawnRunner)
+
+    // No new runs should be created — card is at the limit
+    expect(db.agentRuns).toHaveLength(5)
     expect(spawnRunner).not.toHaveBeenCalled()
     expect(state.claimed.size).toBe(0)
   })

@@ -3,6 +3,8 @@ import type { IDbQueries } from "./interfaces";
 import type { AgentRun, Card, Column } from "./types";
 import { AgentRunStatus } from "./types";
 
+const MAX_ATTEMPTS = parseInt(process.env.MAX_ATTEMPTS ?? "5", 10);
+
 export const dbQueries: IDbQueries = {
   async getEligibleCards(maxConcurrent: number, claimedIds: string[]): Promise<Card[]> {
     const claimedArray = claimedIds;
@@ -17,7 +19,7 @@ export const dbQueries: IDbQueries = {
     });
 
     // Filter out cards that already have a running/idle run,
-    // a future retry, or a completed run for the current column
+    // a future retry, a completed run, or have exhausted all attempts
     const eligible: Card[] = [];
     for (const card of cards) {
       const activeRun = await prisma.agentRun.findFirst({
@@ -44,9 +46,15 @@ export const dbQueries: IDbQueries = {
         },
       });
       // If there's a completed run, the card was already handled
-      // (the spec says no completed run whose columnId matches current column,
-      //  but AgentRun doesn't have columnId in our schema — we check by existence)
       if (completedInColumn) continue;
+
+      // Rate limit: skip cards that have exhausted their max attempts.
+      // Without this, the fresh-dispatch path resets attempt=1 and the
+      // card loops forever through dispatch → 5 retries → re-dispatch.
+      const totalRuns = await prisma.agentRun.count({
+        where: { cardId: card.id },
+      });
+      if (totalRuns >= MAX_ATTEMPTS) continue;
 
       eligible.push(card as unknown as Card);
       if (eligible.length >= maxConcurrent) break;
@@ -151,6 +159,10 @@ export const dbQueries: IDbQueries = {
       orderBy: { position: "asc" },
     });
     return columns as unknown as Column[];
+  },
+
+  async getCardRunCount(cardId: string): Promise<number> {
+    return prisma.agentRun.count({ where: { cardId } });
   },
 
   async moveCardToColumnType(cardId: string, boardId: string, targetColumnType: 'review' | 'terminal' | 'blocked'): Promise<void> {
