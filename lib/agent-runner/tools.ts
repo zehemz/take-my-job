@@ -114,7 +114,7 @@ export async function handleUpdateCard(
         payload: { status: AgentRunStatus.completed },
       });
 
-      return { success: true };
+      return { success: true, shouldExitLoop: true };
     }
 
     // -----------------------------------------------------------------------

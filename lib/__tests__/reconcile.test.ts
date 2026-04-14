@@ -189,4 +189,123 @@ describe('reconcileRunning', () => {
     expect(moveCardSpy).toHaveBeenCalledWith('card-1', 'board-1', 'blocked')
     expect(anthropic.interruptedSessions).toHaveLength(0)
   })
+
+  // ── idle session nudge ──────────────────────────────────────
+
+  describe('idle session nudge', () => {
+    it('sends nudge when session is idle with unhandled turn_ended', async () => {
+      const run = makeRun({ columnId: 'col-active' })
+      db.agentRuns.push(run)
+      db.cards.push(makeCard('card-1', 'col-active'))
+      anthropic.configureDefaultSession({ status: 'idle' })
+
+      // Simulate: event loop inserted turn_ended but died before sending continue
+      await db.insertOrchestratorEvent({
+        boardId: 'board-1', cardId: 'card-1', runId: 'run-1',
+        type: 'turn_ended', payload: {},
+      })
+
+      await reconcileRunning(deps)
+
+      // Should have sent a nudge message
+      expect(anthropic.sentMessages).toHaveLength(1)
+      expect(anthropic.sentMessages[0].sessionId).toBe('session-1')
+      expect(anthropic.sentMessages[0].message.type).toBe('user.message')
+
+      // Should have inserted continue_sent event
+      const continueSent = db.orchestratorEvents.filter(e => e.type === 'continue_sent')
+      expect(continueSent).toHaveLength(1)
+    })
+
+    it('does not nudge when turn_ended already has matching continue_sent', async () => {
+      const run = makeRun({ columnId: 'col-active' })
+      db.agentRuns.push(run)
+      db.cards.push(makeCard('card-1', 'col-active'))
+      anthropic.configureDefaultSession({ status: 'idle' })
+
+      // Both events present — event loop handled it before dying
+      await db.insertOrchestratorEvent({
+        boardId: 'board-1', cardId: 'card-1', runId: 'run-1',
+        type: 'turn_ended', payload: {},
+      })
+      await db.insertOrchestratorEvent({
+        boardId: 'board-1', cardId: 'card-1', runId: 'run-1',
+        type: 'continue_sent', payload: {},
+      })
+
+      await reconcileRunning(deps)
+
+      expect(anthropic.sentMessages).toHaveLength(0)
+    })
+
+    it('fails run when turn count reaches MAX_TURNS', async () => {
+      const run = makeRun({ columnId: 'col-active' })
+      db.agentRuns.push(run)
+      db.cards.push(makeCard('card-1', 'col-active'))
+      anthropic.configureDefaultSession({ status: 'idle' })
+
+      // Insert MAX_TURNS turn_ended events (9 handled + 1 unhandled)
+      for (let i = 0; i < 10; i++) {
+        await db.insertOrchestratorEvent({
+          boardId: 'board-1', cardId: 'card-1', runId: 'run-1',
+          type: 'turn_ended', payload: {},
+        })
+      }
+      // 9 of them were handled
+      for (let i = 0; i < 9; i++) {
+        await db.insertOrchestratorEvent({
+          boardId: 'board-1', cardId: 'card-1', runId: 'run-1',
+          type: 'continue_sent', payload: {},
+        })
+      }
+
+      await reconcileRunning(deps)
+
+      expect(run.status).toBe('failed')
+      expect(run.error).toContain('Max turns')
+      expect(anthropic.sentMessages).toHaveLength(0)
+    })
+
+    it('skips nudge when status_change event exists (run already completed)', async () => {
+      const run = makeRun({ columnId: 'col-active' })
+      db.agentRuns.push(run)
+      db.cards.push(makeCard('card-1', 'col-active'))
+      anthropic.configureDefaultSession({ status: 'idle' })
+
+      // Agent called update_card(completed), then session went idle
+      await db.insertOrchestratorEvent({
+        boardId: 'board-1', cardId: 'card-1', runId: 'run-1',
+        type: 'status_change', payload: { status: 'completed' },
+      })
+      await db.insertOrchestratorEvent({
+        boardId: 'board-1', cardId: 'card-1', runId: 'run-1',
+        type: 'turn_ended', payload: {},
+      })
+
+      await reconcileRunning(deps)
+
+      expect(anthropic.sentMessages).toHaveLength(0)
+      // Run status should remain running (reconciler doesn't touch it — handleUpdateCard already did)
+      expect(run.status).toBe('running')
+    })
+
+    it('calls spawnRunner to re-attach stream after nudge', async () => {
+      const run = makeRun({ columnId: 'col-active' })
+      db.agentRuns.push(run)
+      db.cards.push(makeCard('card-1', 'col-active'))
+      anthropic.configureDefaultSession({ status: 'idle' })
+
+      await db.insertOrchestratorEvent({
+        boardId: 'board-1', cardId: 'card-1', runId: 'run-1',
+        type: 'turn_ended', payload: {},
+      })
+
+      const spawned: Array<{ card: unknown; run: unknown }> = []
+      const spawnRunner = (card: unknown, r: unknown) => { spawned.push({ card, run: r }) }
+
+      await reconcileRunning(deps, spawnRunner)
+
+      expect(spawned).toHaveLength(1)
+    })
+  })
 })

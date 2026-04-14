@@ -144,7 +144,6 @@ async function runEventLoop(
   const { db, anthropicClient } = deps;
 
   const tokenUsage = { inputTokens: 0, outputTokens: 0 };
-  const turnCount = { value: 0 };
   let finalOutcome: "completed" | "failed" | "terminated" | undefined;
   let finalError: string | undefined;
 
@@ -157,25 +156,43 @@ async function runEventLoop(
       anthropicClient,
       sessionId,
       tokenUsage,
-      turnCount,
     });
 
     if (result.exitLoop) {
       finalOutcome = result.outcome;
       finalError = result.error;
 
-      // session.status_idle with end_turn: agent finished a turn but may not have
-      // called update_card(completed) yet — check turn limit and nudge if needed.
-      if (
-        finalOutcome === "completed" &&
-        currentRun.status !== AgentRunStatus.completed &&
-        currentRun.status !== AgentRunStatus.blocked
-      ) {
-        if (turnCount.value < config.MAX_TURNS) {
+      // session.status_idle with end_turn: agent finished a turn without
+      // calling update_card — check events to decide whether to nudge.
+      if (finalOutcome === "completed") {
+        // Did the agent already complete or block via update_card?
+        const alreadyDone = await db.hasRunEvent(currentRun.id, 'status_change');
+        if (alreadyDone) {
+          break outerLoop;
+        }
+
+        // Record this turn ending, then count total turns from DB
+        await db.insertOrchestratorEvent({
+          boardId: card.boardId,
+          cardId: card.id,
+          runId: currentRun.id,
+          type: 'turn_ended',
+          payload: {},
+        });
+
+        const turns = await db.countRunEvents(currentRun.id, 'turn_ended');
+        if (turns < config.MAX_TURNS) {
           await anthropicClient.sendMessage(sessionId, {
             type: "user.message",
             content:
               "Please continue working on the task. Remember to call update_card(completed) when done.",
+          });
+          await db.insertOrchestratorEvent({
+            boardId: card.boardId,
+            cardId: card.id,
+            runId: currentRun.id,
+            type: 'continue_sent',
+            payload: {},
           });
           finalOutcome = undefined;
           continue outerLoop;

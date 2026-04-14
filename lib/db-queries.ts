@@ -257,4 +257,18 @@ export const dbQueries: IDbQueries = {
       data: { retryAfterMs: null },
     });
   },
+
+  async countRunEvents(runId: string, type: string): Promise<number> {
+    return prisma.orchestratorEvent.count({
+      where: { runId, type },
+    });
+  },
+
+  async hasRunEvent(runId: string, type: string): Promise<boolean> {
+    const event = await prisma.orchestratorEvent.findFirst({
+      where: { runId, type },
+      select: { id: true },
+    });
+    return event !== null;
+  },
 };

@@ -78,7 +78,7 @@ export class Orchestrator implements IOrchestrator {
     this.lastTickAt = new Date()
     const tick = async () => {
       try {
-        await reconcileRunning(this.deps)
+        await reconcileRunning(this.deps, this.spawnRunner)
         await this.processEvents()
         await dispatchPending(this.deps, this.spawnRunner)
         this.lastTickAt = new Date()

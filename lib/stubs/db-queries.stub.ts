@@ -205,4 +205,16 @@ export class StubDbQueries implements IDbQueries {
     const run = this.agentRuns.find((r) => r.id === runId);
     if (run) run.retryAfterMs = null;
   }
+
+  async countRunEvents(runId: string, type: string): Promise<number> {
+    return this.orchestratorEvents.filter(
+      (e) => e.runId === runId && e.type === type,
+    ).length;
+  }
+
+  async hasRunEvent(runId: string, type: string): Promise<boolean> {
+    return this.orchestratorEvents.some(
+      (e) => e.runId === runId && e.type === type,
+    );
+  }
 }

@@ -22,6 +22,8 @@ export interface IDbQueries {
   getOrchestratorEventsSince(since: Date, types: string[]): Promise<OrchestratorEvent[]>;
   getCardEventsSince(cardId: string, since: Date): Promise<OrchestratorEvent[]>;
   clearRetryAfter(runId: string): Promise<void>;
+  countRunEvents(runId: string, type: string): Promise<number>;
+  hasRunEvent(runId: string, type: string): Promise<boolean>;
 }
 
 /** Typed events emitted by the Anthropic Managed Agents SSE stream. */
