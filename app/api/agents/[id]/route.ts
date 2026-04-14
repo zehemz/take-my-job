@@ -15,20 +15,26 @@ export async function DELETE(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const beta = (new Anthropic()).beta as any
 
+  let anthropicError: string | null = null
   try {
     await beta.agents.delete(id)
   } catch (e: any) {
     const status = e?.status ?? e?.statusCode
     if (status !== 404) {
-      return NextResponse.json(
-        { error: 'Failed to delete agent from Anthropic', details: e.message },
-        { status: 502 },
-      )
+      anthropicError = e.message
     }
-    // 404 → agent already gone; still clean up the DB record below
+    // 404 → already gone; proceed to DB cleanup
   }
 
+  // Always clean up the DB record regardless of Anthropic outcome
   await prisma.agentConfig.deleteMany({ where: { anthropicAgentId: id } })
+
+  if (anthropicError) {
+    return NextResponse.json(
+      { error: 'Agent removed from DB but Anthropic deletion failed', details: anthropicError },
+      { status: 502 },
+    )
+  }
 
   return new NextResponse(null, { status: 204 })
 }
