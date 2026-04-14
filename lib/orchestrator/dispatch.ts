@@ -1,6 +1,5 @@
 import type { OrchestratorState, OrchestratorDeps, SpawnRunner } from './types'
-
-const MAX_CONCURRENT = parseInt(process.env.MAX_CONCURRENT_AGENTS ?? '5', 10)
+import { config } from '../config'
 
 /**
  * Dispatch eligible cards and retry-eligible runs to agent runners.
@@ -14,7 +13,7 @@ export async function dispatchPending(
   spawnRunner: SpawnRunner,
 ): Promise<void> {
   // ── 1. Fresh card dispatch ──────────────────────────────────
-  const available = MAX_CONCURRENT - state.running.size
+  const available = config.MAX_CONCURRENT_AGENTS - state.running.size
   if (available <= 0) return
 
   const candidates = await deps.db.getEligibleCards(available, [...state.claimed])
@@ -35,7 +34,9 @@ export async function dispatchPending(
 
   for (const prevRun of retryRuns) {
     if (state.claimed.has(prevRun.cardId)) continue
-    if (state.running.size >= MAX_CONCURRENT) break
+    if (state.running.size >= config.MAX_CONCURRENT_AGENTS) break
+    // Guard: never exceed the attempt cap, even if retryAfterMs was set unexpectedly.
+    if (prevRun.attempt >= config.MAX_ATTEMPTS) continue
 
     const card = await deps.db.getCard(prevRun.cardId)
     if (!card) continue
