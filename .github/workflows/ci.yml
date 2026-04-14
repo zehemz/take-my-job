@@ -47,6 +47,7 @@ jobs:
       DATABASE_URL: postgresql://kobani:kobani@localhost:5432/kobani
       AUTH_SECRET: ci-test-secret-not-for-production
       ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      GITHUB_TOKEN: ${{ secrets.GH_PAT || 'ci-placeholder-token' }}
       AUTH_TRUST_HOST: "true"
       DEV_AUTH_BYPASS: "false"
 
