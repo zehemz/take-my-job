@@ -40,6 +40,14 @@ export async function POST(
     return NextResponse.json({ error: 'Card not found' }, { status: 404 });
   }
 
+  // Ensure the target column belongs to the same board as the card
+  if (targetColumn.boardId !== existingCard.column.boardId) {
+    return NextResponse.json(
+      { error: 'Target column does not belong to the same board as the card' },
+      { status: 400 },
+    );
+  }
+
   // RBAC check
   try {
     const hasAccess = await guardCardAccess(session.user.githubUsername, existingCard);
