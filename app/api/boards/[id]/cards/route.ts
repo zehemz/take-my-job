@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
+import { waitUntil } from '@vercel/functions';
 import { prisma } from '@/lib/db';
 import { mapCard } from '@/lib/api-mappers';
 import type { CreateCardRequest } from '@/lib/api-types';
 import { devAuth as auth } from '@/lib/dev-auth';
 import { checkCardAccess, resolveCardEnvironment } from '@/lib/rbac';
 import { promoteUnlockedCards } from '@/lib/auto-promote';
+import { dbQueries } from '@/lib/db-queries';
+import { run as runAgent } from '@/lib/agent-runner';
+import { anthropicClient } from '@/lib/anthropic-client';
 
 export async function POST(
   req: Request,
@@ -112,9 +116,22 @@ export async function POST(
   });
 
   // After creating all cards, auto-promote any that are unlocked (no deps or all deps done)
+  // Then immediately dispatch agents for promoted cards (serverless-safe, don't rely on poll loop)
   const board = await prisma.board.findUnique({ where: { id: params.id }, select: { autoMode: true } });
   if (board?.autoMode) {
-    await promoteUnlockedCards(params.id);
+    const promotedIds = await promoteUnlockedCards(params.id);
+    for (const promotedId of promotedIds) {
+      const existing = await dbQueries.getActiveRunForCard(promotedId);
+      if (existing) continue;
+      const promoted = await dbQueries.getCard(promotedId);
+      if (!promoted) continue;
+      const role = promoted.role ?? 'backend-engineer';
+      const agentRun = await dbQueries.createAgentRun(promotedId, promoted.columnId, role, 1);
+      waitUntil(
+        runAgent(promoted, agentRun, { db: dbQueries, anthropicClient })
+          .catch((err) => console.error('[auto-promote] agent runner error:', err)),
+      );
+    }
   }
 
   return NextResponse.json(mapCard(card, [], 'idle', card.column.columnType), { status: 201 });

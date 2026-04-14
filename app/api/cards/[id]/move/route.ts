@@ -118,11 +118,22 @@ export async function POST(
     }
   }
 
-  // If card moved to terminal column, auto-promote dependent cards
+  // If card moved to terminal column, auto-promote dependent cards and dispatch agents
   if (targetColumn.isTerminalState) {
-    promoteUnlockedCards(existingCard.boardId).catch((err) =>
-      console.error('[auto-promote] error after manual move:', err)
-    );
+    promoteUnlockedCards(existingCard.boardId).then(async (promotedIds) => {
+      for (const promotedId of promotedIds) {
+        const existingRun = await dbQueries.getActiveRunForCard(promotedId);
+        if (existingRun) continue;
+        const promoted = await dbQueries.getCard(promotedId);
+        if (!promoted) continue;
+        const promotedRole = promoted.role ?? 'backend-engineer';
+        const agentRun = await dbQueries.createAgentRun(promotedId, promoted.columnId, promotedRole, 1);
+        waitUntil(
+          runAgent(promoted, agentRun, { db: dbQueries, anthropicClient })
+            .catch((err) => console.error('[auto-promote] agent runner error:', err)),
+        );
+      }
+    }).catch((err) => console.error('[auto-promote] error after manual move:', err));
   }
 
   return NextResponse.json(toCardResponse(card));
