@@ -15,8 +15,8 @@
 | [Card creation UI](./features/card-creation/TECH_SPEC.md) | ✅ Shipped | — | — | ✓ | — |
 | [Create Board UI](./features/create-board/TECH_SPEC.md) | ✅ Shipped | — | — | ✓ | — |
 | [Card Detail View](./features/card-detail/DESIGN.md) | 🔵 In Design | — | ✓ | — | — |
-| [Delete Board](./features/delete-board/TECH_SPEC.md) | 🟠 In Progress | — | — | ✓ | — |
-| SSE real-time updates | 🟡 Planned | — | — | — | — |
+| [Delete Board](./features/delete-board/TECH_SPEC.md) | ✅ Shipped | — | — | ✓ | — |
+| SSE real-time updates | ✅ Shipped | — | — | — | — |
 | [E2E Testing](./features/e2e-testing/SCENARIOS.md) | 🟠 In Progress | — | — | ✓ | — |
 
 **Status legend:** ✅ Shipped · 🔵 In Design · 🟠 In Progress · 🟡 Planned · ⛔ Blocked
