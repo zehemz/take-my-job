@@ -146,7 +146,15 @@ export class StubDbQueries implements IDbQueries {
 
   orchestratorEvents: OrchestratorEvent[] = [];
 
-  async claimAndCreateAgentRun(cardId: string, columnId: string, role: string, attempt: number): Promise<AgentRun | null> {
+  async claimAndCreateAgentRun(cardId: string, columnId: string, role: string, attempt: number, maxConcurrent?: number): Promise<AgentRun | null> {
+    // Global slot check (mirrors the transaction-level check in db-queries.ts)
+    if (maxConcurrent !== undefined) {
+      const activeCount = this.agentRuns.filter(
+        (r) => r.status === Status.running || r.status === Status.idle || r.status === Status.pending,
+      ).length;
+      if (activeCount >= maxConcurrent) return null;
+    }
+
     const blockingStatuses = new Set([Status.running, Status.idle, Status.pending, Status.completed, Status.blocked]);
     const hasBlocking = this.agentRuns.some(
       (r) => r.cardId === cardId && blockingStatuses.has(r.status as AgentRunStatus),

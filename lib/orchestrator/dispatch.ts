@@ -26,6 +26,7 @@ export async function dispatchPending(
       card.columnId,
       card.role ?? 'backend-engineer',
       1,
+      MAX_CONCURRENT,
     )
     if (!run) continue // another process claimed it
     spawnRunner(card, run) // non-blocking
@@ -34,14 +35,16 @@ export async function dispatchPending(
   // ── 2. Retry-eligible runs ─────────────────────────────────
   const retryRuns = await deps.db.getRetryEligibleRuns()
 
+  // Snapshot active count once before the loop; decrement locally as we claim
+  let retryActiveCount = await deps.db.countActiveRuns()
+
   // Deduplicate: only retry once per card (the latest failed run wins)
   const seenCards = new Set<string>()
   for (const prevRun of retryRuns) {
     if (seenCards.has(prevRun.cardId)) continue
     seenCards.add(prevRun.cardId)
 
-    const currentActive = await deps.db.countActiveRuns()
-    if (currentActive >= MAX_CONCURRENT) break
+    if (retryActiveCount >= MAX_CONCURRENT) break
     // Guard: never exceed the attempt cap
     if (prevRun.attempt >= MAX_ATTEMPTS) continue
 
@@ -56,8 +59,11 @@ export async function dispatchPending(
       prevRun.columnId,
       prevRun.role,
       prevRun.attempt + 1,
+      MAX_CONCURRENT,
     )
     if (!run) continue // another process claimed it
+
+    retryActiveCount++ // track locally to avoid redundant DB queries
 
     // Clear retryAfterMs on the old run so it's not picked up again
     await deps.db.clearRetryAfter(prevRun.id)
