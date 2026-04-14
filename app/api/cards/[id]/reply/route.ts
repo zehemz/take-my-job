@@ -45,15 +45,11 @@ export async function POST(
     return NextResponse.json({ error: 'No active column on this board' }, { status: 409 });
   }
 
-  const isMockSession = process.env.MOCK_ANTHROPIC === 'true' || blockedRun.sessionId?.startsWith('fake-');
-
   // 1. Send human reply to the live Anthropic session
-  if (!isMockSession) {
-    await anthropicClient.sendMessage(blockedRun.sessionId!, {
-      type: 'user.message',
-      content: body.message.trim(),
-    });
-  }
+  await anthropicClient.sendMessage(blockedRun.sessionId!, {
+    type: 'user.message',
+    content: body.message.trim(),
+  });
 
   // 2. Update run status back to running and move card to active
   const [updatedRun] = await Promise.all([
@@ -67,10 +63,8 @@ export async function POST(
     }),
   ]);
 
-  // 3. Re-attach event loop (skipped for mock sessions)
-  if (!isMockSession) {
-    await orchestrator.notifyCardUnblocked(card.id, updatedRun as unknown as AgentRun);
-  }
+  // 3. Re-attach event loop so agent output is streamed and card is moved on completion
+  await orchestrator.notifyCardUnblocked(card.id, updatedRun as unknown as AgentRun);
 
   // Return updated card
   const updated = await prisma.card.findUnique({
