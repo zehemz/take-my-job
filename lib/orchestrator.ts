@@ -128,6 +128,11 @@ export class Orchestrator implements IOrchestrator {
     this.spawnResumeRunner(card, run, abortController.signal)
   }
 
+  /** Release a card from the claimed set so the next poll tick can re-dispatch it. */
+  unclaim(cardId: string): void {
+    this.state.claimed.delete(cardId)
+  }
+
   /** Called when a card is moved on the board (implements IOrchestrator). */
   async notifyCardMoved(cardId: string, newColumnId: string): Promise<void> {
     const card = await this.deps.db.getCard(cardId)

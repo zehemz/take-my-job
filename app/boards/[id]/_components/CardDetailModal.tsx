@@ -55,6 +55,41 @@ function SaveCancelRow({
   );
 }
 
+// ─── SessionIdBadge ───────────────────────────────────────────────────────────
+
+function SessionIdBadge({ sessionId }: { sessionId: string }) {
+  const [copied, setCopied] = useState(false);
+
+  function handleCopy() {
+    navigator.clipboard.writeText(sessionId).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  return (
+    <span className="flex items-center gap-1">
+      <span className="text-zinc-500">Session:</span>
+      <button
+        onClick={handleCopy}
+        title={sessionId}
+        className="text-zinc-300 font-mono bg-zinc-800 hover:bg-zinc-700 rounded px-1.5 py-0.5 text-xs transition-colors cursor-pointer"
+      >
+        {copied ? 'Copied!' : sessionId.slice(0, 16) + '…'}
+      </button>
+      <a
+        href={`https://platform.claude.com/workspaces/default/sessions/${sessionId}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        title="Open in Claude"
+        className="flex items-center gap-0.5 text-indigo-400 hover:text-indigo-200 text-xs transition-colors"
+      >
+        ↗ Claude
+      </a>
+    </span>
+  );
+}
+
 // ─── BlockedBanner ────────────────────────────────────────────────────────────
 
 function BlockedBanner({
@@ -368,21 +403,29 @@ function RetrySchedulePanel({
       {retryError && <span className="text-red-400 text-xs">{retryError}</span>}
       <div className="flex flex-col gap-2">
         {sorted.map((run) => (
-          <div key={run.id} className="flex items-center justify-between text-xs">
-            <span className="text-zinc-400">Attempt {run.attempt} of {maxAttempts}</span>
-            <span className={run.status === 'failed' ? 'text-red-400' : 'text-zinc-500'}>
-              {run.status}
-            </span>
-            <span className="text-zinc-600">
-              {run.endedAt ? relativeTime(run.endedAt) + ' ago' : 'ongoing'}
-            </span>
+          <div key={run.id} className="flex flex-col gap-1">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-zinc-400">Attempt {run.attempt} of {maxAttempts}</span>
+              <span className={run.status === 'failed' ? 'text-red-400' : 'text-zinc-500'}>
+                {run.status}
+              </span>
+              <span className="text-zinc-600">
+                {run.endedAt ? relativeTime(run.endedAt) + ' ago' : 'ongoing'}
+              </span>
+            </div>
+            {run.status === 'failed' && run.error && (
+              <p className="text-xs text-red-300/70 font-mono pl-1 border-l border-red-800">{run.error}</p>
+            )}
+            {run.sessionId && (
+              <p className="text-xs text-zinc-500 font-mono pl-1">session: {run.sessionId}</p>
+            )}
           </div>
         ))}
       </div>
       {lastRun?.retryAfterMs != null && (
         <p className="text-xs text-zinc-500">
           Next retry in{' '}
-          <span className="text-zinc-300 font-mono">{Math.ceil(lastRun.retryAfterMs / 1000)}s</span>
+          <span className="text-zinc-300 font-mono">{Math.max(0, Math.ceil((lastRun.retryAfterMs - Date.now()) / 1000))}s</span>
         </p>
       )}
     </div>
@@ -816,6 +859,11 @@ export default function CardDetailModal() {
             <span>
               Started: <span className="text-zinc-300">{relativeTime(currentRun.startedAt)} ago</span>
             </span>
+
+            {/* Session ID */}
+            {currentRun.sessionId && (
+              <SessionIdBadge sessionId={currentRun.sessionId} />
+            )}
 
             {/* GitHub Repo */}
             {editingField === 'githubRepo' ? (

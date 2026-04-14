@@ -47,6 +47,8 @@ export interface ApiAgentRun {
   blockedReason: string | null;
   sessionId: string | null;
   retryAfterMs: number | null;
+  /** Internal error message recorded when the run failed. */
+  error: string | null;
 }
 
 export interface ApiCard {

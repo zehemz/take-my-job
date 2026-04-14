@@ -1,6 +1,7 @@
 import type { OrchestratorState, OrchestratorDeps, SpawnRunner } from './types'
 
 const MAX_CONCURRENT = parseInt(process.env.MAX_CONCURRENT_AGENTS ?? '5', 10)
+const MAX_ATTEMPTS = parseInt(process.env.MAX_ATTEMPTS ?? '5', 10)
 
 /**
  * Dispatch eligible cards and retry-eligible runs to agent runners.
@@ -36,6 +37,8 @@ export async function dispatchPending(
   for (const prevRun of retryRuns) {
     if (state.claimed.has(prevRun.cardId)) continue
     if (state.running.size >= MAX_CONCURRENT) break
+    // Guard: never exceed the attempt cap, even if retryAfterMs was set unexpectedly.
+    if (prevRun.attempt >= MAX_ATTEMPTS) continue
 
     const card = await deps.db.getCard(prevRun.cardId)
     if (!card) continue
