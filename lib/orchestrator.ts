@@ -1,9 +1,9 @@
-import type { IOrchestrator } from './interfaces.js'
-import { AgentRunStatus } from './types.js'
-import { dispatchPending } from './orchestrator/dispatch.js'
-import { reconcileRunning } from './orchestrator/reconcile.js'
-import { scheduleRetry } from './orchestrator/retry.js'
-import type { OrchestratorDeps, OrchestratorState, SpawnRunner } from './orchestrator/types.js'
+import type { IOrchestrator } from './interfaces'
+import { AgentRunStatus } from './types'
+import { dispatchPending } from './orchestrator/dispatch'
+import { reconcileRunning } from './orchestrator/reconcile'
+import { scheduleRetry } from './orchestrator/retry'
+import type { OrchestratorDeps, OrchestratorState, SpawnRunner } from './orchestrator/types'
 
 export type { OrchestratorDeps, OrchestratorState, SpawnRunner }
 

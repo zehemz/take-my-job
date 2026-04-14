@@ -1,6 +1,6 @@
-import { scheduleRetry } from './retry.js'
-import type { OrchestratorState, OrchestratorDeps } from './types.js'
-import { AgentRunStatus } from '../types.js'
+import { scheduleRetry } from './retry'
+import type { OrchestratorState, OrchestratorDeps } from './types'
+import { AgentRunStatus } from '../types'
 
 const MAX_STALL_MS = parseInt(process.env.MAX_STALL_MS ?? '3600000', 10)
 

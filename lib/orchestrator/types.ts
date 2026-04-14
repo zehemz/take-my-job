@@ -1,5 +1,5 @@
-import type { IDbQueries, IAnthropicClient, IBroadcaster } from '../interfaces.js'
-import type { AgentRun, Card } from '../types.js'
+import type { IDbQueries, IAnthropicClient, IBroadcaster } from '../interfaces'
+import type { AgentRun, Card } from '../types'
 
 export type OrchestratorDeps = {
   db: IDbQueries

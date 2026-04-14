@@ -1,4 +1,4 @@
-import type { OrchestratorState, OrchestratorDeps, SpawnRunner } from './types.js'
+import type { OrchestratorState, OrchestratorDeps, SpawnRunner } from './types'
 
 const MAX_CONCURRENT = parseInt(process.env.MAX_CONCURRENT_AGENTS ?? '5', 10)
 
