@@ -147,10 +147,11 @@ export class StubDbQueries implements IDbQueries {
   orchestratorEvents: OrchestratorEvent[] = [];
 
   async claimAndCreateAgentRun(cardId: string, columnId: string, role: string, attempt: number): Promise<AgentRun | null> {
-    const hasActive = this.agentRuns.some(
-      (r) => r.cardId === cardId && (r.status === Status.running || r.status === Status.idle || r.status === Status.pending),
+    const blockingStatuses = new Set([Status.running, Status.idle, Status.pending, Status.completed, Status.blocked]);
+    const hasBlocking = this.agentRuns.some(
+      (r) => r.cardId === cardId && blockingStatuses.has(r.status as AgentRunStatus),
     );
-    if (hasActive) return null;
+    if (hasBlocking) return null;
     return this.createAgentRun(cardId, columnId, role, attempt);
   }
 

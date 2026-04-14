@@ -191,11 +191,11 @@ export const dbQueries: IDbQueries = {
       );
       if (locked.length === 0) return null;
 
-      // Guard: if the card already has an active run, bail out
-      const activeRun = await tx.agentRun.findFirst({
-        where: { cardId, status: { in: ["running", "idle", "pending"] } },
+      // Guard: if the card already has an active, completed, or blocked run, bail out
+      const blockingRun = await tx.agentRun.findFirst({
+        where: { cardId, status: { in: ["running", "idle", "pending", "completed", "blocked"] } },
       });
-      if (activeRun) return null;
+      if (blockingRun) return null;
 
       const run = await tx.agentRun.create({
         data: { cardId, columnId, role, status: "pending", attempt },
