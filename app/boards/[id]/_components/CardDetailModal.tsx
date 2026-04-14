@@ -3,21 +3,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useKobaniStore } from '@/lib/store';
-import type { AgentRun, AgentRole } from '@/lib/kanban-types';
+import type { AgentRun } from '@/lib/kanban-types';
 import type { ApiCard, ApiAcceptanceCriterion, SseEvent, UpdateCardRequest } from '@/lib/api-types';
 import AgentStatusBadge from '@/app/_components/AgentStatusBadge';
 import AcceptanceCriteriaList from './AcceptanceCriteriaList';
 import AgentOutputPanel from './AgentOutputPanel';
 import { relativeTime } from '@/lib/timeUtils';
-
-const AGENT_ROLES: AgentRole[] = [
-  'backend-engineer',
-  'qa-engineer',
-  'tech-lead',
-  'content-writer',
-  'product-spec-writer',
-  'designer',
-];
+import { useRoles, roleLabel } from '@/lib/useRoles';
 
 const INPUT_CLASS =
   'bg-zinc-950 border border-zinc-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-sm text-zinc-100 outline-none transition-colors';
@@ -440,6 +432,7 @@ export default function CardDetailModal() {
   const cards = useKobaniStore((s) => s.cards);
   const columns = useKobaniStore((s) => s.columns);
   const deleteCard = useKobaniStore((s) => s.deleteCard);
+  const { roles } = useRoles();
 
   const storeCard = cards.find((c) => c.id === selectedCardId);
   const column = storeCard ? columns.find((col) => col.id === storeCard.columnId) : null;
@@ -453,13 +446,15 @@ export default function CardDetailModal() {
   const esRef = useRef<EventSource | null>(null);
 
   // ── 3. Edit state ─────────────────────────────────────────────────────────
-  type EditingField = 'title' | 'description' | 'criteria' | 'role' | null;
+  type EditingField = 'title' | 'description' | 'criteria' | 'role' | 'githubRepo' | 'githubBranch' | null;
   const [editingField, setEditingField] = useState<EditingField>(null);
 
   const [titleDraft, setTitleDraft] = useState('');
   const [descDraft, setDescDraft] = useState('');
   const [criteriaDraft, setCriteriaDraft] = useState('');
-  const [roleDraft, setRoleDraft] = useState<AgentRole>('backend-engineer');
+  const [roleDraft, setRoleDraft] = useState('');
+  const [repoDraft, setRepoDraft] = useState('');
+  const [branchDraft, setBranchDraft] = useState('');
 
   const [savingField, setSavingField] = useState<EditingField>(null);
   const [saveError, setSaveError] = useState('');
@@ -632,7 +627,9 @@ export default function CardDetailModal() {
     if (field === 'criteria') {
       setCriteriaDraft(card.acceptanceCriteria.map((c) => c.text).join('\n'));
     }
-    if (field === 'role') setRoleDraft(card.role as AgentRole);
+    if (field === 'role') setRoleDraft(card.role);
+    if (field === 'githubRepo') setRepoDraft(card.githubRepo ?? '');
+    if (field === 'githubBranch') setBranchDraft(card.githubBranch ?? '');
   }
 
   function cancelEdit() {
@@ -825,10 +822,10 @@ export default function CardDetailModal() {
                   <select
                     className="bg-zinc-800 border border-zinc-700 text-zinc-100 text-xs rounded-md px-2 py-1 outline-none focus:border-indigo-500 cursor-pointer"
                     value={roleDraft}
-                    onChange={(e) => setRoleDraft(e.target.value as AgentRole)}
+                    onChange={(e) => setRoleDraft(e.target.value)}
                   >
-                    {AGENT_ROLES.map((r) => (
-                      <option key={r} value={r}>{r}</option>
+                    {roles.map((r) => (
+                      <option key={r} value={r}>{roleLabel(r)}</option>
                     ))}
                   </select>
                   <button onClick={saveRole} className={SAVE_BTN}>Save</button>
