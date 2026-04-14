@@ -208,17 +208,58 @@ function PendingApprovalActions({ cardId }: { cardId: string }) {
 
 // ─── RetrySchedulePanel ───────────────────────────────────────────────────────
 
-function RetrySchedulePanel({ agentRuns }: { agentRuns: AgentRun[] }) {
+function RetrySchedulePanel({
+  cardId,
+  agentRuns,
+  maxAttempts,
+  onRetried,
+}: {
+  cardId: string;
+  agentRuns: AgentRun[];
+  maxAttempts: number;
+  onRetried: () => void;
+}) {
   const sorted = [...agentRuns].sort((a, b) => a.attempt - b.attempt);
   const lastRun = sorted[sorted.length - 1];
+  const [retrying, setRetrying] = useState(false);
+  const [retryError, setRetryError] = useState('');
+
+  async function handleRetryNow() {
+    setRetrying(true);
+    setRetryError('');
+    try {
+      const res = await fetch(`/api/cards/${cardId}/retry`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('retry failed');
+      onRetried();
+    } catch {
+      setRetryError('Could not retry. Try again.');
+    } finally {
+      setRetrying(false);
+    }
+  }
 
   return (
     <div className="px-6 py-4 border-t border-zinc-800 flex flex-col gap-3">
-      <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Retry Schedule</p>
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Retry Schedule</p>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleRetryNow}
+            disabled={retrying}
+            className={`bg-indigo-600 hover:bg-indigo-500 text-white rounded-md px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer${retrying ? ' opacity-60 pointer-events-none' : ''}`}
+          >
+            {retrying ? 'Retrying…' : 'Retry now'}
+          </button>
+        </div>
+      </div>
+      {retryError && <span className="text-red-400 text-xs">{retryError}</span>}
       <div className="flex flex-col gap-2">
         {sorted.map((run) => (
           <div key={run.id} className="flex items-center justify-between text-xs">
-            <span className="text-zinc-400">Attempt {run.attempt}</span>
+            <span className="text-zinc-400">Attempt {run.attempt} of {maxAttempts}</span>
             <span className={run.status === 'failed' ? 'text-red-400' : 'text-zinc-500'}>
               {run.status}
             </span>
@@ -278,6 +319,10 @@ export default function CardDetailModal() {
   const [deleteError, setDeleteError] = useState('');
   const [deleteNote, setDeleteNote] = useState('');
   const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── 5. Footer retry state ─────────────────────────────────────────────────
+  const [footerRetrying, setFooterRetrying] = useState(false);
+  const [footerRetryError, setFooterRetryError] = useState('');
 
   async function fetchCard(cardId: string) {
     try {
@@ -408,6 +453,7 @@ export default function CardDetailModal() {
         approvedAt: apiCard.approvedAt,
         movedToColumnAt: apiCard.movedToColumnAt ?? storeCard.movedToColumnAt,
         revisionContextNote: apiCard.revisionContextNote,
+        maxAttempts: apiCard.maxAttempts,
       }
     : storeCard;
 
@@ -538,6 +584,23 @@ export default function CardDetailModal() {
     }
   }
 
+  async function handleFooterRetry() {
+    setFooterRetrying(true);
+    setFooterRetryError('');
+    try {
+      const res = await fetch(`/api/cards/${card.id}/retry`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (!res.ok) throw new Error('retry failed');
+      fetchCard(card.id);
+    } catch {
+      setFooterRetryError('Could not retry. Try again.');
+    } finally {
+      setFooterRetrying(false);
+    }
+  }
+
   // ── Render ─────────────────────────────────────────────────────────────────
 
   const isSaving = (field: EditingField) => savingField === field;
@@ -643,7 +706,7 @@ export default function CardDetailModal() {
             </span>
 
             <span>
-              Attempt: <span className="text-zinc-300">{currentRun.attempt} / 5</span>
+              Attempt: <span className="text-zinc-300">{currentRun.attempt} / {card.maxAttempts ?? 5}</span>
             </span>
             <span>
               Started: <span className="text-zinc-300">{relativeTime(currentRun.startedAt)} ago</span>
@@ -847,7 +910,12 @@ export default function CardDetailModal() {
 
         {/* Retry schedule (failed) */}
         {card.agentStatus === 'failed' && card.agentRuns.length > 0 && (
-          <RetrySchedulePanel agentRuns={card.agentRuns} />
+          <RetrySchedulePanel
+            cardId={card.id}
+            agentRuns={card.agentRuns}
+            maxAttempts={card.maxAttempts ?? 5}
+            onRetried={() => fetchCard(card.id)}
+          />
         )}
 
         {/* Revision context form (revision column) */}
@@ -858,7 +926,7 @@ export default function CardDetailModal() {
           <PendingApprovalActions cardId={card.id} />
         )}
 
-        {/* Footer — delete affordance */}
+        {/* Footer — delete affordance + retry */}
         <div className="border-t border-zinc-800 px-6 py-3 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             {deleteConfirm ? (
@@ -892,6 +960,20 @@ export default function CardDetailModal() {
               </>
             )}
           </div>
+          {card.agentStatus === 'failed' && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleFooterRetry}
+                disabled={footerRetrying}
+                className={`bg-indigo-600 hover:bg-indigo-500 text-white rounded-md px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer${footerRetrying ? ' opacity-60 pointer-events-none' : ''}`}
+              >
+                {footerRetrying ? 'Retrying…' : 'Retry now'}
+              </button>
+              {footerRetryError && (
+                <span className="text-red-400 text-xs">{footerRetryError}</span>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

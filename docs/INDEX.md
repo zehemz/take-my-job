@@ -15,6 +15,7 @@
 | [Card creation UI](./features/card-creation/TECH_SPEC.md) | ✅ Shipped | — | — | ✓ | — |
 | [Create Board UI](./features/create-board/TECH_SPEC.md) | ✅ Shipped | — | — | ✓ | — |
 | [Card Detail View](./features/card-detail/DESIGN.md) | 🔵 In Design | — | ✓ | — | — |
+| [Manual card retry](./features/manual-retry/TECH_SPEC.md) | ✅ Shipped | — | — | ✓ | — |
 | [Delete Board](./features/delete-board/TECH_SPEC.md) | ✅ Shipped | — | — | ✓ | — |
 | SSE real-time updates | ✅ Shipped | — | — | — | — |
 | [E2E Testing](./features/e2e-testing/SCENARIOS.md) | 🟠 In Progress | — | — | ✓ | — |

@@ -118,9 +118,41 @@ Output panel renders using existing `AgentOutputPanel`. The blinking cursor `▌
 
 Previous runs render under `<details>` with `summary` label `Attempt N — click to expand` in `text-xs text-zinc-500 cursor-pointer hover:text-zinc-300`.
 
-### 2h. Retry schedule panel
+### 2h. Retry schedule panel + "Retry now" button
 
-Unchanged. Renders only when `agentStatus === 'failed'`.
+Renders only when `agentStatus === 'failed'`.
+
+The existing `RetrySchedulePanel` shows scheduled-retry timing or the permanent-failure state. Immediately below it (inside the same conditional block), a **"Retry now"** button is rendered.
+
+**When it appears:** only when `agentStatus === 'failed'` — covering both cards that are waiting for a scheduled retry and cards that have permanently failed.
+
+**Placement:** directly below `RetrySchedulePanel`, separated by `mt-3`.
+
+**Appearance:**
+
+```
+[ Retry now ]
+```
+
+`bg-indigo-600 hover:bg-indigo-500 text-white rounded-md px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer`
+
+**States:**
+
+| State | Label | Visual |
+|-------|-------|--------|
+| Default | `Retry now` | Indigo button, full opacity |
+| Loading | `Retrying…` | Same button, `opacity-60 pointer-events-none`, no spinner |
+| Error | `Retry now` (reverted) | Button returns to default; inline note below: `text-xs text-red-400` — `"Could not retry. Try again."` |
+
+**After success:** the component fires `GET /api/cards/[id]` to re-fetch the card. No page reload. The modal stays open. `AgentStatusBadge` and the status-conditional panels update in place as the new status (`pending` or `running`) comes back from the re-fetch.
+
+**Copy:**
+
+| Action | Label |
+|--------|-------|
+| Button — default | `Retry now` |
+| Button — loading | `Retrying…` |
+| Inline error | `Could not retry. Try again.` |
 
 ### 2i. Revision context form
 
@@ -359,6 +391,8 @@ The modal communicates via `GET /api/cards/[id]`, `PATCH /api/cards/[id]`, `DELE
 | Delete step 2 — confirm | `Delete permanently` |
 | Delete step 2 — keep | `Keep` |
 | SSE reconnect label | `Reload` (inline in disconnected note) |
+| Retry now — default | `Retry now` |
+| Retry now — loading | `Retrying…` |
 | Approve (existing) | `✓ Approve & Close` |
 | Request Revision (existing) | `✗ Request Revision` |
 | Send reply to agent (existing) | `Send to agent` |
@@ -380,6 +414,7 @@ The modal communicates via `GET /api/cards/[id]`, `PATCH /api/cards/[id]`, `DELE
 | PATCH fails on save | `Could not save. Try again.` |
 | DELETE fails | `Could not delete card. Try again.` |
 | Delete attempted while running | `Stop the agent before deleting.` |
+| Retry now POST fails | `Could not retry. Try again.` |
 
 ### SSE indicator labels
 

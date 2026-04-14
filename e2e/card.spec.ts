@@ -241,6 +241,37 @@ test.describe('Cards', () => {
     }
   });
 
+  test('E2E-CARD-015: POST /api/cards/:id/retry without session → 401', async ({ request }) => {
+    const res = await request.post('/api/cards/fake-id/retry');
+    expect(res.status()).toBe(401);
+  });
+
+  test('E2E-CARD-016: POST /api/cards/:id/retry on card with no agent runs → 400', async ({ cookieHeader, request }) => {
+    const api = new KobaniApi(request, cookieHeader);
+    const boards = await api.getBoards();
+    if (boards.length === 0) { test.skip(true, 'No boards in DB'); return; }
+
+    const { board, columns } = await api.getBoard(boards[0].id);
+    if (columns.length === 0) { test.skip(true, 'Board has no columns'); return; }
+
+    const card = await api.createCard(board.id, {
+      title: `E2E Retry No Runs ${Date.now()}`,
+      columnId: columns[0].id,
+      role: 'backend-engineer',
+    });
+
+    try {
+      const res = await request.post(`/api/cards/${card.id}/retry`, {
+        headers: { cookie: cookieHeader },
+      });
+      expect(res.status()).toBe(400);
+      const body = await res.json();
+      expect(body).toHaveProperty('error');
+    } finally {
+      await api.deleteCard(card.id).catch(() => { /* already deleted */ });
+    }
+  });
+
   test('E2E-CARD-014: Add card button is only visible on inactive columns', async ({ authedPage: page, cookieHeader, request }) => {
     const api = new KobaniApi(request, cookieHeader);
     const boards = await api.getBoards();

@@ -96,7 +96,7 @@ export default function KanbanCard({ card, isDragging: overrideDragging }: Props
         </div>
         <div className="flex items-center gap-2 text-xs text-zinc-500">
           {attempt !== null && (
-            <span className="text-zinc-600">{attempt}/5</span>
+            <span className="text-zinc-600">{attempt}/{card.maxAttempts ?? 5}</span>
           )}
           {timeInCol && <span>{timeInCol}</span>}
         </div>

@@ -145,6 +145,7 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
         createdAt: now,
         updatedAt: now,
         movedToColumnAt: now,
+        maxAttempts: 5,
         ...fields,
       };
       return { cards: [...state.cards, newCard] };
@@ -315,6 +316,7 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
         createdAt: card.createdAt,
         updatedAt: card.updatedAt,
         movedToColumnAt: card.movedToColumnAt ?? card.createdAt,
+        maxAttempts: card.maxAttempts ?? 5,
       }))],
     }));
   },

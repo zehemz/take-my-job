@@ -69,6 +69,8 @@ export interface ApiCard {
   movedToColumnAt: string | null;  // ISO 8601
   createdAt: string;  // ISO 8601
   updatedAt: string;  // ISO 8601
+  /** Maximum agent attempts allowed, sourced from MAX_ATTEMPTS env var. */
+  maxAttempts: number;
 }
 
 export interface ApiBoardDetail {

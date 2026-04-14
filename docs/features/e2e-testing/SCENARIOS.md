@@ -54,6 +54,8 @@ IDs are stable — never reuse a retired ID.
 | E2E-CARD-012 | Clicking title in modal enters edit mode and shows Save/Cancel buttons | ✅ Implemented |
 | E2E-CARD-013 | Save updates title (API-persisted); Cancel discards changes | ✅ Implemented |
 | E2E-CARD-014 | Add card button is only visible on inactive columns | ✅ Implemented |
+| E2E-CARD-015 | `POST /api/cards/:id/retry` without session → 401 | ✅ Implemented |
+| E2E-CARD-016 | `POST /api/cards/:id/retry` on card with no agent runs → 400 | ✅ Implemented |
 
 ---
 

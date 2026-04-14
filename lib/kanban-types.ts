@@ -59,6 +59,8 @@ export interface Card {
   createdAt: string;
   updatedAt: string;
   movedToColumnAt: string;
+  /** Maximum agent attempts, from MAX_ATTEMPTS env var (passed through API). Defaults to 5. */
+  maxAttempts?: number;
 }
 
 export interface Column {

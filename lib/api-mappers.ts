@@ -140,6 +140,8 @@ export function mapAgentRun(run: {
 
 // ─── Card mapping ─────────────────────────────────────────────────────────────
 
+const MAX_ATTEMPTS = parseInt(process.env.MAX_ATTEMPTS ?? '5', 10);
+
 export function mapCard(
   card: {
     id: string;
@@ -187,5 +189,6 @@ export function mapCard(
     movedToColumnAt: card.movedToColumnAt?.toISOString() ?? null,
     createdAt: card.createdAt.toISOString(),
     updatedAt: card.updatedAt.toISOString(),
+    maxAttempts: MAX_ATTEMPTS,
   };
 }
