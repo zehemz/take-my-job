@@ -68,6 +68,7 @@ enum AgentRunStatus {
 enum ColumnType {
   inactive
   active
+  blocked
   review
   revision
   terminal

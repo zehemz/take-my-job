@@ -116,6 +116,14 @@ export async function handleUpdateCard(
         blockedReason,
       });
 
+      // Move card to blocked column immediately so board polling reflects the state
+      // even if the SSE connection is lost (e.g. Vercel 60s timeout).
+      try {
+        await db.moveCardToColumnType(card.id, card.boardId, 'blocked');
+      } catch (err) {
+        console.error('[update_card] failed to move card to blocked column:', err);
+      }
+
       broadcaster.emit(card.id, {
         type: "card_blocked",
         reason: blockedReason,

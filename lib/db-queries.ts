@@ -107,7 +107,7 @@ export const dbQueries: IDbQueries = {
 
   async getRunningRuns(): Promise<AgentRun[]> {
     const runs = await prisma.agentRun.findMany({
-      where: { status: { in: ["running", "idle"] } },
+      where: { status: { in: ["running", "idle", "blocked"] } },
     });
     return runs as unknown as AgentRun[];
   },
@@ -153,7 +153,7 @@ export const dbQueries: IDbQueries = {
     return columns as unknown as Column[];
   },
 
-  async moveCardToColumnType(cardId: string, boardId: string, targetColumnType: 'review' | 'terminal'): Promise<void> {
+  async moveCardToColumnType(cardId: string, boardId: string, targetColumnType: 'review' | 'terminal' | 'blocked'): Promise<void> {
     const col = await prisma.column.findFirst({
       where: { boardId, columnType: targetColumnType },
     });

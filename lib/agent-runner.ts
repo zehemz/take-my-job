@@ -1,6 +1,6 @@
 import type { Card, Column, AgentRun } from "./types";
 import { AgentRunStatus } from "./types";
-import type { IDbQueries, IAnthropicClient, IBroadcaster } from "./interfaces";
+import type { IDbQueries, IAnthropicClient, IBroadcaster, AgentEvent } from "./interfaces";
 import { config } from "./config";
 import { renderTurnPrompt } from "./prompt-renderer";
 import { handleEvent } from "./agent-runner/event-handler";
@@ -28,7 +28,7 @@ export async function run(
   deps: AgentRunnerDeps,
   signal?: AbortSignal
 ): Promise<void> {
-  const { db, anthropicClient, broadcaster } = deps;
+  const { db, anthropicClient } = deps;
 
   try {
     // 1. Load AgentConfig
@@ -92,77 +92,118 @@ export async function run(
       }),
     ]);
 
-    // Shared mutable state threaded through handleEvent
-    const tokenUsage = { inputTokens: 0, outputTokens: 0 };
-    const turnCount = { value: 0 };
-    let finalOutcome: "completed" | "failed" | "terminated" | undefined;
-    let finalError: string | undefined;
-
-    // 7. Event loop
-    outerLoop: for await (const event of stream) {
-      // Abort check
-      if (signal?.aborted) {
-        await anthropicClient.interruptSession(sessionId);
-        await db.updateAgentRunStatus(currentRun.id, AgentRunStatus.cancelled);
-        return;
-      }
-
-      const result = await handleEvent(event, {
-        card,
-        run: currentRun,
-        boardColumns,
-        db,
-        broadcaster,
-        anthropicClient,
-        sessionId,
-        tokenUsage,
-        turnCount,
-      });
-
-      if (result.exitLoop) {
-        finalOutcome = result.outcome;
-        finalError = result.error;
-
-        // session.status_idle with end_turn: agent finished a turn but may not have
-        // called update_card(completed) yet — check turn limit and nudge if needed.
-        if (
-          finalOutcome === "completed" &&
-          currentRun.status !== AgentRunStatus.completed &&
-          currentRun.status !== AgentRunStatus.blocked
-        ) {
-          if (turnCount.value < config.MAX_TURNS) {
-            await anthropicClient.sendMessage(sessionId, {
-              type: "user.message",
-              content:
-                "Please continue working on the task. Remember to call update_card(completed) when done.",
-            });
-            finalOutcome = undefined;
-            continue outerLoop;
-          } else {
-            await db.updateAgentRunStatus(currentRun.id, AgentRunStatus.failed, {
-              error: `Max turns (${config.MAX_TURNS}) reached without completing the task.`,
-            });
-            return;
-          }
-        }
-
-        break outerLoop;
-      }
-    }
-
-    // 8. Post-loop terminal state handling
-    if (finalOutcome === "failed") {
-      await db.updateAgentRunStatus(currentRun.id, AgentRunStatus.failed, {
-        error: finalError ?? "Agent session failed.",
-      });
-    } else if (finalOutcome === "terminated") {
-      await db.updateAgentRunStatus(currentRun.id, AgentRunStatus.cancelled);
-    }
-    // "completed" and "blocked" are already written by handleUpdateCard
+    await runEventLoop(stream, card, currentRun, sessionId, boardColumns, deps, signal);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    await db.updateAgentRunStatus(agentRun.id, AgentRunStatus.failed, {
+    await deps.db.updateAgentRunStatus(agentRun.id, AgentRunStatus.failed, {
       error: message,
     });
   }
+}
+
+/**
+ * Resume a blocked agent session after human input has been sent.
+ *
+ * Unlike run(), this does NOT create a new Anthropic session — it reattaches
+ * to the existing session identified by agentRun.sessionId and resumes the
+ * event loop. The caller is responsible for sending the human reply to the
+ * session before calling this function.
+ */
+export async function resumeBlocked(
+  card: Card & { column: Column },
+  agentRun: AgentRun,
+  deps: AgentRunnerDeps,
+  signal?: AbortSignal
+): Promise<void> {
+  const sessionId = agentRun.sessionId!;
+  try {
+    const boardColumns = await deps.db.getBoardColumns(card.boardId);
+    const stream = await deps.anthropicClient.streamSession(sessionId);
+    await runEventLoop(stream, card, agentRun, sessionId, boardColumns, deps, signal);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    await deps.db.updateAgentRunStatus(agentRun.id, AgentRunStatus.failed, {
+      error: message,
+    });
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Shared event loop
+// ---------------------------------------------------------------------------
+
+async function runEventLoop(
+  stream: AsyncIterable<AgentEvent>,
+  card: Card & { column: Column },
+  currentRun: AgentRun,
+  sessionId: string,
+  boardColumns: Column[],
+  deps: AgentRunnerDeps,
+  signal?: AbortSignal
+): Promise<void> {
+  const { db, anthropicClient, broadcaster } = deps;
+
+  const tokenUsage = { inputTokens: 0, outputTokens: 0 };
+  const turnCount = { value: 0 };
+  let finalOutcome: "completed" | "failed" | "terminated" | undefined;
+  let finalError: string | undefined;
+
+  outerLoop: for await (const event of stream) {
+    if (signal?.aborted) {
+      await anthropicClient.interruptSession(sessionId);
+      await db.updateAgentRunStatus(currentRun.id, AgentRunStatus.cancelled);
+      return;
+    }
+
+    const result = await handleEvent(event, {
+      card,
+      run: currentRun,
+      boardColumns,
+      db,
+      broadcaster,
+      anthropicClient,
+      sessionId,
+      tokenUsage,
+      turnCount,
+    });
+
+    if (result.exitLoop) {
+      finalOutcome = result.outcome;
+      finalError = result.error;
+
+      // session.status_idle with end_turn: agent finished a turn but may not have
+      // called update_card(completed) yet — check turn limit and nudge if needed.
+      if (
+        finalOutcome === "completed" &&
+        currentRun.status !== AgentRunStatus.completed &&
+        currentRun.status !== AgentRunStatus.blocked
+      ) {
+        if (turnCount.value < config.MAX_TURNS) {
+          await anthropicClient.sendMessage(sessionId, {
+            type: "user.message",
+            content:
+              "Please continue working on the task. Remember to call update_card(completed) when done.",
+          });
+          finalOutcome = undefined;
+          continue outerLoop;
+        } else {
+          await db.updateAgentRunStatus(currentRun.id, AgentRunStatus.failed, {
+            error: `Max turns (${config.MAX_TURNS}) reached without completing the task.`,
+          });
+          return;
+        }
+      }
+
+      break outerLoop;
+    }
+  }
+
+  if (finalOutcome === "failed") {
+    await db.updateAgentRunStatus(currentRun.id, AgentRunStatus.failed, {
+      error: finalError ?? "Agent session failed.",
+    });
+  } else if (finalOutcome === "terminated") {
+    await db.updateAgentRunStatus(currentRun.id, AgentRunStatus.cancelled);
+  }
+  // "completed" and "blocked" are already written by handleUpdateCard
 }

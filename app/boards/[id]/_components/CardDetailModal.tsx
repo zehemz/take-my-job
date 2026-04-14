@@ -57,21 +57,46 @@ function SaveCancelRow({
 
 // ─── BlockedBanner ────────────────────────────────────────────────────────────
 
-function BlockedBanner({ cardId, blockedReason }: { cardId: string; blockedReason: string }) {
+function BlockedBanner({
+  cardId,
+  blockedReason,
+  sessionId,
+  onReplied,
+}: {
+  cardId: string;
+  blockedReason: string;
+  sessionId: string | null;
+  onReplied: () => void;
+}) {
   const [reply, setReply] = useState('');
   const [copied, setCopied] = useState(false);
-  const updateCard = useKobaniStore((s) => s.updateCard);
+  const [sending, setSending] = useState(false);
 
-  const sessionId = `session-${cardId}`;
-  const cliCommand = `ant sessions connect ${sessionId}`;
+  const cliCommand = sessionId ? `ant sessions connect ${sessionId}` : null;
 
-  function handleSendReply() {
+  async function handleSendReply() {
     if (!reply.trim()) return;
-    updateCard(cardId, { revisionContextNote: reply });
-    setReply('');
+    setSending(true);
+    try {
+      const res = await fetch(`/api/cards/${cardId}/reply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ message: reply.trim() }),
+      });
+      if (!res.ok) {
+        console.error('[BlockedBanner] reply failed', await res.text());
+        return;
+      }
+      setReply('');
+      onReplied();
+    } finally {
+      setSending(false);
+    }
   }
 
   function handleCopy() {
+    if (!cliCommand) return;
     navigator.clipboard.writeText(cliCommand).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -89,32 +114,36 @@ function BlockedBanner({ cardId, blockedReason }: { cardId: string; blockedReaso
       <div className="flex flex-col gap-2">
         <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Option A — Reply here</p>
         <textarea
-          className="w-full bg-zinc-950 border border-zinc-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 resize-none outline-none transition-colors"
+          className="w-full bg-zinc-950 border border-zinc-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 resize-none outline-none transition-colors disabled:opacity-60"
           rows={3}
           placeholder="Reply to the agent..."
           value={reply}
+          disabled={sending}
           onChange={(e) => setReply(e.target.value)}
         />
         <button
           onClick={handleSendReply}
-          className="self-end bg-indigo-600 hover:bg-indigo-500 text-white rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-150 cursor-pointer"
+          disabled={sending || !reply.trim()}
+          className="self-end bg-indigo-600 hover:bg-indigo-500 text-white rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-150 cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
         >
-          Send to agent
+          {sending ? 'Sending…' : 'Send to agent'}
         </button>
       </div>
 
-      <div className="flex flex-col gap-2">
-        <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Option B — Connect via CLI</p>
-        <div className="flex items-center gap-2 bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2">
-          <code className="flex-1 text-xs font-mono text-zinc-300">{cliCommand}</code>
-          <button
-            onClick={handleCopy}
-            className="text-xs text-indigo-400 hover:text-indigo-200 transition-colors cursor-pointer shrink-0"
-          >
-            {copied ? 'Copied!' : 'Copy'}
-          </button>
+      {cliCommand && (
+        <div className="flex flex-col gap-2">
+          <p className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Option B — Connect via CLI</p>
+          <div className="flex items-center gap-2 bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-2">
+            <code className="flex-1 text-xs font-mono text-zinc-300">{cliCommand}</code>
+            <button
+              onClick={handleCopy}
+              className="text-xs text-indigo-400 hover:text-indigo-200 transition-colors cursor-pointer shrink-0"
+            >
+              {copied ? 'Copied!' : 'Copy'}
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -909,7 +938,12 @@ export default function CardDetailModal() {
 
         {/* Blocked banner */}
         {card.agentStatus === 'blocked' && blockedRun?.blockedReason && (
-          <BlockedBanner cardId={card.id} blockedReason={blockedRun.blockedReason} />
+          <BlockedBanner
+            cardId={card.id}
+            blockedReason={blockedRun.blockedReason}
+            sessionId={blockedRun.sessionId ?? null}
+            onReplied={() => fetchCard(card.id)}
+          />
         )}
 
         {/* Acceptance Criteria */}

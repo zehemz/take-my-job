@@ -27,9 +27,10 @@ export async function POST(req: Request) {
         create: [
           { name: 'Backlog',     position: 0, columnType: 'inactive', isActiveState: false, isTerminalState: false },
           { name: 'In Progress', position: 1, columnType: 'active',   isActiveState: true,  isTerminalState: false },
-          { name: 'Review',      position: 2, columnType: 'review',   isActiveState: true,  isTerminalState: false },
-          { name: 'Revision',    position: 3, columnType: 'revision', isActiveState: true,  isTerminalState: false },
-          { name: 'Done',        position: 4, columnType: 'terminal', isActiveState: false, isTerminalState: true  },
+          { name: 'Blocked',     position: 2, columnType: 'blocked',  isActiveState: false, isTerminalState: false },
+          { name: 'Review',      position: 3, columnType: 'review',   isActiveState: true,  isTerminalState: false },
+          { name: 'Revision',    position: 4, columnType: 'revision', isActiveState: true,  isTerminalState: false },
+          { name: 'Done',        position: 5, columnType: 'terminal', isActiveState: false, isTerminalState: true  },
         ],
       },
     },
