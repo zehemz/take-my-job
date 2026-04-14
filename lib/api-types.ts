@@ -69,6 +69,8 @@ export interface ApiCard {
   role: AgentRole;
   githubRepo: string | null;
   githubBranch: string | null;
+  /** Optional per-card environment override. Null = use role default. */
+  environmentId: string | null;
   /** Derived from the most recent AgentRun for this card. */
   agentStatus: AgentStatus;
   currentAgentRunId: string | null;
@@ -112,6 +114,8 @@ export interface CreateCardRequest {
   githubRepo?: string;
   githubBranch?: string;
   requiresApproval?: boolean;
+  /** Optional per-card environment override. Omit or null to use role default. */
+  environmentId?: string;
   /** Card IDs this card depends on. Card won't auto-promote until all are done. */
   dependsOn?: string[];
 }
@@ -127,6 +131,8 @@ export interface UpdateCardRequest {
   role?: AgentRole;
   githubRepo?: string;
   githubBranch?: string;
+  /** Per-card environment override. Null clears the override (reverts to role default). */
+  environmentId?: string | null;
   revisionContextNote?: string;
   approvedBy?: string;
 }
@@ -332,6 +338,17 @@ export interface PatchEnvironmentRequest {
 }
 
 export interface PatchEnvironmentResponse {
+  environment: EnvironmentDetail;
+}
+
+export interface CreateEnvironmentRequest {
+  name: string;
+  description?: string | null;
+  networking?: EnvironmentNetworking;
+  packages?: EnvironmentPackages;
+}
+
+export interface CreateEnvironmentResponse {
   environment: EnvironmentDetail;
 }
 

@@ -27,6 +27,7 @@ const makeCard = (overrides: Partial<Card> = {}): Card => ({
   position: 0,
   githubRepoUrl: null,
   githubBranch: null,
+  environmentId: null,
   requiresApproval: false,
   createdAt: new Date(),
   updatedAt: new Date(),

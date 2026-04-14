@@ -59,6 +59,7 @@ export async function PATCH(
       ...(body.role !== undefined && { role: body.role }),
       ...(body.githubRepo !== undefined && { githubRepoUrl: body.githubRepo }),
       ...(body.githubBranch !== undefined && { githubBranch: body.githubBranch }),
+      ...(body.environmentId !== undefined && { environmentId: body.environmentId }),
       ...(body.revisionContextNote !== undefined && {
         revisionContextNote: body.revisionContextNote,
       }),
@@ -87,7 +88,7 @@ export async function DELETE(
   // Fetch card for RBAC check
   const cardToDelete = await prisma.card.findUnique({
     where: { id: params.id },
-    select: { role: true },
+    select: { role: true, environmentId: true },
   });
   if (!cardToDelete) return NextResponse.json({ error: 'Card not found' }, { status: 404 });
 

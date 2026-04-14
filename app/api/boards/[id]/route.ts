@@ -4,6 +4,8 @@ import { mapBoardSummary, mapColumn, mapAgentRun, mapCard, deriveCardAgentStatus
 import { devAuth as auth } from '@/lib/dev-auth';
 import { reconcileNotifications } from '@/lib/notifications';
 import { resolvePermissions, resolveCardEnvironment } from '@/lib/rbac';
+// Eagerly boot the orchestrator when any board route is hit (needed for local dev)
+import '@/lib/orchestrator-instance';
 
 export async function PATCH(
   req: Request,
@@ -92,13 +94,14 @@ export async function GET(
     }),
   );
 
-  function canUserInteract(card: { role: string | null }): boolean {
+  function canUserInteract(card: { role: string | null; environmentId?: string | null }): boolean {
     if (!perms) return false;
     if (perms.isAdmin) return true;
     if (!card.role) return true; // cards with no role are accessible to all
 
     const roleOk = perms.allowedAgentRoles === null || perms.allowedAgentRoles.has(card.role);
-    const envId = envByRole.get(card.role) ?? null;
+    // Card-level environment override takes priority over the role default
+    const envId = card.environmentId ?? envByRole.get(card.role) ?? null;
     const envOk = !envId || perms.allowedEnvironments === null || perms.allowedEnvironments.has(envId);
     return roleOk && envOk;
   }

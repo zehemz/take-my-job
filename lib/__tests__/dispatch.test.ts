@@ -32,6 +32,7 @@ function makeCard(id: string, columnId: string, position = 0): Card {
     position,
     githubRepoUrl: null,
     githubBranch: null,
+    environmentId: null,
     requiresApproval: false,
     createdAt: new Date(),
     updatedAt: new Date(),
