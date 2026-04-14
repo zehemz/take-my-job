@@ -25,6 +25,7 @@
 | [Board-level GitHub Repo](./features/board-github-repo/TECH_SPEC.md) | ✅ Shipped | — | — | ✓ | — |
 | [Sessions List](./features/sessions/) | 🟠 In Progress | — | — | — | — |
 | [Notifications Popup](./features/notifications-popup/) | ✅ Shipped | ✓ | ✓ | ✓ | — |
+| [Agent Edit](./features/agent-edit/) | 🟠 In Progress | — | — | — | — |
 
 **Status legend:** ✅ Shipped · 🔵 In Design · 🟠 In Progress · 🟡 Planned · ⛔ Blocked
 
