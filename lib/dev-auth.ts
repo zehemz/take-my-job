@@ -1,6 +1,5 @@
 import { auth } from '@/auth';
-
-type Session = Awaited<ReturnType<typeof auth>>;
+import type { Session } from 'next-auth';
 
 const DEV_SESSION: Session = {
   user: {
@@ -16,7 +15,7 @@ const DEV_SESSION: Session = {
  * Drop-in replacement for `auth()` in API route handlers.
  * When DEV_AUTH_BYPASS=true, returns a fake session so OAuth is not required locally.
  */
-export async function devAuth(): Promise<Session> {
+export async function devAuth(): Promise<Session | null> {
   if (process.env.DEV_AUTH_BYPASS === 'true') return DEV_SESSION;
-  return auth();
+  return auth() as Promise<Session | null>;
 }
