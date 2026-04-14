@@ -4,3 +4,27 @@ node = "22"
 [env]
 _.file = ".env"
 NODE_ENV = "development"
+
+[tasks.dev]
+description = "Start the Next.js dev server"
+run = "npm run dev"
+
+[tasks.e2e]
+description = "Run Playwright E2E tests (headless) — start dev server first with: mise run dev"
+run = "npm run e2e"
+
+[tasks."e2e:ui"]
+description = "Run Playwright E2E tests in interactive UI mode"
+run = "npm run e2e:ui"
+
+[tasks."e2e:report"]
+description = "Open the last Playwright HTML report"
+run = "npm run e2e:report"
+
+[tasks.db]
+description = "Open Prisma Studio"
+run = "npx prisma studio"
+
+[tasks."db:migrate"]
+description = "Run pending DB migrations"
+run = "npx prisma migrate dev"

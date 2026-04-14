@@ -1,7 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 import { config as loadEnv } from 'dotenv';
 
-// Load .env.local so tests have the same secrets as the dev server
+// Load env files in the same order as mise (base .env first, then .env.local overrides)
+loadEnv({ path: '.env', override: false });
 loadEnv({ path: '.env.local', override: false });
 
 export default defineConfig({
