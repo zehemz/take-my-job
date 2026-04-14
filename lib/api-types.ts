@@ -20,6 +20,7 @@ export interface ApiBoardSummary {
   createdAt: string;
   columnCount: number;
   cardCount: number;
+  completedCardCount?: number;
 }
 
 export interface ApiColumn {
