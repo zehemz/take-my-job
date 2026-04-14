@@ -12,7 +12,6 @@ model Board {
   name                   String
   githubRepo             String?
   workspacePath          String?
-  anthropicEnvironmentId String?
   autoMode               Boolean        @default(false)
   createdAt              DateTime       @default(now())
   updatedAt              DateTime       @updatedAt
@@ -109,7 +108,6 @@ model AgentConfig {
   role                   String   @unique
   anthropicAgentId       String
   anthropicAgentVersion  String
-  anthropicEnvironmentId String?
   createdAt              DateTime @default(now())
 }
 

@@ -65,22 +65,13 @@ export async function resolvePermissions(
 }
 
 /**
- * Resolve the environment ID for a card.
- * Card-level override takes priority; falls back to the role's AgentConfig.
+ * Return the environment ID for a card (just the card's own field).
  */
-export async function resolveCardEnvironment(
-  agentRole: string | null,
+export function resolveCardEnvironment(
+  _agentRole: string | null,
   cardEnvironmentId?: string | null,
-): Promise<string | null> {
-  if (cardEnvironmentId) return cardEnvironmentId;
-  if (!agentRole) return null;
-
-  const config = await prisma.agentConfig.findUnique({
-    where: { role: agentRole },
-    select: { anthropicEnvironmentId: true },
-  });
-
-  return config?.anthropicEnvironmentId ?? null;
+): string | null {
+  return cardEnvironmentId ?? null;
 }
 
 /**
@@ -108,14 +99,12 @@ export async function checkCardAccess(
 
 /**
  * High-level guard: given a card, check if the user has access.
- * Card-level environment override takes priority over the role default.
  */
 export async function guardCardAccess(
   githubUsername: string | null | undefined,
   card: { role: string | null; environmentId?: string | null }
 ): Promise<boolean> {
-  const environmentId = await resolveCardEnvironment(card.role, card.environmentId);
-  return checkCardAccess(githubUsername, card.role, environmentId);
+  return checkCardAccess(githubUsername, card.role, card.environmentId ?? null);
 }
 
 /**

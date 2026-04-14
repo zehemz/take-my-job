@@ -138,14 +138,14 @@ export default function NewCardModal({ columnId, boardId, onClose }: Props) {
                 onChange={(e) => setEnvironmentId(e.target.value)}
                 className="bg-zinc-950 border border-zinc-700 focus:border-indigo-500 rounded-lg px-3 py-2 text-sm text-zinc-100 outline-none cursor-pointer"
               >
-                <option value="">Default (from role)</option>
+                <option value="">No environment</option>
                 {environments.map((env) => (
                   <option key={env.id} value={env.id}>
                     {env.name}
                   </option>
                 ))}
               </select>
-              <p className="text-xs text-zinc-600">Override the environment for this card only</p>
+              <p className="text-xs text-zinc-600">Anthropic environment this card's agent will run in</p>
             </div>
           )}
 

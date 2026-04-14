@@ -13,7 +13,6 @@ export interface Board {
   name: string;
   githubRepo: string | null;
   workspacePath: string | null;
-  anthropicEnvironmentId: string | null;
   autoMode: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -77,7 +76,6 @@ export interface AgentConfig {
   role: string;
   anthropicAgentId: string;
   anthropicAgentVersion: string;
-  anthropicEnvironmentId: string;
   createdAt: Date;
 }
 

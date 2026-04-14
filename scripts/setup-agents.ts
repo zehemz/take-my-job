@@ -66,43 +66,8 @@ const UPDATE_CARD_TOOL = {
   },
 };
 
-async function setupEnvironment(): Promise<string> {
-  const ENV_NAME = "kobani-env";
-
-  // Check if we already have an environment stored in the DB
-  const existingConfig = await prisma.agentConfig.findFirst();
-  if (existingConfig?.anthropicEnvironmentId) {
-    console.log(`Environment already exists: ${existingConfig.anthropicEnvironmentId}`);
-    return existingConfig.anthropicEnvironmentId;
-  }
-
-  // Check Anthropic for an existing environment with the same name (find-or-create)
-  const existing = await beta.environments.list({ limit: 100 });
-  const match = (existing.data ?? []).find(
-    (e: { name: string; archived_at: string | null }) =>
-      e.name === ENV_NAME && !e.archived_at,
-  );
-  if (match) {
-    console.log(`Found existing Anthropic environment "${ENV_NAME}": ${match.id}`);
-    return match.id;
-  }
-
-  console.log("Creating shared environment...");
-  const env = await beta.environments.create({
-    name: ENV_NAME,
-    config: {
-      type: "cloud",
-      networking: { type: "unrestricted" },
-    },
-  });
-
-  console.log(`Created environment: ${env.id}`);
-  return env.id;
-}
-
 async function setupAgent(
   role: { key: string; displayName: string },
-  environmentId: string,
 ): Promise<void> {
   const existing = await prisma.agentConfig.findUnique({
     where: { role: role.key },
@@ -158,7 +123,6 @@ async function setupAgent(
       role: role.key,
       anthropicAgentId: agent.id,
       anthropicAgentVersion: agentVersion,
-      anthropicEnvironmentId: environmentId,
     },
   });
 
@@ -168,10 +132,8 @@ async function setupAgent(
 async function main() {
   console.log("=== Kobani Agent Setup ===\n");
 
-  const environmentId = await setupEnvironment();
-
   for (const role of ROLES) {
-    await setupAgent(role, environmentId);
+    await setupAgent(role);
   }
 
   console.log("\n=== Setup complete ===");

@@ -834,7 +834,7 @@ export default function CardDetailModal() {
                 {envName ?? card.environmentId}
               </span>
             ) : (
-              <span className="text-zinc-600 italic">default (from role)</span>
+              <span className="text-zinc-600 italic">none</span>
             )}
           </span>
         </div>

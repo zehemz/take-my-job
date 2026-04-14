@@ -53,7 +53,7 @@ interface KobaniState {
   // Async API actions
   fetchBoard: (boardId: string) => Promise<void>;
   fetchBoards: () => Promise<void>;
-  createBoardApi: (name: string, workspacePath?: string, environmentId?: string, autoMode?: boolean) => Promise<string | null>; // returns new board id
+  createBoardApi: (name: string, workspacePath?: string, autoMode?: boolean) => Promise<string | null>; // returns new board id
   toggleAutoMode: (boardId: string, autoMode: boolean) => Promise<boolean>;
   deleteBoardApi: (id: string) => Promise<boolean>;
   moveCardApi: (cardId: string, columnId: string, position?: number) => Promise<boolean>;
@@ -394,7 +394,7 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
     set({ boards: data });
   },
 
-  createBoardApi: async (name: string, workspacePath?: string, environmentId?: string, autoMode?: boolean) => {
+  createBoardApi: async (name: string, workspacePath?: string, autoMode?: boolean) => {
     const res = await fetch('/api/boards', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -402,7 +402,6 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
       body: JSON.stringify({
         name,
         ...(workspacePath ? { workspacePath } : {}),
-        ...(environmentId ? { environmentId } : {}),
         ...(autoMode !== undefined ? { autoMode } : {}),
       }),
     });

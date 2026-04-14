@@ -4,7 +4,7 @@ import { prisma } from '@/lib/db';
 import { mapCard } from '@/lib/api-mappers';
 import type { CreateCardRequest } from '@/lib/api-types';
 import { devAuth as auth } from '@/lib/dev-auth';
-import { checkCardAccess, resolveCardEnvironment } from '@/lib/rbac';
+import { checkCardAccess } from '@/lib/rbac';
 import { promoteUnlockedCards } from '@/lib/auto-promote';
 import { dbQueries } from '@/lib/db-queries';
 import { run as runAgent } from '@/lib/agent-runner';
@@ -48,8 +48,7 @@ export async function POST(
 
   // RBAC check for card creation
   if (role) {
-    const envId = await resolveCardEnvironment(role, environmentId);
-    const hasAccess = await checkCardAccess(session.user.githubUsername, role, envId);
+    const hasAccess = await checkCardAccess(session.user.githubUsername, role, environmentId ?? null);
     if (!hasAccess) {
       return NextResponse.json(
         { error: 'Forbidden: no access to this agent role/environment' },
