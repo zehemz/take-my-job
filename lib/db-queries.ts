@@ -23,7 +23,7 @@ export const dbQueries: IDbQueries = {
       const activeRun = await prisma.agentRun.findFirst({
         where: {
           cardId: card.id,
-          status: { in: ["running", "idle"] },
+          status: { in: ["pending", "running", "idle"] },
         },
       });
       if (activeRun) continue;

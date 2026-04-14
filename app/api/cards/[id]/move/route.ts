@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { waitUntil } from '@vercel/functions';
 import { prisma } from '@/lib/db';
 import { mapAgentRun, mapCard, deriveCardAgentStatus } from '@/lib/api-mappers';
 import type { MoveCardRequest } from '@/lib/api-types';
@@ -6,6 +7,10 @@ import { VALID_TRANSITIONS } from '@/lib/kanban-types';
 import { devAuth as auth } from '@/lib/dev-auth';
 import { guardCardAccess } from '@/lib/rbac';
 import { orchestrator } from '@/lib/orchestrator-instance';
+import { run as runAgent } from '@/lib/agent-runner';
+import { dbQueries } from '@/lib/db-queries';
+import { anthropicClient } from '@/lib/anthropic-client';
+import { broadcaster } from '@/lib/broadcaster-singleton';
 
 export async function POST(
   req: Request,
@@ -91,6 +96,24 @@ export async function POST(
   });
 
   await orchestrator.notifyCardMoved(params.id, columnId);
+
+  // Serverless-safe immediate dispatch: don't wait for the poll loop tick.
+  // waitUntil keeps the function alive after the response so the agent
+  // event stream can run to completion (or until Vercel's function timeout).
+  if (targetColumn.isActiveState) {
+    const existing = await dbQueries.getActiveRunForCard(params.id);
+    if (!existing) {
+      const role = existingCard.role ?? 'backend-engineer';
+      const agentRun = await dbQueries.createAgentRun(params.id, columnId, role, 1);
+      const cardWithColumn = await dbQueries.getCard(params.id);
+      if (cardWithColumn) {
+        waitUntil(
+          runAgent(cardWithColumn, agentRun, { db: dbQueries, anthropicClient, broadcaster })
+            .catch((err) => console.error('[move] agent runner error:', err)),
+        );
+      }
+    }
+  }
 
   const mappedRuns = card.agentRuns.map(mapAgentRun);
   const agentStatus = deriveCardAgentStatus(card.agentRuns);
