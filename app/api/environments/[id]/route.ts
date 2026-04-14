@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { devAuth as auth } from '@/lib/dev-auth'
+import { requireAdmin } from '@/lib/rbac'
 
 export async function DELETE(
   _req: Request,
@@ -8,6 +9,10 @@ export async function DELETE(
 ) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  // Admin-only guard
+  const adminErr = await requireAdmin(session.user.githubUsername)
+  if (adminErr) return adminErr
 
   const { id } = params
 

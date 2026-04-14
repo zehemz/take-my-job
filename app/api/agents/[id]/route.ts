@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { prisma } from '@/lib/db'
 import { devAuth as auth } from '@/lib/dev-auth'
+import { requireAdmin } from '@/lib/rbac'
 import type { AgentDetail, AgentToolConfig, AgentMCPServer, PatchAgentRequest, PatchAgentResponse } from '@/lib/api-types'
 
 export async function GET(
@@ -73,6 +74,10 @@ export async function PATCH(
 ) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  // Admin-only guard
+  const adminErr = await requireAdmin(session.user.githubUsername)
+  if (adminErr) return adminErr
 
   const { id } = params
   const body = await req.json() as PatchAgentRequest
@@ -240,6 +245,10 @@ export async function DELETE(
 ) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  // Admin-only guard
+  const adminErrDel = await requireAdmin(session.user.githubUsername)
+  if (adminErrDel) return adminErrDel
 
   const { id } = params
 

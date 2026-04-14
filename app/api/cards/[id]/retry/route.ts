@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { mapAgentRun, mapCard, deriveCardAgentStatus } from '@/lib/api-mappers';
 import { devAuth as auth } from '@/lib/dev-auth';
+import { guardCardAccess } from '@/lib/rbac';
 import { orchestrator } from '@/lib/orchestrator-instance';
 import { config } from '@/lib/config';
 
@@ -20,6 +21,15 @@ export async function POST(
     },
   });
   if (!card) return NextResponse.json({ error: 'Card not found' }, { status: 404 });
+
+  // RBAC check
+  const hasAccess = await guardCardAccess(session.user.githubUsername, card);
+  if (!hasAccess) {
+    return NextResponse.json(
+      { error: 'Forbidden: no access to this agent role/environment' },
+      { status: 403 },
+    );
+  }
 
   const latestRun = card.agentRuns[0] ?? null;
 

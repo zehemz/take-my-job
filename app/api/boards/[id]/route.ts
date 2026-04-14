@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { mapBoardSummary, mapColumn, mapAgentRun, mapCard, deriveCardAgentStatus } from '@/lib/api-mappers';
 import { devAuth as auth } from '@/lib/dev-auth';
 import { reconcileNotifications } from '@/lib/notifications';
+import { resolvePermissions, resolveCardEnvironment } from '@/lib/rbac';
 
 export async function DELETE(
   _req: Request,
@@ -51,10 +52,33 @@ export async function GET(
     }),
   ]);
 
+  // Resolve RBAC permissions for the current user
+  const perms = await resolvePermissions(session.user.githubUsername);
+
+  // Build a cache of role → environmentId to avoid repeated DB lookups
+  const uniqueRoles = [...new Set(cards.map((c) => c.role).filter(Boolean))] as string[];
+  const envByRole = new Map<string, string | null>();
+  await Promise.all(
+    uniqueRoles.map(async (role) => {
+      envByRole.set(role, await resolveCardEnvironment(role));
+    }),
+  );
+
+  function canUserInteract(card: { role: string | null }): boolean {
+    if (!perms) return false;
+    if (perms.isAdmin) return true;
+    if (!card.role) return true; // cards with no role are accessible to all
+
+    const roleOk = perms.allowedAgentRoles === null || perms.allowedAgentRoles.has(card.role);
+    const envId = envByRole.get(card.role) ?? null;
+    const envOk = !envId || perms.allowedEnvironments === null || perms.allowedEnvironments.has(envId);
+    return roleOk && envOk;
+  }
+
   const mappedCards = cards.map((c) => {
     const mappedRuns = c.agentRuns.map(mapAgentRun);
     const agentStatus = deriveCardAgentStatus(c.agentRuns);
-    return mapCard(c, mappedRuns, agentStatus, c.column.columnType);
+    return mapCard(c, mappedRuns, agentStatus, c.column.columnType, canUserInteract(c));
   });
 
   // Fire-and-forget: reconcile notifications based on current card states

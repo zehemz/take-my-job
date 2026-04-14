@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { mapCard } from '@/lib/api-mappers';
 import type { CreateCardRequest } from '@/lib/api-types';
 import { devAuth as auth } from '@/lib/dev-auth';
+import { checkCardAccess, resolveCardEnvironment } from '@/lib/rbac';
 
 export async function POST(
   req: Request,
@@ -28,6 +29,18 @@ export async function POST(
 
   if (column.columnType !== 'inactive') {
     return NextResponse.json({ error: 'Cards can only be created in inactive columns' }, { status: 400 });
+  }
+
+  // RBAC check for card creation
+  if (role) {
+    const envId = await resolveCardEnvironment(role);
+    const hasAccess = await checkCardAccess(session.user.githubUsername, role, envId);
+    if (!hasAccess) {
+      return NextResponse.json(
+        { error: 'Forbidden: no access to this agent role/environment' },
+        { status: 403 },
+      );
+    }
   }
 
   // Get max position in column

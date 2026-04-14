@@ -210,6 +210,35 @@ IDs are stable — never reuse a retired ID.
 
 ---
 
+## RBAC — Role-Based Access Control (`e2e/rbac.spec.ts`)
+
+| ID | Scenario | Status |
+|----|----------|--------|
+| E2E-RBAC-001 | `GET /api/admin/users` without admin role → 403 Forbidden | 🟡 Planned |
+| E2E-RBAC-002 | `GET /api/admin/groups` without admin role → 403 Forbidden | 🟡 Planned |
+| E2E-RBAC-003 | Admin can create a user via `POST /api/admin/users` with valid GitHub username | 🟡 Planned |
+| E2E-RBAC-004 | Admin can create a group with agent roles + environment access | 🟡 Planned |
+| E2E-RBAC-005 | Admin can add a user to a group via `POST /api/admin/groups/:id/members` | 🟡 Planned |
+| E2E-RBAC-006 | Non-admin user cannot move a card with agent role outside their group access → 403 | 🟡 Planned |
+| E2E-RBAC-007 | Non-admin user can move a card with agent role inside their group access → 200 | 🟡 Planned |
+| E2E-RBAC-008 | Non-admin user cannot approve a card outside their group access → 403 | 🟡 Planned |
+| E2E-RBAC-009 | Board detail response includes `canInteract: false` for cards outside user's access | 🟡 Planned |
+| E2E-RBAC-010 | Board detail response includes `canInteract: true` for cards within user's access | 🟡 Planned |
+| E2E-RBAC-011 | Admin sees all cards with `canInteract: true` regardless of group membership | 🟡 Planned |
+| E2E-RBAC-012 | Removing user from group immediately restricts their card access → 403 on next request | 🟡 Planned |
+| E2E-RBAC-013 | `PATCH /api/agents/:id` without admin role → 403 Forbidden | 🟡 Planned |
+| E2E-RBAC-014 | `DELETE /api/environments/:id` without admin role → 403 Forbidden | 🟡 Planned |
+| E2E-RBAC-015 | Cannot delete the last admin user → 400 | 🟡 Planned |
+| E2E-RBAC-016 | Cannot demote the last admin → 400 | 🟡 Planned |
+| E2E-RBAC-017 | Navigate to `/access` as admin → page renders Users/Groups tabs | 🟡 Planned |
+| E2E-RBAC-018 | Navigate to `/access` as non-admin → redirected to `/` | 🟡 Planned |
+| E2E-RBAC-019 | Wildcard `*` agent role grants access to all agent roles | 🟡 Planned |
+| E2E-RBAC-020 | Wildcard `*` environment grants access to all environments | 🟡 Planned |
+| E2E-RBAC-021 | "Access" nav link visible only to admin users | 🟡 Planned |
+| E2E-RBAC-022 | Kanban card with `canInteract: false` is visually muted (opacity-50) and not draggable | 🟡 Planned |
+
+---
+
 ## How to add a new scenario
 
 1. Pick the next available ID in the relevant group (never reuse a retired one).

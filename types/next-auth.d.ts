@@ -4,18 +4,20 @@ import 'next-auth/jwt';
 declare module 'next-auth' {
   interface Session {
     user: {
-      githubUsername: string;
-      avatarUrl: string;
       name?: string | null;
       email?: string | null;
       image?: string | null;
+      githubUsername: string;
+      avatarUrl: string;
+      isAdmin: boolean;
     };
   }
 }
 
 declare module 'next-auth/jwt' {
   interface JWT {
-    githubUsername?: string;
-    avatarUrl?: string;
+    githubUsername?: string | null;
+    avatarUrl?: string | null;
+    isAdmin?: boolean;
   }
 }

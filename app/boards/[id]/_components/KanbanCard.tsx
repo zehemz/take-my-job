@@ -28,7 +28,7 @@ export default function KanbanCard({ card, isDragging: overrideDragging }: Props
     transform,
     transition,
     isDragging: sortableDragging,
-  } = useSortable({ id: card.id });
+  } = useSortable({ id: card.id, disabled: !card.canInteract });
 
   const isDragging = overrideDragging || sortableDragging;
 
@@ -63,10 +63,13 @@ export default function KanbanCard({ card, isDragging: overrideDragging }: Props
       onClick={() => {
         if (!isDragging) openCardDetail(card.id);
       }}
+      title={!card.canInteract ? 'No access to this agent/environment' : undefined}
       className={`bg-zinc-800 border rounded-lg p-3 cursor-pointer shadow-sm transition-all duration-150 select-none flex flex-col gap-2 ${
-        isDragging
-          ? 'border-indigo-500 bg-zinc-700 shadow-2xl opacity-80 rotate-1 scale-105 cursor-grabbing z-50'
-          : 'border-zinc-700 hover:border-zinc-500 hover:bg-zinc-700 hover:shadow-md'
+        !card.canInteract
+          ? 'opacity-50 cursor-default border-zinc-700'
+          : isDragging
+            ? 'border-indigo-500 bg-zinc-700 shadow-2xl opacity-80 rotate-1 scale-105 cursor-grabbing z-50'
+            : 'border-zinc-700 hover:border-zinc-500 hover:bg-zinc-700 hover:shadow-md'
       }`}
     >
       {/* Title */}

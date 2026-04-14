@@ -4,6 +4,7 @@ import { mapAgentRun, mapCard, deriveCardAgentStatus } from '@/lib/api-mappers';
 import type { MoveCardRequest } from '@/lib/api-types';
 import { VALID_TRANSITIONS } from '@/lib/kanban-types';
 import { devAuth as auth } from '@/lib/dev-auth';
+import { guardCardAccess } from '@/lib/rbac';
 import { orchestrator } from '@/lib/orchestrator-instance';
 
 export async function POST(
@@ -33,6 +34,15 @@ export async function POST(
   });
   if (!existingCard) {
     return NextResponse.json({ error: 'Card not found' }, { status: 404 });
+  }
+
+  // RBAC check
+  const hasAccess = await guardCardAccess(session.user.githubUsername, existingCard);
+  if (!hasAccess) {
+    return NextResponse.json(
+      { error: 'Forbidden: no access to this agent role/environment' },
+      { status: 403 },
+    );
   }
 
   const fromType = existingCard.column.columnType;
