@@ -14,16 +14,19 @@
 | Kanban ↔ DB wiring (Zustand → API) | ✅ Shipped | — | — | — | — |
 | [Card creation UI](./features/card-creation/TECH_SPEC.md) | ✅ Shipped | — | — | ✓ | — |
 | [Create Board UI](./features/create-board/TECH_SPEC.md) | ✅ Shipped | — | — | ✓ | — |
-| [Card Detail View](./features/card-detail/DESIGN.md) | 🔵 In Design | — | ✓ | — | — |
+| [Card Detail View](./features/card-detail/) | ✅ Shipped | — | ✓ | ✓ | — |
 | [Manual card retry](./features/manual-retry/TECH_SPEC.md) | ✅ Shipped | — | — | ✓ | — |
 | [Delete Board](./features/delete-board/TECH_SPEC.md) | ✅ Shipped | — | — | ✓ | — |
 | SSE real-time updates | ✅ Shipped | — | — | — | — |
 | [E2E Testing](./features/e2e-testing/SCENARIOS.md) | 🟠 In Progress | — | — | ✓ | — |
-| [Approval Workflow](./features/approval-workflow/) | 🔵 In Design | ✓ | ✓ | — | — |
-| [Approval Confirmation Step](./features/approval-workflow/APPROVAL_CONFIRMATION_PRD.md) | 🟡 Planned | ✓ | — | — | — |
-| [Agent Management](./features/agent-management/) | 🟠 In Progress | ✓ | — | ✓ | — |
+| [Approval Workflow](./features/approval-workflow/) | ✅ Shipped | ✓ | ✓ | ✓ | — |
+| [Approval Confirmation Step](./features/approval-workflow/APPROVAL_CONFIRMATION_TECH_SPEC.md) | ✅ Shipped | ✓ | ✓ | ✓ | — |
+| [Agent Management](./features/agent-management/) | ✅ Shipped | ✓ | — | ✓ | — |
+| [Agent Details View](./features/agent-details/TECH_SPEC.md) | ✅ Shipped | — | — | ✓ | — |
 | [Board-level GitHub Repo](./features/board-github-repo/TECH_SPEC.md) | ✅ Shipped | — | — | ✓ | — |
-| [Sessions List](./features/sessions/) | 🟠 In Progress | — | — | — | — |
+| [Blocked Column + Human Reply](./features/blocked-column/TECH_SPEC.md) | ✅ Shipped | — | — | ✓ | — |
+| [Sessions List](./features/sessions/TECH_SPEC.md) | ✅ Shipped | — | — | ✓ | — |
+| [Attention Queue](./features/attention-queue/TECH_SPEC.md) | ✅ Shipped | — | — | ✓ | — |
 | [Notifications Popup](./features/notifications-popup/) | ✅ Shipped | ✓ | ✓ | ✓ | — |
 
 **Status legend:** ✅ Shipped · 🔵 In Design · 🟠 In Progress · 🟡 Planned · ⛔ Blocked
