@@ -118,6 +118,7 @@ export function mapAgentRun(run: {
   cardId: string;
   columnId?: string | null;
   role: string;
+  sessionId?: string | null;
   status: AgentRunStatus;
   attempt: number;
   output: string | null;
@@ -138,6 +139,7 @@ export function mapAgentRun(run: {
     endedAt: TERMINAL_STATUSES.has(run.status) ? run.updatedAt.toISOString() : null,
     output: run.output ?? '',
     blockedReason: run.blockedReason,
+    sessionId: run.sessionId ?? null,
     retryAfterMs: run.retryAfterMs !== null ? Number(run.retryAfterMs) : null,
   };
 }

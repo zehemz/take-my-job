@@ -176,7 +176,7 @@ export default function NewBoardModal({ onClose }: Props) {
                 className="bg-zinc-950 border border-zinc-700 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 outline-none transition-colors"
               />
               <p className="text-xs text-zinc-600">
-                Creates with 5 default columns: Backlog · In Progress · Review · Revision · Done
+                Creates with 6 default columns: Backlog · In Progress · Blocked · Review · Revision · Done
               </p>
             </div>
 

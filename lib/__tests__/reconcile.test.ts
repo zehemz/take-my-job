@@ -23,9 +23,13 @@ const activeCol: Column = {
   id: 'col-active', boardId: 'board-1', name: 'In Progress',
   position: 1, isActiveState: true, isTerminalState: false, columnType: 'active',
 }
+const blockedCol: Column = {
+  id: 'col-blocked', boardId: 'board-1', name: 'Blocked',
+  position: 2, isActiveState: false, isTerminalState: false, columnType: 'blocked',
+}
 const terminalCol: Column = {
   id: 'col-terminal', boardId: 'board-1', name: 'Done',
-  position: 2, isActiveState: false, isTerminalState: true, columnType: 'terminal',
+  position: 3, isActiveState: false, isTerminalState: true, columnType: 'terminal',
 }
 const inactiveCol: Column = {
   id: 'col-inactive', boardId: 'board-1', name: 'Backlog',
@@ -48,7 +52,7 @@ describe('reconcileRunning', () => {
       anthropic,
       broadcaster: { emit: vi.fn(), subscribe: vi.fn(() => () => {}) },
     }
-    db.columns.push(activeCol, terminalCol, inactiveCol)
+    db.columns.push(activeCol, blockedCol, terminalCol, inactiveCol)
   })
 
   it('terminal column → interruptSession, status=cancelled, removed from running+claimed', async () => {
@@ -249,6 +253,26 @@ describe('reconcileRunning', () => {
     expect(state.running.has('card-a')).toBe(false)
     expect(state.running.has('card-b')).toBe(false)
     expect(state.running.has('card-c')).toBe(true)
+  })
+
+  it('blocked run → moves card to blocked column, removed from running+claimed, session NOT interrupted', async () => {
+    const run = makeRun({ columnId: 'col-active', status: AgentRunStatus.blocked })
+    db.agentRuns.push(run)
+    db.cards.push({
+      id: 'card-1', boardId: 'board-1', columnId: 'col-active',
+      title: 'Test', description: null, acceptanceCriteria: null, role: null, position: 0, githubRepoUrl: null, githubBranch: null, requiresApproval: false, createdAt: new Date(), updatedAt: new Date(),
+    })
+    state.running.set('card-1', makeRunningEntry(run))
+    state.claimed.add('card-1')
+
+    const moveCardSpy = vi.spyOn(db, 'moveCardToColumnType')
+
+    await reconcileRunning(state, deps)
+
+    expect(moveCardSpy).toHaveBeenCalledWith('card-1', 'board-1', 'blocked')
+    expect(anthropic.interruptedSessions).toHaveLength(0)
+    expect(state.running.has('card-1')).toBe(false)
+    expect(state.claimed.has('card-1')).toBe(false)
   })
 
   it('abortController.abort() called on terminal and inactive columns', async () => {
