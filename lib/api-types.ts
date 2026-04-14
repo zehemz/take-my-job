@@ -63,6 +63,7 @@ export interface ApiCard {
   agentStatus: AgentStatus;
   currentAgentRunId: string | null;
   agentRuns: ApiAgentRun[];
+  requiresApproval: boolean;
   revisionContextNote: string | null;
   approvedBy: string | null;
   approvedAt: string | null;  // ISO 8601
@@ -94,6 +95,11 @@ export interface CreateCardRequest {
   position?: number;
   githubRepo?: string;
   githubBranch?: string;
+  requiresApproval?: boolean;
+}
+
+export interface RequestRevisionRequest {
+  reason: string;
 }
 
 export interface UpdateCardRequest {

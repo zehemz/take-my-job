@@ -289,6 +289,105 @@ test.describe('Cards', () => {
     await expect(addCardButtons).toHaveCount(inactiveCount);
   });
 
+  // ── Approval workflow ──────────────────────────────────────────────────────
+
+  test('APPROVAL-001: POST /api/cards/:id/approve without session → 401', async ({ request }) => {
+    const res = await request.post('/api/cards/some-id/approve');
+    expect(res.status()).toBe(401);
+  });
+
+  test('APPROVAL-002: POST /api/cards/:id/approve on a card not in a review column → 400', async ({ cookieHeader, request }) => {
+    const api = new KobaniApi(request, cookieHeader);
+    const boards = await api.getBoards();
+    if (boards.length === 0) { test.skip(true, 'No boards in DB'); return; }
+
+    const { board, columns } = await api.getBoard(boards[0].id);
+    const inactiveCol = columns.find((c) => c.type === 'inactive');
+    if (!inactiveCol) { test.skip(true, 'Board has no inactive column'); return; }
+
+    const card = await api.createCard(board.id, {
+      title: `E2E Approve Not Review ${Date.now()}`,
+      columnId: inactiveCol.id,
+      role: 'backend-engineer',
+    });
+
+    try {
+      const res = await request.post(`/api/cards/${card.id}/approve`, {
+        headers: { cookie: cookieHeader },
+      });
+      expect(res.status()).toBe(400);
+    } finally {
+      await api.deleteCard(card.id).catch(() => { /* already deleted */ });
+    }
+  });
+
+  test('APPROVAL-003: POST /api/cards/:id/request-revision without session → 401', async ({ request }) => {
+    const res = await request.post('/api/cards/some-id/request-revision', {
+      data: { reason: 'needs work' },
+    });
+    expect(res.status()).toBe(401);
+  });
+
+  test('APPROVAL-004: PATCH /api/cards/:id/move with invalid transition (active → terminal) → 400', async ({ cookieHeader, request }) => {
+    const api = new KobaniApi(request, cookieHeader);
+    const boards = await api.getBoards();
+    if (boards.length === 0) { test.skip(true, 'No boards in DB'); return; }
+
+    const { board, columns } = await api.getBoard(boards[0].id);
+    const inactiveCol = columns.find((c) => c.type === 'inactive');
+    const activeCol = columns.find((c) => c.type === 'active');
+    const terminalCol = columns.find((c) => c.type === 'terminal');
+
+    if (!inactiveCol || !activeCol || !terminalCol) {
+      test.skip(true, 'Board is missing inactive, active, or terminal column');
+      return;
+    }
+
+    const card = await api.createCard(board.id, {
+      title: `E2E Invalid Transition ${Date.now()}`,
+      columnId: inactiveCol.id,
+      role: 'backend-engineer',
+    });
+
+    try {
+      // Move from inactive → active (valid)
+      await api.moveCard(card.id, { columnId: activeCol.id });
+
+      // Attempt active → terminal (invalid)
+      const res = await request.patch(`/api/cards/${card.id}/move`, {
+        headers: { cookie: cookieHeader, 'Content-Type': 'application/json' },
+        data: { columnId: terminalCol.id },
+      });
+      expect(res.status()).toBe(400);
+    } finally {
+      await api.deleteCard(card.id).catch(() => { /* already deleted */ });
+    }
+  });
+
+  test('APPROVAL-005: POST /api/boards/:id/cards with requiresApproval: true → field persists on fetch', async ({ cookieHeader, request }) => {
+    const api = new KobaniApi(request, cookieHeader);
+    const boards = await api.getBoards();
+    if (boards.length === 0) { test.skip(true, 'No boards in DB'); return; }
+
+    const { board, columns } = await api.getBoard(boards[0].id);
+    const inactiveCol = columns.find((c) => c.type === 'inactive');
+    if (!inactiveCol) { test.skip(true, 'Board has no inactive column'); return; }
+
+    const card = await api.createCard(board.id, {
+      title: `E2E Requires Approval ${Date.now()}`,
+      columnId: inactiveCol.id,
+      role: 'backend-engineer',
+      requiresApproval: true,
+    });
+
+    try {
+      const fetched = await api.getCard(card.id);
+      expect(fetched.requiresApproval).toBe(true);
+    } finally {
+      await api.deleteCard(card.id).catch(() => { /* already deleted */ });
+    }
+  });
+
   test('E2E-CARD-013: save updates title, cancel discards changes', async ({ authedPage: page, cookieHeader, request }) => {
     const api = new KobaniApi(request, cookieHeader);
     const boards = await api.getBoards();

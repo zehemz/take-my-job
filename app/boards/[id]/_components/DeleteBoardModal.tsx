@@ -58,8 +58,8 @@ export default function DeleteBoardModal({ board, onClose }: Props) {
           </p>
 
           <div className="flex flex-col gap-1.5">
-            <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">
-              Type <span className="text-zinc-200 font-mono">{board.name}</span> to confirm
+            <label className="text-xs font-semibold text-zinc-400 tracking-wider">
+              Type the board name to confirm
             </label>
             <input
               type="text"

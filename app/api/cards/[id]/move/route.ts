@@ -19,10 +19,35 @@ export async function POST(
     return NextResponse.json({ error: 'columnId is required' }, { status: 400 });
   }
 
-  // Verify the column exists
-  const column = await prisma.column.findUnique({ where: { id: columnId } });
-  if (!column) {
+  // Verify the target column exists
+  const targetColumn = await prisma.column.findUnique({ where: { id: columnId } });
+  if (!targetColumn) {
     return NextResponse.json({ error: 'Column not found' }, { status: 404 });
+  }
+
+  // Fetch the card's current column to validate the transition
+  const existingCard = await prisma.card.findUnique({
+    where: { id: params.id },
+    include: { column: true },
+  });
+  if (!existingCard) {
+    return NextResponse.json({ error: 'Card not found' }, { status: 404 });
+  }
+
+  const VALID_TRANSITIONS: Record<string, string[]> = {
+    inactive: ['active'],
+    active: ['active', 'review', 'revision'],
+    review: ['terminal', 'revision'],
+    revision: ['active'],
+    terminal: [],
+  };
+
+  const allowed = VALID_TRANSITIONS[existingCard.column.columnType] ?? [];
+  if (!allowed.includes(targetColumn.columnType)) {
+    return NextResponse.json(
+      { error: `Invalid column transition: ${existingCard.column.columnType} → ${targetColumn.columnType}` },
+      { status: 400 },
+    );
   }
 
   // Compute position if not provided
@@ -42,12 +67,15 @@ export async function POST(
       position: targetPosition,
       movedToColumnAt: new Date(),
     },
-    include: { agentRuns: { orderBy: { createdAt: 'asc' } } },
+    include: {
+      agentRuns: { orderBy: { createdAt: 'asc' } },
+      column: { select: { columnType: true } },
+    },
   });
 
   await orchestrator.notifyCardMoved(params.id, columnId);
 
   const mappedRuns = card.agentRuns.map(mapAgentRun);
   const agentStatus = deriveCardAgentStatus(card.agentRuns);
-  return NextResponse.json(mapCard(card, mappedRuns, agentStatus));
+  return NextResponse.json(mapCard(card, mappedRuns, agentStatus, card.column.columnType));
 }

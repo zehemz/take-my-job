@@ -53,6 +53,7 @@ export interface Card {
   agentStatus: AgentStatus;
   currentAgentRunId: string | null;
   agentRuns: AgentRun[];
+  requiresApproval: boolean;
   revisionContextNote: string | null;
   approvedBy: string | null;
   approvedAt: string | null;

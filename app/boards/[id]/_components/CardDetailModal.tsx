@@ -151,6 +151,17 @@ function RevisionContextForm({ cardId }: { cardId: string }) {
   );
 }
 
+// ─── PendingApprovalBanner ────────────────────────────────────────────────────
+
+function PendingApprovalBanner() {
+  return (
+    <div className="mx-6 mt-2 bg-indigo-950 border border-indigo-800 rounded-lg px-4 py-3 shrink-0">
+      <p className="text-sm text-indigo-200 font-medium">This card is awaiting your review.</p>
+      <p className="text-xs text-indigo-400 mt-1">All acceptance criteria passed. Approve to close or request changes.</p>
+    </div>
+  );
+}
+
 // ─── PendingApprovalActions ───────────────────────────────────────────────────
 
 function PendingApprovalActions({ cardId }: { cardId: string }) {
@@ -320,10 +331,6 @@ export default function CardDetailModal() {
   const [deleteNote, setDeleteNote] = useState('');
   const deleteTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── 5. Footer retry state ─────────────────────────────────────────────────
-  const [footerRetrying, setFooterRetrying] = useState(false);
-  const [footerRetryError, setFooterRetryError] = useState('');
-
   async function fetchCard(cardId: string) {
     try {
       setLoadingCard(true);
@@ -451,6 +458,7 @@ export default function CardDetailModal() {
         githubBranch: apiCard.githubBranch,
         approvedBy: apiCard.approvedBy,
         approvedAt: apiCard.approvedAt,
+        requiresApproval: apiCard.requiresApproval ?? storeCard.requiresApproval,
         movedToColumnAt: apiCard.movedToColumnAt ?? storeCard.movedToColumnAt,
         revisionContextNote: apiCard.revisionContextNote,
         maxAttempts: apiCard.maxAttempts,
@@ -584,23 +592,6 @@ export default function CardDetailModal() {
     }
   }
 
-  async function handleFooterRetry() {
-    setFooterRetrying(true);
-    setFooterRetryError('');
-    try {
-      const res = await fetch(`/api/cards/${card.id}/retry`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-      if (!res.ok) throw new Error('retry failed');
-      fetchCard(card.id);
-    } catch {
-      setFooterRetryError('Could not retry. Try again.');
-    } finally {
-      setFooterRetrying(false);
-    }
-  }
-
   // ── Render ─────────────────────────────────────────────────────────────────
 
   const isSaving = (field: EditingField) => savingField === field;
@@ -670,6 +661,9 @@ export default function CardDetailModal() {
             ✕
           </button>
         </div>
+
+        {/* Pending-approval banner */}
+        {card.agentStatus === 'pending-approval' && <PendingApprovalBanner />}
 
         {/* Meta row */}
         {currentRun && (
@@ -960,20 +954,6 @@ export default function CardDetailModal() {
               </>
             )}
           </div>
-          {card.agentStatus === 'failed' && (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleFooterRetry}
-                disabled={footerRetrying}
-                className={`bg-indigo-600 hover:bg-indigo-500 text-white rounded-md px-3 py-1.5 text-sm font-medium transition-colors cursor-pointer${footerRetrying ? ' opacity-60 pointer-events-none' : ''}`}
-              >
-                {footerRetrying ? 'Retrying…' : 'Retry now'}
-              </button>
-              {footerRetryError && (
-                <span className="text-red-400 text-xs">{footerRetryError}</span>
-              )}
-            </div>
-          )}
         </div>
       </div>
     </div>

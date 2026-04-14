@@ -12,6 +12,7 @@ export interface IDbQueries {
   getRetryEligibleRuns(): Promise<AgentRun[]>;
   getColumnByName(boardId: string, name: string): Promise<Column | null>;
   getBoardColumns(boardId: string): Promise<Column[]>;
+  moveCardToColumnType(cardId: string, boardId: string, targetColumnType: 'review' | 'terminal'): Promise<void>;
 }
 
 /** Typed events emitted by the Anthropic Managed Agents SSE stream. */

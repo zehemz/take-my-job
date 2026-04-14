@@ -59,6 +59,18 @@ IDs are stable — never reuse a retired ID.
 
 ---
 
+## Approval workflow (`e2e/card.spec.ts`)
+
+| ID | Scenario | Status |
+|----|----------|--------|
+| APPROVAL-001 | `POST /api/cards/:id/approve` without session → 401 | ✅ Implemented |
+| APPROVAL-002 | `POST /api/cards/:id/approve` on a card not in a review column → 400 | ✅ Implemented |
+| APPROVAL-003 | `POST /api/cards/:id/request-revision` without session → 401 | ✅ Implemented |
+| APPROVAL-004 | `PATCH /api/cards/:id/move` with invalid transition (active → terminal) → 400 | ✅ Implemented |
+| APPROVAL-005 | `POST /api/boards/:id/cards` with `requiresApproval: true` → field persists on fetch | ✅ Implemented |
+
+---
+
 ## Board management (`e2e/board.spec.ts`)
 
 | ID | Scenario | Status |

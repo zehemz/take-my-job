@@ -120,4 +120,8 @@ export class StubDbQueries implements IDbQueries {
   async getBoardColumns(boardId: string): Promise<Column[]> {
     return this.columns.filter((c) => c.boardId === boardId).sort((a, b) => a.position - b.position);
   }
+
+  async moveCardToColumnType(_cardId: string, _boardId: string, _targetColumnType: 'review' | 'terminal'): Promise<void> {
+    // no-op in tests
+  }
 }

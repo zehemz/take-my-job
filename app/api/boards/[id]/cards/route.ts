@@ -12,7 +12,7 @@ export async function POST(
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body: CreateCardRequest = await req.json();
-  const { title, columnId, description, acceptanceCriteria, role, githubRepo, githubBranch } = body;
+  const { title, columnId, description, acceptanceCriteria, role, githubRepo, githubBranch, requiresApproval } = body;
 
   if (!title || !columnId) {
     return NextResponse.json({ error: 'title and columnId are required' }, { status: 400 });
@@ -48,9 +48,13 @@ export async function POST(
       position,
       githubRepoUrl: githubRepo ?? null,
       githubBranch: githubBranch ?? null,
+      requiresApproval: requiresApproval ?? false,
     },
-    include: { agentRuns: true },
+    include: {
+      agentRuns: true,
+      column: { select: { columnType: true } },
+    },
   });
 
-  return NextResponse.json(mapCard(card, [], 'idle'), { status: 201 });
+  return NextResponse.json(mapCard(card, [], 'idle', card.column.columnType), { status: 201 });
 }

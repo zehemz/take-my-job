@@ -13,13 +13,16 @@ export async function GET(
 
   const card = await prisma.card.findUnique({
     where: { id: params.id },
-    include: { agentRuns: { orderBy: { createdAt: 'asc' } } },
+    include: {
+      agentRuns: { orderBy: { createdAt: 'asc' } },
+      column: { select: { columnType: true } },
+    },
   });
   if (!card) return NextResponse.json({ error: 'Card not found' }, { status: 404 });
 
   const mappedRuns = card.agentRuns.map(mapAgentRun);
   const agentStatus = deriveCardAgentStatus(card.agentRuns);
-  return NextResponse.json(mapCard(card, mappedRuns, agentStatus));
+  return NextResponse.json(mapCard(card, mappedRuns, agentStatus, card.column.columnType));
 }
 
 export async function PATCH(
@@ -50,12 +53,15 @@ export async function PATCH(
         approvedAt: new Date(),
       }),
     },
-    include: { agentRuns: { orderBy: { createdAt: 'asc' } } },
+    include: {
+      agentRuns: { orderBy: { createdAt: 'asc' } },
+      column: { select: { columnType: true } },
+    },
   });
 
   const mappedRuns = card.agentRuns.map(mapAgentRun);
   const agentStatus = deriveCardAgentStatus(card.agentRuns);
-  return NextResponse.json(mapCard(card, mappedRuns, agentStatus));
+  return NextResponse.json(mapCard(card, mappedRuns, agentStatus, card.column.columnType));
 }
 
 export async function DELETE(

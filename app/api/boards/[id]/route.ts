@@ -13,6 +13,10 @@ export async function DELETE(
   const board = await prisma.board.findUnique({ where: { id: params.id } });
   if (!board) return NextResponse.json({ error: 'Board not found' }, { status: 404 });
 
+  // Delete in FK dependency order: AgentRuns → Cards → Columns → Board
+  await prisma.agentRun.deleteMany({ where: { card: { boardId: params.id } } });
+  await prisma.card.deleteMany({ where: { boardId: params.id } });
+  await prisma.column.deleteMany({ where: { boardId: params.id } });
   await prisma.board.delete({ where: { id: params.id } });
   return new NextResponse(null, { status: 204 });
 }
@@ -34,7 +38,10 @@ export async function GET(
     }),
     prisma.card.findMany({
       where: { boardId: params.id },
-      include: { agentRuns: { orderBy: { createdAt: 'asc' } } },
+      include: {
+        agentRuns: { orderBy: { createdAt: 'asc' } },
+        column: { select: { columnType: true } },
+      },
       orderBy: [{ position: 'asc' }],
     }),
   ]);
@@ -45,7 +52,7 @@ export async function GET(
     cards: cards.map((c) => {
       const mappedRuns = c.agentRuns.map(mapAgentRun);
       const agentStatus = deriveCardAgentStatus(c.agentRuns);
-      return mapCard(c, mappedRuns, agentStatus);
+      return mapCard(c, mappedRuns, agentStatus, c.column.columnType);
     }),
   });
 }

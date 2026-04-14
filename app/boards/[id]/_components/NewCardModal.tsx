@@ -30,6 +30,7 @@ export default function NewCardModal({ columnId, boardId, onClose }: Props) {
   const [criteriaText, setCriteriaText] = useState('');
   const [githubRepo, setGithubRepo] = useState('');
   const [githubBranch, setGithubBranch] = useState('');
+  const [requiresApproval, setRequiresApproval] = useState(true);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -54,6 +55,7 @@ export default function NewCardModal({ columnId, boardId, onClose }: Props) {
       acceptanceCriteria: criteria,
       githubRepo: githubRepo.trim() || undefined,
       githubBranch: githubBranch.trim() || undefined,
+      requiresApproval,
     });
 
     if (result) {
@@ -168,6 +170,25 @@ export default function NewCardModal({ columnId, boardId, onClose }: Props) {
                 className="bg-zinc-950 border border-zinc-700 focus:border-indigo-500 rounded-lg px-3 py-2 text-sm text-zinc-100 placeholder-zinc-600 outline-none transition-colors"
               />
             </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5 py-3 border-t border-zinc-800">
+            <label className="flex items-center gap-2.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={requiresApproval}
+                onChange={(e) => setRequiresApproval(e.target.checked)}
+                className="w-4 h-4 rounded border border-zinc-600 bg-zinc-950 accent-indigo-600 cursor-pointer shrink-0"
+              />
+              <span className="text-sm text-zinc-200 font-medium">
+                Requires human approval before closing
+              </span>
+            </label>
+            <p className="text-xs text-zinc-500 ml-[26px]">
+              {requiresApproval
+                ? 'Agent output will go to review before this card can be closed.'
+                : 'This card will close automatically when all criteria pass.'}
+            </p>
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-2 border-t border-zinc-800">

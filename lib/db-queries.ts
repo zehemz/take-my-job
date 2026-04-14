@@ -145,4 +145,15 @@ export const dbQueries: IDbQueries = {
     });
     return columns as unknown as Column[];
   },
+
+  async moveCardToColumnType(cardId: string, boardId: string, targetColumnType: 'review' | 'terminal'): Promise<void> {
+    const col = await prisma.column.findFirst({
+      where: { boardId, columnType: targetColumnType },
+    });
+    if (!col) throw new Error(`No ${targetColumnType} column on board ${boardId}`);
+    await prisma.card.update({
+      where: { id: cardId },
+      data: { columnId: col.id, movedToColumnAt: new Date() },
+    });
+  },
 };

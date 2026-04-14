@@ -12,7 +12,10 @@ export async function POST(
 
   const card = await prisma.card.findUnique({
     where: { id: params.id },
-    include: { agentRuns: { orderBy: { createdAt: 'desc' } } },
+    include: {
+      agentRuns: { orderBy: { createdAt: 'desc' } },
+      column: { select: { columnType: true } },
+    },
   });
   if (!card) return NextResponse.json({ error: 'Card not found' }, { status: 404 });
 
@@ -35,13 +38,13 @@ export async function POST(
       data: { retryAfterMs: BigInt(Date.now()) },
     });
   } else if (latestRun.status === 'failed') {
-    // Permanently failed — create a fresh run at attempt 1
+    // Permanently failed — create a fresh run at the next attempt number
     await prisma.agentRun.create({
       data: {
         cardId: card.id,
         role: latestRun.role,
         status: 'pending',
-        attempt: 1,
+        attempt: latestRun.attempt + 1,
       },
     });
   } else {
@@ -51,11 +54,14 @@ export async function POST(
   // Re-fetch card with updated runs and return ApiCard
   const updated = await prisma.card.findUnique({
     where: { id: params.id },
-    include: { agentRuns: { orderBy: { createdAt: 'asc' } } },
+    include: {
+      agentRuns: { orderBy: { createdAt: 'asc' } },
+      column: { select: { columnType: true } },
+    },
   });
   if (!updated) return NextResponse.json({ error: 'Card not found' }, { status: 404 });
 
   const mappedRuns = updated.agentRuns.map(mapAgentRun);
   const agentStatus = deriveCardAgentStatus(updated.agentRuns);
-  return NextResponse.json(mapCard(updated, mappedRuns, agentStatus));
+  return NextResponse.json(mapCard(updated, mappedRuns, agentStatus, updated.column.columnType));
 }

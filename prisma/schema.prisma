@@ -42,6 +42,7 @@ model Card {
   githubRepoUrl       String?
   githubBranch        String?
   movedToColumnAt     DateTime?
+  requiresApproval    Boolean    @default(false)
   revisionContextNote String?
   approvedBy          String?
   approvedAt          DateTime?

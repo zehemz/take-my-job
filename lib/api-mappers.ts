@@ -154,6 +154,7 @@ export function mapCard(
     role: string | null;
     githubRepoUrl: string | null;
     githubBranch: string | null;
+    requiresApproval: boolean;
     movedToColumnAt: Date | null;
     revisionContextNote: string | null;
     approvedBy: string | null;
@@ -163,7 +164,15 @@ export function mapCard(
   },
   mappedRuns: ApiAgentRun[],
   agentStatus: AgentStatus,
+  columnType?: string,
 ): ApiCard {
+  // Post-hoc override: if the agent completed and the card is in a review column,
+  // surface 'pending-approval' status to the client.
+  let effectiveAgentStatus = agentStatus;
+  if (agentStatus === 'completed' && columnType === 'review') {
+    effectiveAgentStatus = 'pending-approval';
+  }
+
   const currentRun =
     mappedRuns.find((r) => r.status === 'running') ??
     mappedRuns.find((r) => r.status === 'blocked') ??
@@ -180,7 +189,8 @@ export function mapCard(
     role: (card.role ?? 'backend-engineer') as AgentRole,
     githubRepo: card.githubRepoUrl,
     githubBranch: card.githubBranch,
-    agentStatus,
+    requiresApproval: card.requiresApproval,
+    agentStatus: effectiveAgentStatus,
     currentAgentRunId: currentRun?.id ?? null,
     agentRuns: mappedRuns,
     revisionContextNote: card.revisionContextNote,

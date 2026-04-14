@@ -18,9 +18,10 @@ const COLUMN_TYPE_LABEL: Record<string, { label: string; color: string }> = {
 
 interface Props {
   column: ColumnType;
+  isValidDropTarget?: boolean;
 }
 
-export default function Column({ column }: Props) {
+export default function Column({ column, isValidDropTarget = true }: Props) {
   // Select full array, derive column-filtered list with useMemo.
   // Inline .filter().sort() selector creates new refs on every useSyncExternalStore
   // call → triggers infinite re-render loop in React 18 + Zustand 5.
@@ -45,8 +46,8 @@ export default function Column({ column }: Props) {
         data-testid="column"
         data-column-id={column.id}
         className={`w-72 shrink-0 flex flex-col bg-zinc-900 border border-zinc-800 rounded-xl h-full transition-all duration-150 ${
-          isOver ? 'ring-2 ring-indigo-500 ring-inset' : ''
-        }`}
+          isOver && isValidDropTarget ? 'ring-2 ring-indigo-500 ring-inset' : ''
+        } ${!isValidDropTarget ? 'opacity-40 transition-opacity duration-150' : ''}`}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-3 py-2.5 shrink-0">
@@ -69,7 +70,7 @@ export default function Column({ column }: Props) {
         {/* Card list */}
         <SortableContext items={cardIds} strategy={verticalListSortingStrategy}>
           <div className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col gap-2 px-2 py-2">
-            {cards.length === 0 && isOver && (
+            {cards.length === 0 && isOver && isValidDropTarget && (
               <div className="border-2 border-dashed border-indigo-700 rounded-lg h-16 flex items-center justify-center">
                 <span className="text-xs text-indigo-600">Drop here</span>
               </div>

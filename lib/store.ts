@@ -31,8 +31,8 @@ interface KobaniState {
   closeCardDetail: () => void;
 
   // Attention Queue actions
-  approveCard: (cardId: string) => void;
-  requestRevision: (cardId: string, reason: string) => void;
+  approveCard: (cardId: string) => Promise<void>;
+  requestRevision: (cardId: string, reason: string) => Promise<void>;
   sendRevisionContext: (cardId: string, note: string) => void;
   openAttentionDrawer: () => void;
   closeAttentionDrawer: () => void;
@@ -42,7 +42,7 @@ interface KobaniState {
   fetchBoards: () => Promise<void>;
   createBoardApi: (name: string) => Promise<string | null>; // returns new board id
   deleteBoardApi: (id: string) => Promise<boolean>;
-  moveCardApi: (cardId: string, columnId: string, position?: number) => Promise<void>;
+  moveCardApi: (cardId: string, columnId: string, position?: number) => Promise<boolean>;
   createCardApi: (boardId: string, payload: {
     title: string;
     columnId: string;
@@ -51,6 +51,7 @@ interface KobaniState {
     role?: string;
     githubRepo?: string;
     githubBranch?: string;
+    requiresApproval?: boolean;
   }) => Promise<unknown>;
 }
 
@@ -139,6 +140,7 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
         agentStatus: 'idle',
         currentAgentRunId: null,
         agentRuns: [],
+        requiresApproval: false,
         revisionContextNote: null,
         approvedBy: null,
         approvedAt: null,
@@ -211,41 +213,31 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
   openCardDetail: (cardId) => set({ selectedCardId: cardId }),
   closeCardDetail: () => set({ selectedCardId: null }),
 
-  approveCard: (cardId) =>
-    set((state) => ({
-      cards: state.cards.map((c) => {
-        if (c.id !== cardId) return c;
-        // Move to terminal column of the same board
-        const terminalCol = state.columns.find(
-          (col) => col.boardId === c.boardId && col.type === 'terminal'
-        );
-        return {
-          ...c,
-          agentStatus: 'completed',
-          approvedBy: '@lucas',
-          approvedAt: new Date().toISOString(),
-          columnId: terminalCol ? terminalCol.id : c.columnId,
-          updatedAt: new Date().toISOString(),
-        };
-      }),
-    })),
+  approveCard: async (cardId) => {
+    const card = get().cards.find(c => c.id === cardId);
+    if (!card) return;
+    const res = await fetch(`/api/cards/${cardId}/approve`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+    if (res.ok) {
+      await get().fetchBoard(card.boardId);
+    }
+  },
 
-  requestRevision: (cardId, reason) =>
-    set((state) => ({
-      cards: state.cards.map((c) => {
-        if (c.id !== cardId) return c;
-        const revisionCol = state.columns.find(
-          (col) => col.boardId === c.boardId && col.type === 'revision'
-        );
-        return {
-          ...c,
-          agentStatus: 'evaluation-failed',
-          revisionContextNote: reason,
-          columnId: revisionCol ? revisionCol.id : c.columnId,
-          updatedAt: new Date().toISOString(),
-        };
-      }),
-    })),
+  requestRevision: async (cardId, reason) => {
+    const card = get().cards.find(c => c.id === cardId);
+    if (!card) return;
+    const res = await fetch(`/api/cards/${cardId}/request-revision`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ reason }),
+    });
+    if (res.ok) {
+      await get().fetchBoard(card.boardId);
+    }
+  },
 
   sendRevisionContext: (cardId, note) =>
     set((state) => ({
@@ -310,6 +302,7 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
           blockedReason: r.blockedReason,
           retryAfterMs: r.retryAfterMs,
         })),
+        requiresApproval: card.requiresApproval ?? false,
         revisionContextNote: card.revisionContextNote,
         approvedBy: card.approvedBy,
         approvedAt: card.approvedAt,
@@ -358,13 +351,14 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
       credentials: 'include',
       body: JSON.stringify({ columnId, position }),
     });
-    if (!res.ok) return;
+    if (!res.ok) return false;
     const card = await res.json();
     get().updateCard(card.id, {
       columnId: card.columnId,
       position: card.position,
       movedToColumnAt: card.movedToColumnAt,
     });
+    return true;
   },
 
   createCardApi: async (boardId: string, payload: {
@@ -375,6 +369,7 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
     role?: string;
     githubRepo?: string;
     githubBranch?: string;
+    requiresApproval?: boolean;
   }) => {
     const res = await fetch(`/api/boards/${boardId}/cards`, {
       method: 'POST',
