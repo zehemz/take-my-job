@@ -16,6 +16,10 @@ function getAllowedUsers(): Set<string> {
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  // Trust Vercel's x-forwarded-host header so Auth.js can construct the correct
+  // callback URL on preview deployments whose host differs from AUTH_URL.
+  // Safe because Vercel strips/overwrites that header from untrusted upstream callers.
+  trustHost: true,
   providers: [
     GitHub({
       clientId: process.env.GITHUB_CLIENT_ID,

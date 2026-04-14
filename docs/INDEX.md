@@ -50,6 +50,7 @@
 - [ADR-005 — Requires-approval per card](./architecture/decisions/ADR-005-requires-approval-per-card.md)
 - [ADR-006 — Mutation loading states](./architecture/decisions/ADR-006-mutation-loading-states.md)
 - [ADR-007 — Anthropic as source of truth for agent data](./architecture/decisions/ADR-007-anthropic-as-agent-source-of-truth.md)
+- [ADR-008 — OAuth on Vercel preview environments](./architecture/decisions/ADR-008-oauth-preview-environments.md)
 
 ---
 
