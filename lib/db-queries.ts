@@ -16,40 +16,52 @@ export const dbQueries: IDbQueries = {
       orderBy: [{ position: "asc" }, { createdAt: "asc" }],
     });
 
+    // Batch-load all agent runs for candidate cards in a single query
+    // to avoid 3N queries (N = number of candidate cards).
+    const cardIds = cards.map((c) => c.id);
+    const allRuns =
+      cardIds.length > 0
+        ? await prisma.agentRun.findMany({
+            where: { cardId: { in: cardIds } },
+          })
+        : [];
+
+    // Group runs by cardId for O(1) lookup
+    const runsByCard = new Map<string, typeof allRuns>();
+    for (const run of allRuns) {
+      if (!runsByCard.has(run.cardId)) runsByCard.set(run.cardId, []);
+      runsByCard.get(run.cardId)!.push(run);
+    }
+
     // Filter out cards that already have a running/idle run,
     // a future retry, or a completed run for the current column
+    const now = BigInt(Date.now());
     const eligible: Card[] = [];
     for (const card of cards) {
-      const activeRun = await prisma.agentRun.findFirst({
-        where: {
-          cardId: card.id,
-          status: { in: ["pending", "running", "idle"] },
-        },
-      });
-      if (activeRun) continue;
+      const runs = runsByCard.get(card.id) ?? [];
 
-      const futureRetry = await prisma.agentRun.findFirst({
-        where: {
-          cardId: card.id,
-          status: "failed",
-          retryAfterMs: { gt: BigInt(Date.now()) },
-        },
-      });
-      if (futureRetry) continue;
+      const hasActive = runs.some((r) =>
+        ["pending", "running", "idle"].includes(r.status),
+      );
+      if (hasActive) continue;
+
+      const hasFutureRetry = runs.some(
+        (r) =>
+          r.status === "failed" &&
+          r.retryAfterMs !== null &&
+          r.retryAfterMs > now,
+      );
+      if (hasFutureRetry) continue;
 
       // Only block dispatch if the card was completed *during its current stint*
       // in this column. A card returned via revision may have old completed runs
       // from prior stints — those should not prevent a fresh dispatch.
-      const completedInColumn = await prisma.agentRun.findFirst({
-        where: {
-          cardId: card.id,
-          status: "completed",
-          ...(card.movedToColumnAt
-            ? { createdAt: { gte: card.movedToColumnAt } }
-            : {}),
-        },
-      });
-      if (completedInColumn) continue;
+      const hasCompletedInColumn = runs.some(
+        (r) =>
+          r.status === "completed" &&
+          (!card.movedToColumnAt || r.createdAt >= card.movedToColumnAt),
+      );
+      if (hasCompletedInColumn) continue;
 
       eligible.push(card as unknown as Card);
       if (eligible.length >= maxConcurrent) break;
@@ -182,13 +194,21 @@ export const dbQueries: IDbQueries = {
     return run as unknown as AgentRun | null;
   },
 
-  async claimAndCreateAgentRun(cardId: string, columnId: string, role: string, attempt: number): Promise<AgentRun | null> {
+  async claimAndCreateAgentRun(cardId: string, columnId: string, role: string, attempt: number, maxConcurrent?: number): Promise<AgentRun | null> {
     return prisma.$transaction(async (tx) => {
       const locked: Array<{ id: string }> = await tx.$queryRawUnsafe(
         `SELECT id FROM "Card" WHERE id = $1 FOR UPDATE SKIP LOCKED`,
         cardId,
       );
       if (locked.length === 0) return null;
+
+      // Global slot check inside transaction to prevent race conditions
+      if (maxConcurrent !== undefined) {
+        const activeCount = await tx.agentRun.count({
+          where: { status: { in: ["running", "idle", "pending"] } },
+        });
+        if (activeCount >= maxConcurrent) return null;
+      }
 
       const blockingRun = await tx.agentRun.findFirst({
         where: { cardId, status: { in: ["running", "idle", "pending", "completed", "blocked"] } },
@@ -257,4 +277,35 @@ export const dbQueries: IDbQueries = {
       data: { retryAfterMs: null },
     });
   },
+
+  async countRunEvents(runId: string, type: string): Promise<number> {
+    return prisma.orchestratorEvent.count({
+      where: { runId, type },
+    });
+  },
+
+  async hasRunEvent(runId: string, type: string): Promise<boolean> {
+    const event = await prisma.orchestratorEvent.findFirst({
+      where: { runId, type },
+      select: { id: true },
+    });
+    return event !== null;
+  },
+
 };
+
+/**
+ * Convenience query for API routes: fetches a card with agent runs (asc),
+ * column type, and dependency IDs — the shape every card endpoint needs.
+ * Standalone function (not on IDbQueries) since only API routes use it.
+ */
+export async function getCardForApi(cardId: string) {
+  return prisma.card.findUnique({
+    where: { id: cardId },
+    include: {
+      agentRuns: { orderBy: { createdAt: 'asc' as const } },
+      column: { select: { columnType: true } },
+      dependsOn: { select: { id: true } },
+    },
+  });
+}

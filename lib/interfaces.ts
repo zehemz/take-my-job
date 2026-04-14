@@ -15,13 +15,15 @@ export interface IDbQueries {
   getBoardColumns(boardId: string): Promise<Column[]>;
   moveCardToColumnType(cardId: string, boardId: string, targetColumnType: 'review' | 'terminal' | 'blocked'): Promise<void>;
   getActiveRunForCard(cardId: string): Promise<AgentRun | null>;
-  claimAndCreateAgentRun(cardId: string, columnId: string, role: string, attempt: number): Promise<AgentRun | null>;
+  claimAndCreateAgentRun(cardId: string, columnId: string, role: string, attempt: number, maxConcurrent?: number): Promise<AgentRun | null>;
   countActiveRuns(): Promise<number>;
   getActiveRuns(): Promise<Array<AgentRun & { card: Card & { column: Column } }>>;
   insertOrchestratorEvent(event: { boardId: string; cardId: string; runId?: string; type: string; payload: Record<string, unknown> }): Promise<void>;
   getOrchestratorEventsSince(since: Date, types: string[]): Promise<OrchestratorEvent[]>;
   getCardEventsSince(cardId: string, since: Date): Promise<OrchestratorEvent[]>;
   clearRetryAfter(runId: string): Promise<void>;
+  countRunEvents(runId: string, type: string): Promise<number>;
+  hasRunEvent(runId: string, type: string): Promise<boolean>;
 }
 
 /** Typed events emitted by the Anthropic Managed Agents SSE stream. */

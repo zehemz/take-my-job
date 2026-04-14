@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import { waitUntil } from '@vercel/functions';
 import { prisma } from '@/lib/db';
-import { mapAgentRun, mapCard, deriveCardAgentStatus } from '@/lib/api-mappers';
+import { deriveCardAgentStatus, toCardResponse } from '@/lib/api-mappers';
 import type { MoveCardRequest } from '@/lib/api-types';
 import { VALID_TRANSITIONS } from '@/lib/kanban-types';
 import { devAuth as auth } from '@/lib/dev-auth';
-import { guardCardAccess } from '@/lib/rbac';
+import { requireCardAccess } from '@/lib/rbac';
 import { orchestrator } from '@/lib/orchestrator-instance';
 import { run as runAgent } from '@/lib/agent-runner';
 import { dbQueries } from '@/lib/db-queries';
@@ -41,18 +41,16 @@ export async function POST(
     return NextResponse.json({ error: 'Card not found' }, { status: 404 });
   }
 
-  // RBAC check
-  try {
-    const hasAccess = await guardCardAccess(session.user.githubUsername, existingCard);
-    if (!hasAccess) {
-      return NextResponse.json(
-        { error: 'Forbidden: no access to this agent role/environment' },
-        { status: 403 },
-      );
-    }
-  } catch (rbacErr) {
-    console.error('[move] RBAC check failed, allowing as fallback:', rbacErr);
+  // Ensure the target column belongs to the same board as the card
+  if (targetColumn.boardId !== existingCard.column.boardId) {
+    return NextResponse.json(
+      { error: 'Target column does not belong to the same board as the card' },
+      { status: 400 },
+    );
   }
+
+  const forbidden = await requireCardAccess(session.user.githubUsername, existingCard);
+  if (forbidden) return forbidden;
 
   const fromType = existingCard.column.columnType;
   const toType = targetColumn.columnType;
@@ -127,7 +125,5 @@ export async function POST(
     );
   }
 
-  const mappedRuns = card.agentRuns.map(mapAgentRun);
-  const agentStatus = deriveCardAgentStatus(card.agentRuns);
-  return NextResponse.json(mapCard(card, mappedRuns, agentStatus, card.column.columnType));
+  return NextResponse.json(toCardResponse(card));
 }

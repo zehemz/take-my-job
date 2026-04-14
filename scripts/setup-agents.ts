@@ -67,16 +67,29 @@ const UPDATE_CARD_TOOL = {
 };
 
 async function setupEnvironment(): Promise<string> {
-  // Check if we already have an environment stored
+  const ENV_NAME = "kobani-env";
+
+  // Check if we already have an environment stored in the DB
   const existingConfig = await prisma.agentConfig.findFirst();
   if (existingConfig?.anthropicEnvironmentId) {
     console.log(`Environment already exists: ${existingConfig.anthropicEnvironmentId}`);
     return existingConfig.anthropicEnvironmentId;
   }
 
+  // Check Anthropic for an existing environment with the same name (find-or-create)
+  const existing = await beta.environments.list({ limit: 100 });
+  const match = (existing.data ?? []).find(
+    (e: { name: string; archived_at: string | null }) =>
+      e.name === ENV_NAME && !e.archived_at,
+  );
+  if (match) {
+    console.log(`Found existing Anthropic environment "${ENV_NAME}": ${match.id}`);
+    return match.id;
+  }
+
   console.log("Creating shared environment...");
   const env = await beta.environments.create({
-    name: "kobani-env",
+    name: ENV_NAME,
     config: {
       type: "cloud",
       networking: { type: "unrestricted" },

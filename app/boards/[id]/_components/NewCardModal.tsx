@@ -3,16 +3,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useKobaniStore } from '@/lib/store';
-import type { AgentRole } from '@/lib/kanban-types';
-
-const ROLES: AgentRole[] = [
-  'backend-engineer',
-  'qa-engineer',
-  'tech-lead',
-  'content-writer',
-  'product-spec-writer',
-  'designer',
-];
+import { useRoles, roleLabel } from '@/lib/useRoles';
 
 interface Props {
   columnId: string;
@@ -23,9 +14,10 @@ interface Props {
 export default function NewCardModal({ columnId, boardId, onClose }: Props) {
   const createCardApi = useKobaniStore((s) => s.createCardApi);
   const fetchBoard = useKobaniStore((s) => s.fetchBoard);
+  const { roles } = useRoles();
 
   const [title, setTitle] = useState('');
-  const [role, setRole] = useState<AgentRole>('backend-engineer');
+  const [role, setRole] = useState('');
   const [description, setDescription] = useState('');
   const [criteriaText, setCriteriaText] = useState('');
   const [requiresApproval, setRequiresApproval] = useState(true);
@@ -51,7 +43,7 @@ export default function NewCardModal({ columnId, boardId, onClose }: Props) {
       const result = await createCardApi(boardId, {
         title: title.trim(),
         columnId,
-        role,
+        role: role || roles[0],
         description: description.trim(),
         acceptanceCriteria: criteria,
         requiresApproval,
@@ -107,13 +99,13 @@ export default function NewCardModal({ columnId, boardId, onClose }: Props) {
               Agent Role
             </label>
             <select
-              value={role}
-              onChange={(e) => setRole(e.target.value as AgentRole)}
+              value={role || roles[0] || ''}
+              onChange={(e) => setRole(e.target.value)}
               className="bg-zinc-950 border border-zinc-700 focus:border-indigo-500 rounded-lg px-3 py-2 text-sm text-zinc-100 outline-none cursor-pointer"
             >
-              {ROLES.map((r) => (
+              {roles.map((r) => (
                 <option key={r} value={r}>
-                  {r}
+                  {roleLabel(r)}
                 </option>
               ))}
             </select>

@@ -4,36 +4,9 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { useKobaniStore } from '@/lib/store';
-import type { AgentRole } from '@/lib/kanban-types';
 import type { CardDraft } from '@/app/api/projects/parse/route';
 import type { EnvironmentRow } from '@/lib/api-types';
-
-const AGENT_ROLES: AgentRole[] = [
-  'backend-engineer',
-  'qa-engineer',
-  'tech-lead',
-  'content-writer',
-  'product-spec-writer',
-  'designer',
-];
-
-const ROLE_LABELS: Record<AgentRole, string> = {
-  'backend-engineer': 'Backend',
-  'qa-engineer': 'QA',
-  'tech-lead': 'Tech Lead',
-  'content-writer': 'Content',
-  'product-spec-writer': 'Spec Writer',
-  'designer': 'Designer',
-};
-
-const ROLE_COLORS: Record<AgentRole, string> = {
-  'backend-engineer': 'bg-blue-900/50 text-blue-300 border-blue-700',
-  'qa-engineer': 'bg-green-900/50 text-green-300 border-green-700',
-  'tech-lead': 'bg-purple-900/50 text-purple-300 border-purple-700',
-  'content-writer': 'bg-yellow-900/50 text-yellow-300 border-yellow-700',
-  'product-spec-writer': 'bg-orange-900/50 text-orange-300 border-orange-700',
-  'designer': 'bg-pink-900/50 text-pink-300 border-pink-700',
-};
+import { useRoles, roleLabel, roleColor } from '@/lib/useRoles';
 
 interface Props {
   onClose: () => void;
@@ -46,6 +19,7 @@ export default function NewBoardModal({ onClose }: Props) {
   const createBoardApi = useKobaniStore((s) => s.createBoardApi);
   const fetchBoard = useKobaniStore((s) => s.fetchBoard);
   const createCardApi = useKobaniStore((s) => s.createCardApi);
+  const { roles } = useRoles();
 
   const [step, setStep] = useState<Step>('input');
   const [name, setName] = useState('');
@@ -332,12 +306,12 @@ export default function NewBoardModal({ onClose }: Props) {
                     />
                     <select
                       value={draft.role}
-                      onChange={(e) => updateDraft(i, { role: e.target.value as AgentRole })}
-                      className={`text-xs font-medium px-2 py-0.5 rounded border bg-transparent cursor-pointer outline-none ${ROLE_COLORS[draft.role]}`}
+                      onChange={(e) => updateDraft(i, { role: e.target.value })}
+                      className={`text-xs font-medium px-2 py-0.5 rounded border bg-transparent cursor-pointer outline-none ${roleColor(draft.role)}`}
                     >
-                      {AGENT_ROLES.map((r) => (
+                      {roles.map((r) => (
                         <option key={r} value={r} className="bg-zinc-900 text-zinc-100">
-                          {ROLE_LABELS[r]}
+                          {roleLabel(r)}
                         </option>
                       ))}
                     </select>

@@ -1,38 +1,32 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { NextRequest, NextResponse } from 'next/server';
-import type { AgentRole } from '@/lib/kanban-types';
-
-const AGENT_ROLES: AgentRole[] = [
-  'backend-engineer',
-  'qa-engineer',
-  'tech-lead',
-  'content-writer',
-  'product-spec-writer',
-  'designer',
-];
+import { prisma } from '@/lib/db';
 
 export interface CardDraft {
   title: string;
-  role: AgentRole;
+  role: string;
   description: string;
   acceptanceCriteria: string[];
   /** Zero-based indices of cards this one depends on. */
   dependsOnIndices: number[];
 }
 
-const SYSTEM_PROMPT = `You are a project manager breaking down a product spec into discrete agent tasks.
+function buildSystemPrompt(roles: string[]) {
+  return `You are a project manager breaking down a product spec into discrete agent tasks.
 
 Each task will be executed autonomously by an AI agent with a specific role. Output a JSON array of task cards.
 
 Rules:
 - Each card must have a clear, actionable title (max 80 chars)
-- Choose the most appropriate role from: ${AGENT_ROLES.join(', ')}
+- Choose the most appropriate role from: ${roles.join(', ')}
+- You MUST only use roles from the list above. Do not invent new roles.
 - Description should explain what the agent needs to do (2-4 sentences)
 - acceptanceCriteria: 2-5 specific, testable criteria (each one line, no bullet prefix)
 - dependsOnIndices: array of zero-based indices of other cards that must complete before this one can start. Use [] if the card has no dependencies. Example: if card 2 depends on cards 0 and 1, set "dependsOnIndices": [0, 1]
 - Decompose the spec into logical units of work — not too coarse (one card per feature area), not too granular (no card per function)
 - Order cards so dependencies come first
 - Output ONLY valid JSON, no markdown fences, no commentary`;
+}
 
 const USER_PROMPT = (spec: string) =>
   `Break this spec into agent task cards:\n\n${spec}`;
@@ -51,6 +45,13 @@ export async function POST(req: NextRequest) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return NextResponse.json({ error: 'ANTHROPIC_API_KEY not configured' }, { status: 500 });
 
+  // Fetch available roles from AgentConfig
+  const configs = await prisma.agentConfig.findMany({ select: { role: true }, orderBy: { role: 'asc' } });
+  const availableRoles = configs.map((c) => c.role);
+  if (availableRoles.length === 0) {
+    return NextResponse.json({ error: 'No agent roles configured. Run setup-agents first.' }, { status: 500 });
+  }
+
   const client = new Anthropic({ apiKey });
 
   let raw: string;
@@ -58,7 +59,7 @@ export async function POST(req: NextRequest) {
     const message = await client.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 4096,
-      system: SYSTEM_PROMPT,
+      system: buildSystemPrompt(availableRoles),
       messages: [{ role: 'user', content: USER_PROMPT(spec) }],
     });
     const block = message.content.find((b) => b.type === 'text');
@@ -74,7 +75,7 @@ export async function POST(req: NextRequest) {
     if (!Array.isArray(parsed)) throw new Error('expected array');
     cards = parsed.map((item, i) => {
       if (typeof item.title !== 'string') throw new Error(`card ${i}: missing title`);
-      const role: AgentRole = AGENT_ROLES.includes(item.role) ? item.role : 'backend-engineer';
+      const role = availableRoles.includes(item.role) ? item.role : availableRoles[0];
       return {
         title: String(item.title).slice(0, 80),
         role,
