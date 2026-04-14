@@ -21,7 +21,7 @@ function optionalEnv(name: string, defaultValue?: string): string | undefined {
 export const config = {
   ANTHROPIC_API_KEY: requiredEnv("ANTHROPIC_API_KEY"),
   DATABASE_URL: optionalEnv("DATABASE_URL", "file:./dev.db")!,
-  GITHUB_TOKEN: requiredEnv("GITHUB_TOKEN"),
+  GITHUB_TOKEN: optionalEnv("GITHUB_TOKEN", "")!,
   POLL_INTERVAL_MS: intEnv("POLL_INTERVAL_MS", 3000, 1000, 30000),
   MAX_CONCURRENT_AGENTS: intEnv("MAX_CONCURRENT_AGENTS", 5, 1),
   MAX_ATTEMPTS: intEnv("MAX_ATTEMPTS", 5, 1),
