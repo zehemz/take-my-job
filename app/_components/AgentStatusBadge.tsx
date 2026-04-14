@@ -30,6 +30,13 @@ const STATUS_CONFIG: Record<
     label: 'Idle',
     icon: <span>○</span>,
   },
+  queued: {
+    bg: 'bg-cyan-900',
+    text: 'text-cyan-200',
+    border: 'border-l-cyan-400',
+    label: 'Queued',
+    icon: <span>◌</span>,
+  },
   running: {
     bg: 'bg-indigo-900',
     text: 'text-indigo-200',

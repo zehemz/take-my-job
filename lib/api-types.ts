@@ -185,3 +185,28 @@ export interface SessionRow {
 }
 
 export type SessionListResponse = SessionRow[];
+
+// ─── Notification types ─────────────────────────────────────────────────────
+
+export type NotificationType = 'blocked' | 'evaluation-failed' | 'pending-approval' | 'failed';
+
+export interface ApiNotification {
+  id: string;
+  cardId: string;
+  boardId: string;
+  cardTitle: string;
+  boardName: string;
+  type: NotificationType;
+  message: string;
+  isRead: boolean;
+  createdAt: string; // ISO 8601
+}
+
+export interface NotificationsResponse {
+  notifications: ApiNotification[];
+  unreadCount: number;
+}
+
+export interface MarkNotificationsReadRequest {
+  notificationIds: string[]; // empty array = mark ALL read
+}

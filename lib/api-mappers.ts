@@ -7,6 +7,8 @@ import type {
   ApiBoardSummary,
   ApiAcceptanceCriterion,
   AgentConfigItem,
+  ApiNotification,
+  NotificationType,
 } from './api-types';
 
 // ─── Status mapping ───────────────────────────────────────────────────────────
@@ -25,6 +27,7 @@ export function mapAgentRunStatus(
 ): AgentStatus {
   switch (status) {
     case 'pending':
+      return 'queued';
     case 'idle':
     case 'cancelled':
       return 'idle';
@@ -213,6 +216,32 @@ export function mapAgentConfig(row: AgentConfig): AgentConfigItem {
     anthropicAgentId: row.anthropicAgentId,
     anthropicAgentVersion: row.anthropicAgentVersion,
     anthropicEnvironmentId: row.anthropicEnvironmentId,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+// ─── Notification mapping ────────────────────────────────────────────────────
+
+export function mapNotification(row: {
+  id: string;
+  cardId: string;
+  boardId: string;
+  type: string;
+  message: string;
+  isRead: boolean;
+  createdAt: Date;
+  card: { title: string };
+  board: { name: string };
+}): ApiNotification {
+  return {
+    id: row.id,
+    cardId: row.cardId,
+    boardId: row.boardId,
+    cardTitle: row.card.title,
+    boardName: row.board.name,
+    type: row.type as NotificationType,
+    message: row.message,
+    isRead: row.isRead,
     createdAt: row.createdAt.toISOString(),
   };
 }
