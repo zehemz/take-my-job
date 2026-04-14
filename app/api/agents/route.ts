@@ -14,8 +14,11 @@ export async function GET() {
 
   let anthropicAgents: any[]
   try {
-    const result = await beta.agents.list()
-    anthropicAgents = (result.data ?? []) as any[]
+    const anthropicList: any[] = []
+    for await (const agent of beta.agents.list()) {
+      anthropicList.push(agent)
+    }
+    anthropicAgents = anthropicList
   } catch (e: any) {
     return NextResponse.json(
       { error: 'Failed to fetch agents from Anthropic', details: e.message },
@@ -30,6 +33,37 @@ export async function GET() {
 
   const dbRows = await prisma.agentConfig.findMany()
   const dbMap = new Map(dbRows.map((row) => [row.anthropicAgentId, row]))
+  const anthropicIds = new Set(kobaniAgents.map((a: any) => a.id))
+
+  // Auto-heal orphaned DB records: if the agent was recreated on Anthropic
+  // with a new ID, match by role name (kobani-<role>) and update the DB pointer.
+  const dbByRole = new Map(dbRows.map((row) => [row.role, row]))
+  // Build a map of role → latest Anthropic agent (prefer the one with highest ID for determinism)
+  const latestByRole = new Map<string, any>()
+  for (const a of kobaniAgents) {
+    const role = (a.name as string).replace(/^kobani-/, '')
+    if (!dbMap.has(a.id) && dbByRole.has(role)) {
+      const existing = latestByRole.get(role)
+      if (!existing || a.id > existing.id) {
+        latestByRole.set(role, a)
+      }
+    }
+  }
+  for (const [role, agent] of latestByRole) {
+    const dbRecord = dbByRole.get(role)!
+    await prisma.agentConfig.update({
+      where: { id: dbRecord.id },
+      data: {
+        anthropicAgentId: agent.id,
+        anthropicAgentVersion: String(agent.version ?? ''),
+      },
+    })
+    // Update in-memory maps so the rest of the logic sees the fix
+    dbMap.delete(dbRecord.anthropicAgentId)
+    dbRecord.anthropicAgentId = agent.id
+    dbRecord.anthropicAgentVersion = String(agent.version ?? '')
+    dbMap.set(agent.id, dbRecord)
+  }
 
   const rows: AgentRow[] = kobaniAgents.map((a: any): AgentRow => {
     const dbRecord = dbMap.get(a.id)
@@ -55,7 +89,6 @@ export async function GET() {
   })
 
   // Add orphaned DB records (DB has agentId not returned by Anthropic)
-  const anthropicIds = new Set(kobaniAgents.map((a: any) => a.id))
   for (const dbRecord of dbRows) {
     if (!anthropicIds.has(dbRecord.anthropicAgentId)) {
       rows.push({
