@@ -14,7 +14,6 @@ export interface EventHandlerContext {
   anthropicClient: IAnthropicClient;
   sessionId: string;
   tokenUsage: { inputTokens: number; outputTokens: number };
-  turnCount: { value: number };
 }
 
 // ---------------------------------------------------------------------------
@@ -43,7 +42,6 @@ export async function handleEvent(
     anthropicClient,
     sessionId,
     tokenUsage,
-    turnCount,
   } = ctx;
 
   const e = event as Record<string, unknown>;
@@ -125,7 +123,6 @@ export async function handleEvent(
       const stopType = stopReason?.type;
 
       if (stopType === "end_turn") {
-        turnCount.value += 1;
         return { exitLoop: true, outcome: "completed" };
       }
 
