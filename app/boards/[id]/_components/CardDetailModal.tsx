@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useKobaniStore } from '@/lib/store';
 import type { AgentRun } from '@/lib/kanban-types';
+import type { ApiCard, SseEvent } from '@/lib/api-types';
 import AgentStatusBadge from '@/app/_components/AgentStatusBadge';
 import AcceptanceCriteriaList from './AcceptanceCriteriaList';
 import AgentOutputPanel from './AgentOutputPanel';
@@ -190,17 +191,103 @@ export default function CardDetailModal() {
   const cards = useKobaniStore((s) => s.cards);
   const columns = useKobaniStore((s) => s.columns);
 
-  const card = cards.find((c) => c.id === selectedCardId);
-  const column = card ? columns.find((col) => col.id === card.columnId) : null;
+  const storeCard = cards.find((c) => c.id === selectedCardId);
+  const column = storeCard ? columns.find((col) => col.id === storeCard.columnId) : null;
 
+  // ── 1. Fresh API data ──────────────────────────────────────────────────────
+  const [apiCard, setApiCard] = useState<ApiCard | null>(null);
+  const [loadingCard, setLoadingCard] = useState(false);
+
+  // ── 2. SSE live output ────────────────────────────────────────────────────
+  const [sseOutput, setSseOutput] = useState('');
+  const esRef = useRef<EventSource | null>(null);
+
+  async function fetchCard(cardId: string) {
+    try {
+      setLoadingCard(true);
+      const res = await fetch(`/api/cards/${cardId}`, { credentials: 'include' });
+      if (!res.ok) return;
+      const data: ApiCard = await res.json();
+      setApiCard(data);
+    } catch (err) {
+      console.error('[CardDetailModal] fetch card failed:', err);
+    } finally {
+      setLoadingCard(false);
+    }
+  }
+
+  // Fetch on open / card change
   useEffect(() => {
-    if (card) {
+    if (!selectedCardId) {
+      setApiCard(null);
+      setSseOutput('');
+      return;
+    }
+    setApiCard(null);
+    setSseOutput('');
+    fetchCard(selectedCardId);
+  }, [selectedCardId]);
+
+  // SSE connection when card is live
+  useEffect(() => {
+    // Determine status: prefer fresh API data, fall back to store
+    const status = apiCard?.agentStatus ?? storeCard?.agentStatus;
+    const cardId = selectedCardId;
+
+    const isLiveStatus = status === 'running' || status === 'evaluating';
+
+    // Close any existing connection first
+    if (esRef.current) {
+      esRef.current.close();
+      esRef.current = null;
+    }
+
+    if (!cardId || !isLiveStatus) return;
+
+    const es = new EventSource(`/api/events/${cardId}`);
+    esRef.current = es;
+
+    es.onmessage = (e) => {
+      let event: SseEvent;
+      try {
+        event = JSON.parse(e.data) as SseEvent;
+      } catch {
+        return;
+      }
+
+      if (event.type === 'agent_message') {
+        setSseOutput((prev) => prev + event.text);
+      } else if (event.type === 'status_change' || event.type === 'card_update') {
+        fetchCard(cardId);
+      } else if (event.type === 'done') {
+        es.close();
+        esRef.current = null;
+        fetchCard(cardId);
+      }
+    };
+
+    es.onerror = (err) => {
+      console.error('[CardDetailModal] SSE error:', err);
+      es.close();
+      esRef.current = null;
+    };
+
+    return () => {
+      es.close();
+      esRef.current = null;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCardId, apiCard?.agentStatus]);
+
+  // ── Existing scroll-lock & keyboard effects ────────────────────────────────
+  useEffect(() => {
+    if (storeCard) {
       document.body.style.overflow = 'hidden';
     }
     return () => {
       document.body.style.overflow = '';
     };
-  }, [card]);
+  }, [storeCard]);
 
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
@@ -210,12 +297,34 @@ export default function CardDetailModal() {
     return () => document.removeEventListener('keydown', handleKey);
   }, [closeCardDetail]);
 
-  if (!card || !column) return null;
+  if (!storeCard || !column) return null;
+
+  // Merge: use API data where available, fall back to store card fields
+  const card = apiCard
+    ? {
+        ...storeCard,
+        title: apiCard.title,
+        description: apiCard.description,
+        acceptanceCriteria: apiCard.acceptanceCriteria,
+        agentStatus: apiCard.agentStatus,
+        currentAgentRunId: apiCard.currentAgentRunId,
+        agentRuns: apiCard.agentRuns as AgentRun[],
+        githubRepo: apiCard.githubRepo,
+        githubBranch: apiCard.githubBranch,
+        approvedBy: apiCard.approvedBy,
+        approvedAt: apiCard.approvedAt,
+        movedToColumnAt: apiCard.movedToColumnAt ?? storeCard.movedToColumnAt,
+        revisionContextNote: apiCard.revisionContextNote,
+      }
+    : storeCard;
 
   const currentRun = card.agentRuns.find((r) => r.id === card.currentAgentRunId);
   const isLive = card.agentStatus === 'running' || card.agentStatus === 'evaluating';
   const blockedRun = card.agentRuns.find((r) => r.status === 'blocked');
   const isInRevisionColumn = column.type === 'revision';
+
+  // Combine SSE-streamed text with stored run output (SSE takes precedence if non-empty)
+  const liveOutput = sseOutput || currentRun?.output || '';
 
   const modal = (
     <div
@@ -231,14 +340,22 @@ export default function CardDetailModal() {
           <div className="flex flex-col gap-1.5">
             <h2 className="text-base font-semibold text-zinc-100">{card.title}</h2>
             <div className="flex items-center gap-2">
-              <AgentStatusBadge
-                status={card.agentStatus}
-                retryAfterMs={currentRun?.retryAfterMs}
-              />
+              {loadingCard ? (
+                <div className="h-5 w-20 rounded bg-zinc-600 animate-pulse" />
+              ) : (
+                <AgentStatusBadge
+                  status={card.agentStatus}
+                  retryAfterMs={currentRun?.retryAfterMs}
+                />
+              )}
               <span className="text-xs text-zinc-500">
                 {relativeTime(card.movedToColumnAt)} in {column.name}
               </span>
             </div>
+            {/* approvedBy */}
+            {card.approvedBy && (
+              <span className="text-xs text-zinc-500">Approved by @{card.approvedBy.replace(/^@/, '')}</span>
+            )}
           </div>
           <button
             onClick={closeCardDetail}
@@ -250,7 +367,7 @@ export default function CardDetailModal() {
 
         {/* Meta row */}
         {currentRun && (
-          <div className="px-6 py-3 flex items-center gap-4 text-xs text-zinc-500 shrink-0 border-t border-zinc-800">
+          <div className="px-6 py-3 flex flex-wrap items-center gap-4 text-xs text-zinc-500 shrink-0 border-t border-zinc-800">
             <span>
               Role: <span className="text-zinc-300">{currentRun.role}</span>
             </span>
@@ -260,6 +377,16 @@ export default function CardDetailModal() {
             <span>
               Started: <span className="text-zinc-300">{relativeTime(currentRun.startedAt)} ago</span>
             </span>
+            {card.githubRepo && (
+              <span>
+                Repo: <span className="text-zinc-300 font-mono text-xs">{card.githubRepo}</span>
+              </span>
+            )}
+            {card.githubBranch && (
+              <span>
+                Branch: <span className="text-zinc-300 font-mono text-xs">{card.githubBranch}</span>
+              </span>
+            )}
           </div>
         )}
 
@@ -298,7 +425,7 @@ export default function CardDetailModal() {
           </div>
           {currentRun ? (
             <>
-              <AgentOutputPanel output={currentRun.output} isLive={isLive} />
+              <AgentOutputPanel output={liveOutput} isLive={isLive} />
               {/* Previous runs */}
               {card.agentRuns.length > 1 && (
                 <div className="mt-3">
