@@ -46,18 +46,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           return false;
         }
 
-        // User exists — check group membership (admins always pass)
-        if (user.isAdmin) return true;
-
-        const membershipCount = await prisma.userGroupMember.count({
-          where: { userId: user.id },
-        });
-
-        if (membershipCount === 0) {
-          console.warn(`[kobani:auth] sign-in denied: user "${username}" has no group memberships`);
-        }
-
-        return membershipCount > 0;
+        // User exists — allow sign-in regardless of group membership.
+        // Members without groups can see everything but cannot operate.
+        return true;
       } catch (err) {
         console.error('[kobani:auth] signIn callback error — allowing sign-in as fallback:', err);
         // If DB is unreachable, allow sign-in to avoid total lockout
