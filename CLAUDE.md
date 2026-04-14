@@ -37,6 +37,7 @@ docs/
 
 - **Spec before code.** Before implementing any feature, check `docs/features/` for an existing PRD or TECH_SPEC. If none exists, create the spec first (or ask). Never implement reactively without a spec.
 - **E2E scenarios are mandatory.** Every new feature must include E2E scenarios added to `docs/features/e2e-testing/SCENARIOS.md`. This is part of the definition of done, not optional.
+- **Always work in a branch.** Never commit directly to `main`. For every fix or feature: create a branch (`git checkout -b <type>/<short-description>`), do the work there, then open a PR. This prevents collisions with teammates working on `main`.
 
 ---
 

@@ -1,8 +1,8 @@
-# Tech Spec — Agent Management (v1: List)
+# Tech Spec — Agent Management (v1: List + Delete)
 
 ## Scope
 
-Read-only listing of all `AgentConfig` rows. Deferred: create, update, delete.
+Read-only listing of all `AgentConfig` rows, plus delete. Deferred: create, update.
 
 ---
 
@@ -26,7 +26,6 @@ export interface AgentRow {
   name: string;
   model: string;
   version: string;
-  environmentId: string;
   role: string | null;       // null when unmapped
   syncState: AgentSyncState;
 }
@@ -53,6 +52,49 @@ export async function listAgents(): Promise<AgentRow[]>
 
 The route delegates all merge logic to `listAgents()` and does not call
 `prisma.agentConfig` directly.
+
+---
+
+### `DELETE /api/agents/[id]`
+
+Deletes a single agent from both the Anthropic API and the local DB.
+
+**Auth:** `auth()` guard required.
+
+**Path parameter:** `id` — the `anthropicAgentId` string.
+
+**Response — `204 No Content`** — agent successfully deleted from Anthropic and removed from DB.
+
+**Response — `401 Unauthorized`** — unauthenticated request.
+
+**Response — `404 Not Found`** — no agent with the given `anthropicAgentId` exists in the DB. The
+route is idempotent on 404: if the record is already absent, return 404 without calling Anthropic.
+
+**Response — `502 Bad Gateway`** — Anthropic API returned an unexpected error during deletion.
+
+**Route file:** `app/api/agents/[id]/route.ts`
+
+```ts
+export async function DELETE(_req: Request, { params }: { params: { id: string } }) {
+  const session = await auth();
+  if (!session) return new NextResponse(null, { status: 401 });
+
+  const { id } = params; // anthropicAgentId
+  try {
+    await deleteAgent(id); // throws NotFoundError or AnthropicError
+    return new NextResponse(null, { status: 204 });
+  } catch (err) {
+    if (err instanceof NotFoundError) return new NextResponse(null, { status: 404 });
+    return NextResponse.json({ error: "Failed to reach Anthropic API" }, { status: 502 });
+  }
+}
+```
+
+**Service layer:** add `deleteAgent(anthropicAgentId: string): Promise<void>` to
+`lib/agents-service.ts`. The function calls the Anthropic delete endpoint, then removes the
+`AgentConfig` row from the DB. If the DB row does not exist it throws `NotFoundError`.
+
+---
 
 **Route file:** `app/api/agents/route.ts`
 
@@ -86,7 +128,7 @@ export async function GET() {
 ├── Page heading: "Agents"
 ├── Subtitle: "Managed agent configurations"
 └── AgentConfigTable (client component or plain table)
-    ├── Columns: Role | Agent ID | Version | Environment ID | Created
+    ├── Columns: Role | Agent ID | Version | Created | Actions
     └── Empty state: "No agents configured. Run scripts/setup-agents.ts to provision."
 ```
 
@@ -97,7 +139,11 @@ export async function GET() {
 - Renders a `<table>` with one row per `AgentConfigItem`.
 - Role column: displays the `role` string, optionally mapped to a human-readable label using the same
   `ROLES` constant from `scripts/setup-agents.ts` (extract to `lib/agent-roles.ts` if shared).
-- Agent ID / Environment ID: shown as monospace truncated strings with a copy-to-clipboard button.
+- Agent ID: shown as a monospace truncated string with a copy-to-clipboard button.
+- Actions column: contains a Delete button per row. Clicking opens an inline confirmation step before
+  issuing `DELETE /api/agents/:id`. The button must follow ADR-006 loading state conventions
+  (`disabled` + ellipsis label while the request is in-flight). On success the row is removed from
+  the list without a full page reload.
 - No pagination needed for v1.
 
 ### Navigation
@@ -119,7 +165,7 @@ with a simple `useEffect` / SWR call in a client component.
 
 ## Out of scope (v1)
 
-- Mutations (create / update / delete).
+- Mutations (create / update).
 - Optimistic updates.
 - Inline editing.
 - Pagination.

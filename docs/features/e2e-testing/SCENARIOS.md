@@ -113,6 +113,9 @@ IDs are stable — never reuse a retired ID.
 | E2E-AGENT-003 | `/agents` shows empty-state message when no agents are configured | 🟡 Planned |
 | E2E-AGENT-004 | `GET /api/agents` without session → `{"error":"Unauthorized"}` 401 | 🟡 Planned |
 | E2E-AGENT-005 | Each agent row displays: role, agent ID, version, environment ID, created date | 🟡 Planned |
+| E2E-AGENT-006 | `DELETE /api/agents/:id` without session → 401 | 🟡 Planned |
+| E2E-AGENT-007 | Delete button on a row triggers confirmation, then calls DELETE, then row disappears | 🟡 Planned |
+| E2E-AGENT-008 | `DELETE /api/agents/:id` with valid id removes agent from Anthropic and DB | 🟡 Planned |
 
 ---
 
