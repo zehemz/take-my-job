@@ -143,4 +143,9 @@ export class StubDbQueries implements IDbQueries {
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     return runs[0] ?? null;
   }
+
+  async clearRetryAfter(runId: string): Promise<void> {
+    const run = this.agentRuns.find((r) => r.id === runId);
+    if (run) run.retryAfterMs = null;
+  }
 }

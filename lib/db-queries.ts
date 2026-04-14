@@ -181,4 +181,11 @@ export const dbQueries: IDbQueries = {
     });
     return run as unknown as AgentRun | null;
   },
+
+  async clearRetryAfter(runId: string): Promise<void> {
+    await prisma.agentRun.update({
+      where: { id: runId },
+      data: { retryAfterMs: null },
+    });
+  },
 };

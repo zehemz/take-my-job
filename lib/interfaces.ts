@@ -15,6 +15,7 @@ export interface IDbQueries {
   getBoardColumns(boardId: string): Promise<Column[]>;
   moveCardToColumnType(cardId: string, boardId: string, targetColumnType: 'review' | 'terminal' | 'blocked'): Promise<void>;
   getActiveRunForCard(cardId: string): Promise<AgentRun | null>;
+  clearRetryAfter(runId: string): Promise<void>;
 }
 
 /** Typed events emitted by the Anthropic Managed Agents SSE stream. */
