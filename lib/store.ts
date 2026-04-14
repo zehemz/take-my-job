@@ -418,7 +418,11 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
         credentials: 'include',
         body: JSON.stringify({ columnId, position }),
       });
-      if (!res.ok) return false;
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        console.error(`[moveCardApi] ${res.status}:`, err);
+        return false;
+      }
       const card = await res.json();
       get().updateCard(card.id, {
         columnId: card.columnId,
