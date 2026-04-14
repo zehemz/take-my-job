@@ -4,6 +4,8 @@ import { mapBoardSummary } from '@/lib/api-mappers';
 import type { CreateBoardRequest } from '@/lib/api-types';
 import { devAuth as auth } from '@/lib/dev-auth';
 import { config } from '@/lib/config';
+// Eagerly boot the orchestrator when boards are listed (unsticks orphaned tasks)
+import '@/lib/orchestrator-instance';
 import { slugify, ensureBoardFolder } from '@/lib/workspace';
 import { checkCardAccess } from '@/lib/rbac';
 
