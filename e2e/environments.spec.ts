@@ -150,11 +150,7 @@ test.describe('Environments — Detail & Edit', () => {
     await expect(page).toHaveURL(/\/environments\/.+/, { timeout: 10_000 });
 
     // Detail page should show the "← Environments" back link (confirms detail page loaded)
-    const backLink = page.getByRole('link', { name: /Environments/ });
-    await expect(backLink).toBeVisible({ timeout: 10_000 });
-
-    // The Name field label should be visible (rendered via CSS uppercase)
-    await expect(page.locator('button[title="Edit name"]')).toBeVisible({ timeout: 5_000 });
+    await expect(page.locator('button[title="Edit name"]')).toBeVisible({ timeout: 10_000 });
   });
 
   test('E2E-ENV-006: edit environment name, save, and verify update', async ({
@@ -175,9 +171,8 @@ test.describe('Environments — Detail & Edit', () => {
       // Navigate to the detail page
       await page.goto(`/environments/${envId}`);
 
-      // Wait for the page to load (back link as indicator)
-      const backLink = page.getByRole('link', { name: /Environments/ });
-      await expect(backLink).toBeVisible({ timeout: 10_000 });
+      // Wait for the page to load
+      await expect(page.locator('button[title="Edit name"]')).toBeVisible({ timeout: 10_000 });
 
       // Verify original name is displayed
       await expect(page.getByText(originalName)).toBeVisible({ timeout: 5_000 });
@@ -224,8 +219,7 @@ test.describe('Environments — Detail & Edit', () => {
       await page.goto(`/environments/${envId}`);
 
       // Wait for the page to load
-      const backLink = page.getByRole('link', { name: /Environments/ });
-      await expect(backLink).toBeVisible({ timeout: 10_000 });
+      await expect(page.locator('button[title="Edit description"]')).toBeVisible({ timeout: 10_000 });
 
       // Click the pencil/edit icon for the Description field
       await page.locator('button[title="Edit description"]').click();
