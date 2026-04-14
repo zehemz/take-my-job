@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import type { EnvironmentRow } from '@/lib/api-types';
 
 function Spinner() {
@@ -172,7 +173,11 @@ export default function EnvironmentTable({ items, onDelete }: Props) {
 
             return (
               <tr key={item.id} className="hover:bg-zinc-800/50 transition-colors">
-                <td className="px-4 py-3 text-zinc-100">{item.name}</td>
+                <td className="px-4 py-3">
+                  <Link href={`/environments/${item.id}`} className="text-zinc-100 hover:text-white hover:underline transition-colors">
+                    {item.name}
+                  </Link>
+                </td>
                 <td className="px-4 py-3 text-zinc-400">
                   {desc ?? <span className="text-zinc-600 italic">—</span>}
                 </td>
