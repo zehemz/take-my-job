@@ -31,7 +31,7 @@
 | [Agent Edit](./features/agent-edit/) | ✅ Shipped | ✓ | — | — | — |
 | [Agent Tools & MCP](./features/agent-edit/PRD.md) | ✅ Shipped | ✓ | — | — | — |
 | [Environment Detail & Edit](./features/environments/TECH_SPEC.md) | 🟠 In Progress | — | — | ✓ | — |
-| [RBAC — Role-Based Access Control](./features/rbac/) | 🔵 In Design | ✓ | ✓ | ✓ | ✓ |
+| [RBAC — Role-Based Access Control](./features/rbac/) | ✅ Shipped | ✓ | ✓ | ✓ | ✓ |
 | [Stateless Orchestrator](./features/stateless-orchestrator/TECH_SPEC.md) | 🟠 In Progress | — | — | ✓ | — |
 | [Environment Creation with Presets](./features/environment-creation/) | 🟠 In Progress | ✓ | — | ✓ | — |
 | [Per-Card Environment Override](./features/per-card-environment/TECH_SPEC.md) | 🟠 In Progress | — | — | ✓ | — |
