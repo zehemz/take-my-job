@@ -79,6 +79,10 @@ export interface ApiBoardDetail {
 
 // ─── Request shapes ───────────────────────────────────────────────────────────
 
+export interface CreateBoardRequest {
+  name: string;
+}
+
 export interface CreateCardRequest {
   title: string;
   columnId: string;

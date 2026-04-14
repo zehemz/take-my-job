@@ -40,6 +40,7 @@ interface KobaniState {
   // Async API actions
   fetchBoard: (boardId: string) => Promise<void>;
   fetchBoards: () => Promise<void>;
+  createBoardApi: (name: string) => Promise<string | null>; // returns new board id
   moveCardApi: (cardId: string, columnId: string, position?: number) => Promise<void>;
   createCardApi: (boardId: string, payload: {
     title: string;
@@ -322,6 +323,19 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
     if (!res.ok) return;
     const data = await res.json();
     set({ boards: data });
+  },
+
+  createBoardApi: async (name: string) => {
+    const res = await fetch('/api/boards', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ name }),
+    });
+    if (!res.ok) return null;
+    const board = await res.json();
+    set((state) => ({ boards: [board, ...state.boards] }));
+    return board.id;
   },
 
   moveCardApi: async (cardId: string, columnId: string, position?: number) => {
