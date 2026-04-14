@@ -101,6 +101,8 @@ export default function NewBoardModal({ onClose }: Props) {
           .filter((idx: number) => idx >= 0 && idx < createdCardIds.length)
           .map((idx: number) => createdCardIds[idx]);
 
+        // Per-card env takes priority, then board-level, then nothing
+        const cardEnvId = draft.environmentId || environmentId || undefined;
         const result = await createCardApi(boardId, {
           title: draft.title,
           columnId: backlogCol.id,
@@ -112,6 +114,7 @@ export default function NewBoardModal({ onClose }: Props) {
             passed: null,
             evidence: null,
           })),
+          ...(cardEnvId ? { environmentId: cardEnvId } : {}),
           ...(dependsOn.length > 0 ? { dependsOn } : {}),
         });
         createdCardIds.push((result as { id: string }).id);
@@ -307,10 +310,16 @@ export default function NewBoardModal({ onClose }: Props) {
                     <select
                       value={draft.role}
                       onChange={(e) => updateDraft(i, { role: e.target.value })}
-                      className={`text-xs font-medium px-2 py-0.5 rounded border bg-transparent cursor-pointer outline-none ${roleColor(draft.role)}`}
+                      className="text-xs font-medium px-2 py-0.5 rounded border border-zinc-700 bg-zinc-900 text-zinc-100 cursor-pointer outline-none"
                     >
+                      {/* Include draft's role if not in the known list */}
+                      {!roles.includes(draft.role) && (
+                        <option key={draft.role} value={draft.role}>
+                          {roleLabel(draft.role)}
+                        </option>
+                      )}
                       {roles.map((r) => (
-                        <option key={r} value={r} className="bg-zinc-900 text-zinc-100">
+                        <option key={r} value={r}>
                           {roleLabel(r)}
                         </option>
                       ))}
@@ -322,6 +331,27 @@ export default function NewBoardModal({ onClose }: Props) {
                     >
                       ✕
                     </button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-zinc-500">Env:</span>
+                    {envLoading ? (
+                      <span className="text-xs text-zinc-600">Loading...</span>
+                    ) : environments.length === 0 ? (
+                      <span className="text-xs text-zinc-600">{environmentId ? environments.find((e) => e.id === environmentId)?.name ?? 'Board default' : 'Default (from role)'}</span>
+                    ) : (
+                      <select
+                        value={draft.environmentId ?? environmentId ?? ''}
+                        onChange={(e) => updateDraft(i, { environmentId: e.target.value || null })}
+                        className="text-xs bg-zinc-900 border border-zinc-700 rounded px-1.5 py-0.5 text-zinc-200 outline-none cursor-pointer"
+                      >
+                        <option value="">Default (from role)</option>
+                        {environments.map((env) => (
+                          <option key={env.id} value={env.id}>
+                            {env.name}
+                          </option>
+                        ))}
+                      </select>
+                    )}
                   </div>
                   {draft.dependsOnIndices && draft.dependsOnIndices.length > 0 && (
                     <p className="text-xs text-zinc-500">

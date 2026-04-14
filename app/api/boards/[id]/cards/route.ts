@@ -14,7 +14,7 @@ export async function POST(
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body: CreateCardRequest = await req.json();
-  const { title, columnId, description, acceptanceCriteria, role, githubRepo, githubBranch, requiresApproval, dependsOn } = body;
+  const { title, columnId, description, acceptanceCriteria, role, githubRepo, githubBranch, requiresApproval, environmentId, dependsOn } = body;
 
   if (!title || !columnId) {
     return NextResponse.json({ error: 'title and columnId are required' }, { status: 400 });
@@ -44,7 +44,7 @@ export async function POST(
 
   // RBAC check for card creation
   if (role) {
-    const envId = await resolveCardEnvironment(role);
+    const envId = await resolveCardEnvironment(role, environmentId);
     const hasAccess = await checkCardAccess(session.user.githubUsername, role, envId);
     if (!hasAccess) {
       return NextResponse.json(
@@ -99,6 +99,7 @@ export async function POST(
       position,
       githubRepoUrl: repoUrl,
       githubBranch: branch,
+      environmentId: environmentId ?? null,
       requiresApproval: requiresApproval ?? false,
       ...(dependsOn && dependsOn.length > 0
         ? { dependsOn: { connect: dependsOn.map((id) => ({ id })) } }

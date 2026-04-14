@@ -457,6 +457,17 @@ export default function CardDetailModal() {
   const [branchDraft, setBranchDraft] = useState('');
 
   const [savingField, setSavingField] = useState<EditingField>(null);
+
+  // ── 4. Environment name lookup ───────────────────────────────────────────
+  const [envName, setEnvName] = useState<string | null>(null);
+  useEffect(() => {
+    const eid = apiCard?.environmentId ?? storeCard?.environmentId;
+    if (!eid) { setEnvName(null); return; }
+    fetch(`/api/environments/${eid}`, { credentials: 'include' })
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => { if (data?.name) setEnvName(data.name); })
+      .catch(() => {});
+  }, [apiCard?.environmentId, storeCard?.environmentId]);
   const [saveError, setSaveError] = useState('');
 
   // ── 4. Delete state ───────────────────────────────────────────────────────
@@ -810,6 +821,23 @@ export default function CardDetailModal() {
 
         {/* Pending-approval banner */}
         {card.agentStatus === 'pending-approval' && <PendingApprovalBanner />}
+
+        {/* Environment + role info — always visible */}
+        <div className="px-6 py-2 flex flex-wrap items-center gap-4 text-xs text-zinc-500 shrink-0 border-t border-zinc-800">
+          <span className="flex items-center gap-1">
+            Role: <span className="text-zinc-300 bg-zinc-800 rounded px-1.5 py-0.5 font-mono">{card.role}</span>
+          </span>
+          <span className="flex items-center gap-1">
+            Env:{' '}
+            {card.environmentId ? (
+              <span className="text-indigo-400 bg-zinc-800 rounded px-1.5 py-0.5 font-mono" title={card.environmentId}>
+                {envName ?? card.environmentId}
+              </span>
+            ) : (
+              <span className="text-zinc-600 italic">default (from role)</span>
+            )}
+          </span>
+        </div>
 
         {/* Meta row */}
         {currentRun && (

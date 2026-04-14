@@ -66,6 +66,7 @@ interface KobaniState {
     githubRepo?: string;
     githubBranch?: string;
     requiresApproval?: boolean;
+    environmentId?: string;
     dependsOn?: string[];
   }) => Promise<unknown>;
 }
@@ -156,6 +157,7 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
         assignee: '@lucas',
         githubRepo: null,
         githubBranch: null,
+        environmentId: null,
         agentStatus: 'idle',
         currentAgentRunId: null,
         agentRuns: [],
@@ -354,6 +356,7 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
         assignee: card.role, // derive from role
         githubRepo: card.githubRepo,
         githubBranch: card.githubBranch,
+        environmentId: card.environmentId ?? null,
         agentStatus: card.agentStatus,
         currentAgentRunId: card.currentAgentRunId,
         agentRuns: card.agentRuns.map((r: any) => ({
@@ -472,6 +475,7 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
     githubRepo?: string;
     githubBranch?: string;
     requiresApproval?: boolean;
+    environmentId?: string;
   }) => {
     const res = await fetch(`/api/boards/${boardId}/cards`, {
       method: 'POST',

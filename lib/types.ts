@@ -44,6 +44,7 @@ export interface Card {
   position: number;
   githubRepoUrl: string | null;
   githubBranch: string | null;
+  environmentId: string | null;
   requiresApproval: boolean;
   createdAt: Date;
   updatedAt: Date;

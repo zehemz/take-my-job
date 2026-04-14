@@ -19,7 +19,7 @@ function makeCard(id: string, columnId: string) {
   return {
     id, boardId: 'board-1', columnId,
     title: 'Test', description: null, acceptanceCriteria: null, role: null,
-    position: 0, githubRepoUrl: null, githubBranch: null, requiresApproval: false,
+    position: 0, githubRepoUrl: null, githubBranch: null, environmentId: null, requiresApproval: false,
     createdAt: new Date(), updatedAt: new Date(),
   }
 }

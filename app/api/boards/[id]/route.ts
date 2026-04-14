@@ -92,13 +92,14 @@ export async function GET(
     }),
   );
 
-  function canUserInteract(card: { role: string | null }): boolean {
+  function canUserInteract(card: { role: string | null; environmentId?: string | null }): boolean {
     if (!perms) return false;
     if (perms.isAdmin) return true;
     if (!card.role) return true; // cards with no role are accessible to all
 
     const roleOk = perms.allowedAgentRoles === null || perms.allowedAgentRoles.has(card.role);
-    const envId = envByRole.get(card.role) ?? null;
+    // Card-level environment override takes priority over the role default
+    const envId = card.environmentId ?? envByRole.get(card.role) ?? null;
     const envOk = !envId || perms.allowedEnvironments === null || perms.allowedEnvironments.has(envId);
     return roleOk && envOk;
   }

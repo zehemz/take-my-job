@@ -63,6 +63,7 @@ export interface Card {
   assignee: string;
   githubRepo: string | null;
   githubBranch: string | null;
+  environmentId: string | null;
   agentStatus: AgentStatus;
   currentAgentRunId: string | null;
   agentRuns: AgentRun[];
