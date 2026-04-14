@@ -161,4 +161,41 @@ export class KobaniApi {
     });
     if (res.status() !== 204 && !res.ok()) throw new Error(`DELETE /api/admin/groups/${groupId}/members/${userId} → ${res.status()}`);
   }
+
+  // ─── Environments ──────────────────────────────────────────────────────────
+
+  async getEnvironments(): Promise<any[]> {
+    const res = await this.req.get('/api/environments', { headers: this.headers() });
+    if (!res.ok()) throw new Error(`GET /api/environments → ${res.status()}`);
+    return res.json();
+  }
+
+  async getEnvironment(id: string): Promise<any> {
+    const res = await this.req.get(`/api/environments/${id}`, { headers: this.headers() });
+    if (!res.ok()) throw new Error(`GET /api/environments/${id} → ${res.status()}`);
+    return res.json();
+  }
+
+  async createEnvironment(data: { name: string; description?: string }): Promise<any> {
+    const res = await this.req.post('/api/environments', {
+      headers: this.headers(),
+      data,
+    });
+    if (!res.ok()) throw new Error(`POST /api/environments → ${res.status()}: ${await res.text()}`);
+    return res.json();
+  }
+
+  async patchEnvironment(id: string, data: Record<string, unknown>): Promise<any> {
+    const res = await this.req.patch(`/api/environments/${id}`, {
+      headers: this.headers(),
+      data,
+    });
+    if (!res.ok()) throw new Error(`PATCH /api/environments/${id} → ${res.status()}: ${await res.text()}`);
+    return res.json();
+  }
+
+  async deleteEnvironment(id: string): Promise<void> {
+    const res = await this.req.delete(`/api/environments/${id}`, { headers: this.headers() });
+    if (res.status() !== 204 && !res.ok()) throw new Error(`DELETE /api/environments/${id} → ${res.status()}`);
+  }
 }
