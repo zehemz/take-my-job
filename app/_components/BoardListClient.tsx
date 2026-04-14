@@ -1,21 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useKobaniStore } from '@/lib/store';
 import TopNav from './TopNav';
-import NewProjectModal from './NewProjectModal';
+import NewBoardModal from './NewBoardModal';
 
 export default function BoardListClient() {
   const boards = useKobaniStore((s) => s.boards);
   const columns = useKobaniStore((s) => s.columns);
   const cards = useKobaniStore((s) => s.cards);
-  const [showNewProject, setShowNewProject] = useState(false);
+  const fetchBoards = useKobaniStore((s) => s.fetchBoards);
+  const [showNewBoard, setShowNewBoard] = useState(false);
+
+  useEffect(() => {
+    fetchBoards();
+  }, [fetchBoards]);
 
   return (
     <div className="flex flex-col min-h-screen">
       <TopNav />
-      {showNewProject && <NewProjectModal onClose={() => setShowNewProject(false)} />}
       <div className="flex-1 px-8 py-8">
         <div className="mb-6 flex items-center justify-between">
           <div>
@@ -23,10 +27,10 @@ export default function BoardListClient() {
             <p className="text-sm text-zinc-500 mt-1">{boards.length} boards</p>
           </div>
           <button
-            onClick={() => setShowNewProject(true)}
-            className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg px-4 py-2 text-sm font-medium transition-colors cursor-pointer"
+            onClick={() => setShowNewBoard(true)}
+            className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors cursor-pointer"
           >
-            + New Project
+            + New Board
           </button>
         </div>
 
@@ -59,6 +63,8 @@ export default function BoardListClient() {
           })}
         </div>
       </div>
+
+      {showNewBoard && <NewBoardModal onClose={() => setShowNewBoard(false)} />}
     </div>
   );
 }
