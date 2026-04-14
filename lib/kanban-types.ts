@@ -98,6 +98,7 @@ export interface Board {
   autoMode: boolean;
   columnCount?: number;
   cardCount?: number;
+  completedCardCount?: number;
 }
 
 export interface KobaniStore {

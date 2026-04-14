@@ -13,9 +13,16 @@ export async function GET() {
 
   const boards = await prisma.board.findMany({
     orderBy: { createdAt: 'desc' },
-    include: { _count: { select: { columns: true, cards: true } } },
+    include: {
+      _count: { select: { columns: true, cards: true } },
+      cards: { select: { column: { select: { isTerminalState: true } } } },
+    },
   });
-  return NextResponse.json(boards.map(mapBoardSummary));
+  return NextResponse.json(boards.map((b) => {
+    const completedCardCount = b.cards.filter((c) => c.column.isTerminalState).length;
+    const { cards: _cards, ...rest } = b;
+    return { ...mapBoardSummary(rest), completedCardCount };
+  }));
 }
 
 export async function POST(req: Request) {

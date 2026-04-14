@@ -35,23 +35,36 @@ export default function BoardListClient() {
         <div data-testid="board-list" className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {boards.map((board) => {
             const createdDate = new Date(board.createdAt).toLocaleDateString('en-GB');
+            const totalCards = board.cardCount ?? 0;
+            const completedCards = board.completedCardCount ?? 0;
+            const allDone = totalCards > 0 && completedCards === totalCards;
 
             return (
               <Link
                 key={board.id}
                 href={`/boards/${board.id}`}
                 data-testid="board-card"
-                className="group bg-zinc-900 border border-zinc-800 hover:border-zinc-600 rounded-xl p-5 flex flex-col gap-3 transition-colors duration-150 cursor-pointer"
+                className={`group bg-zinc-900 border rounded-xl p-5 flex flex-col gap-3 transition-colors duration-150 cursor-pointer ${allDone ? 'border-green-800 hover:border-green-600' : 'border-zinc-800 hover:border-zinc-600'}`}
               >
                 <div className="flex items-start justify-between">
-                  <h2 className="text-base font-medium text-zinc-200 group-hover:text-zinc-100 transition-colors">
-                    {board.name}
-                  </h2>
+                  <div className="flex items-center gap-2">
+                    {allDone && (
+                      <span className="flex items-center justify-center w-5 h-5 rounded-full bg-green-900/60 text-green-400 text-xs shrink-0" title="All cards completed">
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2.5 6.5L4.5 8.5L9.5 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                      </span>
+                    )}
+                    <h2 className="text-base font-medium text-zinc-200 group-hover:text-zinc-100 transition-colors">
+                      {board.name}
+                    </h2>
+                  </div>
                   <span className="text-zinc-600 text-lg">›</span>
                 </div>
                 <div className="flex items-center gap-4 text-xs text-zinc-500">
                   <span>{board.columnCount ?? 0} columns</span>
-                  <span>{board.cardCount ?? 0} cards</span>
+                  <span>{totalCards} cards</span>
+                  {totalCards > 0 && (
+                    <span className={allDone ? 'text-green-500' : ''}>{completedCards}/{totalCards} done</span>
+                  )}
                 </div>
                 <div className="text-xs text-zinc-600">Created {createdDate}</div>
               </Link>
