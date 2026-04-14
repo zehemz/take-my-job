@@ -40,6 +40,10 @@ export default function TopNav({ boardId, showAttentionBreadcrumb }: Props) {
             <span className="text-base font-medium text-zinc-400">Attention</span>
           </>
         )}
+        <span className="text-zinc-700 mx-2 shrink-0">|</span>
+        <Link href="/agents" className="text-zinc-400 hover:text-zinc-100 transition-colors text-sm shrink-0">
+          Agents
+        </Link>
       </div>
 
       {/* Right: bell + avatar + overflow */}

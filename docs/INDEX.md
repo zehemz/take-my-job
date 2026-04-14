@@ -21,6 +21,7 @@
 | [E2E Testing](./features/e2e-testing/SCENARIOS.md) | 🟠 In Progress | — | — | ✓ | — |
 | [Approval Workflow](./features/approval-workflow/) | 🔵 In Design | ✓ | ✓ | — | — |
 | [Approval Confirmation Step](./features/approval-workflow/APPROVAL_CONFIRMATION_PRD.md) | 🟡 Planned | ✓ | — | — | — |
+| [Agent Management](./features/agent-management/) | 🟠 In Progress | ✓ | — | ✓ | — |
 
 **Status legend:** ✅ Shipped · 🔵 In Design · 🟠 In Progress · 🟡 Planned · ⛔ Blocked
 

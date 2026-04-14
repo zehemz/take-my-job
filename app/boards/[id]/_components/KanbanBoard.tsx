@@ -148,10 +148,13 @@ export default function KanbanBoard({ boardId }: Props) {
       const sourceColumn = columns.find((col) => col.id === activeCardItem.columnId);
       const allowedTargets = sourceColumn ? (VALID_TRANSITIONS[sourceColumn.type] ?? []) : [];
       if (targetColumn && !allowedTargets.includes(targetColumn.type)) {
-        // Invalid transition — revert
-        if (savedCardState) {
-          moveCard(savedCardState.id, savedCardState.columnId, savedCardState.position);
-        }
+        if (savedState) moveCard(savedState.id, savedState.columnId, savedState.position);
+        setDragError(`Cannot move from ${sourceColumn?.type ?? '?'} to ${targetColumn.type}.`);
+        return;
+      }
+      if (sourceColumn?.type === 'active' && targetColumn?.type === 'review' && activeCardItem.agentStatus !== 'completed') {
+        if (savedState) moveCard(savedState.id, savedState.columnId, savedState.position);
+        setDragError('Card can only move to review after the agent completes with all criteria passing.');
         return;
       }
       moveCard(activeId, overCard.columnId, overCard.position);

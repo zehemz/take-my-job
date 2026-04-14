@@ -138,3 +138,14 @@ export interface ApiError {
   error: string;
   details?: unknown;
 }
+
+export interface AgentConfigItem {
+  id: string;
+  role: string;
+  anthropicAgentId: string;
+  anthropicAgentVersion: string;
+  anthropicEnvironmentId: string;
+  createdAt: string; // ISO-8601
+}
+
+export type AgentConfigListResponse = AgentConfigItem[];

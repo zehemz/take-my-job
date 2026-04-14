@@ -1,4 +1,4 @@
-import { AgentRunStatus } from '@prisma/client';
+import { AgentRunStatus, AgentConfig } from '@prisma/client';
 import type { AgentStatus, AgentRole, ColumnType } from './kanban-types';
 import type {
   ApiAgentRun,
@@ -6,6 +6,7 @@ import type {
   ApiColumn,
   ApiBoardSummary,
   ApiAcceptanceCriterion,
+  AgentConfigItem,
 } from './api-types';
 
 // ─── Status mapping ───────────────────────────────────────────────────────────
@@ -200,5 +201,18 @@ export function mapCard(
     createdAt: card.createdAt.toISOString(),
     updatedAt: card.updatedAt.toISOString(),
     maxAttempts: MAX_ATTEMPTS,
+  };
+}
+
+// ─── AgentConfig mapping ──────────────────────────────────────────────────────
+
+export function mapAgentConfig(row: AgentConfig): AgentConfigItem {
+  return {
+    id: row.id,
+    role: row.role,
+    anthropicAgentId: row.anthropicAgentId,
+    anthropicAgentVersion: row.anthropicAgentVersion,
+    anthropicEnvironmentId: row.anthropicEnvironmentId,
+    createdAt: row.createdAt.toISOString(),
   };
 }

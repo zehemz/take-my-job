@@ -102,6 +102,18 @@ IDs are stable — never reuse a retired ID.
 
 ---
 
+## Agent management (`e2e/agents.spec.ts`)
+
+| ID | Scenario | Status |
+|----|----------|--------|
+| E2E-AGENT-001 | Authenticated visit to `/agents` renders page heading "Agents" | 🟡 Planned |
+| E2E-AGENT-002 | `/agents` lists one row per `AgentConfig` returned by `GET /api/agents` | 🟡 Planned |
+| E2E-AGENT-003 | `/agents` shows empty-state message when no agents are configured | 🟡 Planned |
+| E2E-AGENT-004 | `GET /api/agents` without session → `{"error":"Unauthorized"}` 401 | 🟡 Planned |
+| E2E-AGENT-005 | Each agent row displays: role, agent ID, version, environment ID, created date | 🟡 Planned |
+
+---
+
 ## Error states
 
 | ID | Scenario | Status |

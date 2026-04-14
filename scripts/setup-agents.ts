@@ -122,7 +122,7 @@ async function setupAgent(
     ],
   });
 
-  const agentVersion = agent.version ?? "1";
+  const agentVersion = String(agent.version ?? "1");
 
   await prisma.agentConfig.create({
     data: {
