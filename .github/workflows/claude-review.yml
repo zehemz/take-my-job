@@ -1,0 +1,43 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review]
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    # Skip draft PRs for automatic reviews; still respond to @claude mentions
+    if: |
+      (github.event_name == 'pull_request' && github.event.pull_request.draft == false) ||
+      github.event_name == 'issue_comment' ||
+      github.event_name == 'pull_request_review_comment'
+
+    steps:
+      - uses: anthropics/claude-code-action@v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Automatic review prompt — only used on PR open/push, not @claude mentions
+          direct_prompt: |
+            Review this pull request.
+
+            Focus on:
+            - Correctness and logic errors
+            - Security issues (auth, injection, data exposure)
+            - Code quality and adherence to patterns in CLAUDE.md
+            - Missing loading states on mutation buttons (required by project conventions)
+            - Missing E2E scenario coverage for new features
+
+            Post findings as inline review comments on the relevant lines.
+            Use severity labels: 🔴 Important (bugs/security), 🟡 Nit (style/minor), ℹ️ Info (suggestions).
+            Skip generated files and migration files.
+          claude_args: "--max-turns 5 --model claude-sonnet-4-6"
