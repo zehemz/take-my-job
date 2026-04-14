@@ -2,11 +2,17 @@ import { NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { prisma } from '@/lib/db'
 import { devAuth as auth } from '@/lib/dev-auth'
-import type { SessionRow, SessionStatus } from '@/lib/api-types'
+import type { SessionRow, SessionStatus, PaginatedResponse } from '@/lib/api-types'
 
-export async function GET() {
+const DEFAULT_LIMIT = 20
+
+export async function GET(req: Request) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const url = new URL(req.url)
+  const limit = Math.min(Number(url.searchParams.get('limit')) || DEFAULT_LIMIT, 100)
+  const page = url.searchParams.get('page') || undefined
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const beta = (new Anthropic()).beta as any
@@ -20,13 +26,16 @@ export async function GET() {
     agentRuns.map((run) => [run.sessionId as string, run]),
   )
 
-  const sessions: SessionRow[] = []
   try {
-    for await (const s of beta.sessions.list()) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const raw = s as any
+    const result = await beta.sessions.list({ limit, ...(page ? { page } : {}) })
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data = (result.data ?? []) as any[]
+    const nextPage: string | null = result.next_page ?? null
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const items: SessionRow[] = data.map((raw: any) => {
       const run = runBySessionId.get(raw.id)
-      sessions.push({
+      return {
         id: raw.id,
         title: raw.title ?? null,
         status: raw.status as SessionStatus,
@@ -39,8 +48,11 @@ export async function GET() {
         boardId: run?.card?.boardId ?? null,
         agentRole: run?.role ?? null,
         agentRunStatus: run?.status ?? null,
-      })
-    }
+      }
+    })
+
+    const response: PaginatedResponse<SessionRow> = { items, nextPage }
+    return NextResponse.json(response)
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Unknown error'
     return NextResponse.json(
@@ -48,8 +60,4 @@ export async function GET() {
       { status: 502 },
     )
   }
-
-  sessions.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-
-  return NextResponse.json(sessions)
 }

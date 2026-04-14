@@ -262,6 +262,7 @@ export interface EnvironmentRow {
 }
 export type EnvironmentListResponse = EnvironmentRow[]
 
+
 // ─── Paginated response wrapper ──────────────────────────────────────────────
 
 export interface PaginatedResponse<T> {
