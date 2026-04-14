@@ -53,7 +53,8 @@ interface KobaniState {
   // Async API actions
   fetchBoard: (boardId: string) => Promise<void>;
   fetchBoards: () => Promise<void>;
-  createBoardApi: (name: string, workspacePath?: string, environmentId?: string) => Promise<string | null>; // returns new board id
+  createBoardApi: (name: string, workspacePath?: string, environmentId?: string, autoMode?: boolean) => Promise<string | null>; // returns new board id
+  toggleAutoMode: (boardId: string, autoMode: boolean) => Promise<boolean>;
   deleteBoardApi: (id: string) => Promise<boolean>;
   moveCardApi: (cardId: string, columnId: string, position?: number) => Promise<boolean>;
   createCardApi: (boardId: string, payload: {
@@ -65,6 +66,7 @@ interface KobaniState {
     githubRepo?: string;
     githubBranch?: string;
     requiresApproval?: boolean;
+    dependsOn?: string[];
   }) => Promise<unknown>;
 }
 
@@ -87,7 +89,7 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
     set((state) => ({
       boards: [
         ...state.boards,
-        { id: `board-${generateId()}`, name, createdAt: new Date().toISOString(), githubRepo: null, workspacePath: null },
+        { id: `board-${generateId()}`, name, createdAt: new Date().toISOString(), githubRepo: null, workspacePath: null, autoMode: false },
       ],
     })),
 
@@ -331,6 +333,7 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
         createdAt: data.board.createdAt,
         githubRepo: data.board.githubRepo ?? null,
         workspacePath: data.board.workspacePath ?? null,
+        autoMode: data.board.autoMode ?? false,
       }],
       columns: [...state.columns.filter(c => c.boardId !== boardId), ...data.columns.map((col: any) => ({
         id: col.id,
@@ -376,6 +379,7 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
         movedToColumnAt: card.movedToColumnAt ?? card.createdAt,
         maxAttempts: card.maxAttempts ?? 5,
         canInteract: card.canInteract ?? true,
+        dependsOn: card.dependsOn ?? [],
       }))],
     }));
   },
@@ -387,7 +391,7 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
     set({ boards: data });
   },
 
-  createBoardApi: async (name: string, workspacePath?: string, environmentId?: string) => {
+  createBoardApi: async (name: string, workspacePath?: string, environmentId?: string, autoMode?: boolean) => {
     const res = await fetch('/api/boards', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -396,6 +400,7 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
         name,
         ...(workspacePath ? { workspacePath } : {}),
         ...(environmentId ? { environmentId } : {}),
+        ...(autoMode !== undefined ? { autoMode } : {}),
       }),
     });
     if (!res.ok) {
@@ -405,6 +410,21 @@ export const useKobaniStore = create<KobaniState>()((set, get) => ({
     const board = await res.json();
     set((state) => ({ boards: [board, ...state.boards] }));
     return board.id;
+  },
+
+  toggleAutoMode: async (boardId: string, autoMode: boolean) => {
+    const res = await fetch(`/api/boards/${boardId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ autoMode }),
+    });
+    if (!res.ok) return false;
+    const updated = await res.json();
+    set((state) => ({
+      boards: state.boards.map((b) => (b.id === boardId ? { ...b, autoMode: updated.autoMode } : b)),
+    }));
+    return true;
   },
 
   deleteBoardApi: async (id: string) => {

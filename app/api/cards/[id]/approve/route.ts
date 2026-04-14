@@ -3,6 +3,7 @@ import { prisma } from '@/lib/db';
 import { mapAgentRun, mapCard, deriveCardAgentStatus } from '@/lib/api-mappers';
 import { devAuth as auth } from '@/lib/dev-auth';
 import { guardCardAccess } from '@/lib/rbac';
+import { promoteUnlockedCards } from '@/lib/auto-promote';
 
 export async function POST(
   _req: Request,
@@ -60,8 +61,14 @@ export async function POST(
     include: {
       agentRuns: { orderBy: { createdAt: 'asc' } },
       column: { select: { columnType: true } },
+      dependsOn: { select: { id: true } },
     },
   });
+
+  // Approval moves card to terminal — auto-promote dependent cards
+  promoteUnlockedCards(card.boardId).catch((err) =>
+    console.error('[auto-promote] error after approval:', err)
+  );
 
   const mappedRuns = updatedCard.agentRuns.map(mapAgentRun);
   const agentStatus = deriveCardAgentStatus(updatedCard.agentRuns);

@@ -4,6 +4,7 @@ import { mapCard } from '@/lib/api-mappers';
 import type { CreateCardRequest } from '@/lib/api-types';
 import { devAuth as auth } from '@/lib/dev-auth';
 import { checkCardAccess, resolveCardEnvironment } from '@/lib/rbac';
+import { promoteUnlockedCards } from '@/lib/auto-promote';
 
 export async function POST(
   req: Request,
@@ -13,7 +14,7 @@ export async function POST(
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const body: CreateCardRequest = await req.json();
-  const { title, columnId, description, acceptanceCriteria, role, githubRepo, githubBranch, requiresApproval } = body;
+  const { title, columnId, description, acceptanceCriteria, role, githubRepo, githubBranch, requiresApproval, dependsOn } = body;
 
   if (!title || !columnId) {
     return NextResponse.json({ error: 'title and columnId are required' }, { status: 400 });
@@ -39,6 +40,22 @@ export async function POST(
       return NextResponse.json(
         { error: 'Forbidden: no access to this agent role/environment' },
         { status: 403 },
+      );
+    }
+  }
+
+  // Validate dependsOn card IDs exist on the same board
+  if (dependsOn && dependsOn.length > 0) {
+    const depCards = await prisma.card.findMany({
+      where: { id: { in: dependsOn }, boardId: params.id },
+      select: { id: true },
+    });
+    const foundIds = new Set(depCards.map((c) => c.id));
+    const missing = dependsOn.filter((id) => !foundIds.has(id));
+    if (missing.length > 0) {
+      return NextResponse.json(
+        { error: `dependsOn cards not found on this board: ${missing.join(', ')}` },
+        { status: 400 },
       );
     }
   }
@@ -73,12 +90,22 @@ export async function POST(
       githubRepoUrl: repoUrl,
       githubBranch: branch,
       requiresApproval: requiresApproval ?? false,
+      ...(dependsOn && dependsOn.length > 0
+        ? { dependsOn: { connect: dependsOn.map((id) => ({ id })) } }
+        : {}),
     },
     include: {
       agentRuns: true,
       column: { select: { columnType: true } },
+      dependsOn: { select: { id: true } },
     },
   });
+
+  // After creating all cards, auto-promote any that are unlocked (no deps or all deps done)
+  const board = await prisma.board.findUnique({ where: { id: params.id }, select: { autoMode: true } });
+  if (board?.autoMode) {
+    await promoteUnlockedCards(params.id);
+  }
 
   return NextResponse.json(mapCard(card, [], 'idle', card.column.columnType), { status: 201 });
 }

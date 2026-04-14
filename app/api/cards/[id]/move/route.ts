@@ -10,6 +10,7 @@ import { orchestrator } from '@/lib/orchestrator-instance';
 import { run as runAgent } from '@/lib/agent-runner';
 import { dbQueries } from '@/lib/db-queries';
 import { anthropicClient } from '@/lib/anthropic-client';
+import { promoteUnlockedCards } from '@/lib/auto-promote';
 
 export async function POST(
   req: Request,
@@ -95,6 +96,7 @@ export async function POST(
     include: {
       agentRuns: { orderBy: { createdAt: 'asc' } },
       column: { select: { columnType: true } },
+      dependsOn: { select: { id: true } },
     },
   });
 
@@ -116,6 +118,13 @@ export async function POST(
         );
       }
     }
+  }
+
+  // If card moved to terminal column, auto-promote dependent cards
+  if (targetColumn.isTerminalState) {
+    promoteUnlockedCards(existingCard.boardId).catch((err) =>
+      console.error('[auto-promote] error after manual move:', err)
+    );
   }
 
   const mappedRuns = card.agentRuns.map(mapAgentRun);

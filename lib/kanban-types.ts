@@ -77,6 +77,8 @@ export interface Card {
   maxAttempts?: number;
   /** Whether the current user has RBAC access to interact with this card. Defaults to true when omitted. */
   canInteract?: boolean;
+  /** IDs of cards this card depends on. */
+  dependsOn?: string[];
 }
 
 export interface Column {
@@ -93,6 +95,7 @@ export interface Board {
   createdAt: string;
   githubRepo: string | null;
   workspacePath: string | null;
+  autoMode: boolean;
   columnCount?: number;
   cardCount?: number;
 }
