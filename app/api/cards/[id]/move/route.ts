@@ -25,10 +25,10 @@ export async function POST(
     return NextResponse.json({ error: 'Column not found' }, { status: 404 });
   }
 
-  // Fetch the card's current column to validate the transition
+  // Fetch the card's current column + agent runs to validate the transition
   const existingCard = await prisma.card.findUnique({
     where: { id: params.id },
-    include: { column: true },
+    include: { column: true, agentRuns: { orderBy: { createdAt: 'asc' } } },
   });
   if (!existingCard) {
     return NextResponse.json({ error: 'Card not found' }, { status: 404 });
@@ -42,12 +42,26 @@ export async function POST(
     terminal: [],
   };
 
-  const allowed = VALID_TRANSITIONS[existingCard.column.columnType] ?? [];
-  if (!allowed.includes(targetColumn.columnType)) {
+  const fromType = existingCard.column.columnType;
+  const toType = targetColumn.columnType;
+
+  const allowed = VALID_TRANSITIONS[fromType] ?? [];
+  if (!allowed.includes(toType)) {
     return NextResponse.json(
-      { error: `Invalid column transition: ${existingCard.column.columnType} → ${targetColumn.columnType}` },
+      { error: `Invalid column transition: ${fromType} → ${toType}` },
       { status: 400 },
     );
+  }
+
+  // active → review: agent must have completed with all criteria passing
+  if (fromType === 'active' && toType === 'review') {
+    const agentStatus = deriveCardAgentStatus(existingCard.agentRuns);
+    if (agentStatus !== 'completed') {
+      return NextResponse.json(
+        { error: 'Card can only move to review after the agent completes with all criteria passing.' },
+        { status: 400 },
+      );
+    }
   }
 
   // Compute position if not provided
