@@ -28,8 +28,8 @@
 | [Sessions List](./features/sessions/TECH_SPEC.md) | ✅ Shipped | — | — | ✓ | — |
 | [Attention Queue](./features/attention-queue/TECH_SPEC.md) | ✅ Shipped | — | — | ✓ | — |
 | [Notifications Popup](./features/notifications-popup/) | ✅ Shipped | ✓ | ✓ | ✓ | — |
-| [Agent Edit](./features/agent-edit/) | 🟠 In Progress | — | — | — | — |
-| [Agent Tools & MCP](./features/agent-edit/PRD.md) | 🟠 In Progress | — | — | — | — |
+| [Agent Edit](./features/agent-edit/) | ✅ Shipped | ✓ | — | — | — |
+| [Agent Tools & MCP](./features/agent-edit/PRD.md) | ✅ Shipped | ✓ | — | — | — |
 | [Environment Detail & Edit](./features/environments/TECH_SPEC.md) | 🟠 In Progress | — | — | — | — |
 | [RBAC — Role-Based Access Control](./features/rbac/) | 🔵 In Design | ✓ | ✓ | ✓ | ✓ |
 | [Stateless Orchestrator](./features/stateless-orchestrator/TECH_SPEC.md) | 🟠 In Progress | — | — | ✓ | — |
