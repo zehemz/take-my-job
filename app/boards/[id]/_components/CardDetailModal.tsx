@@ -164,16 +164,28 @@ function PendingApprovalBanner() {
 
 // ─── PendingApprovalActions ───────────────────────────────────────────────────
 
-function PendingApprovalActions({ cardId }: { cardId: string }) {
+function PendingApprovalActions({ cardId, criteria }: { cardId: string; criteria: ApiAcceptanceCriterion[] }) {
   const [revisionNote, setRevisionNote] = useState('');
   const [showRevisionForm, setShowRevisionForm] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [confirmed, setConfirmed] = useState(false);
+  const [approving, setApproving] = useState(false);
+  const [approveError, setApproveError] = useState<string | null>(null);
   const approveCard = useKobaniStore((s) => s.approveCard);
   const requestRevision = useKobaniStore((s) => s.requestRevision);
   const closeCardDetail = useKobaniStore((s) => s.closeCardDetail);
 
-  function handleApprove() {
-    approveCard(cardId);
-    closeCardDetail();
+  async function handleApprove() {
+    if (!confirmed || approving) return;
+    setApproving(true);
+    setApproveError(null);
+    try {
+      await approveCard(cardId);
+      closeCardDetail();
+    } catch {
+      setApproveError('Something went wrong. Please try again.');
+      setApproving(false);
+    }
   }
 
   function handleRequestRevision() {
@@ -181,9 +193,23 @@ function PendingApprovalActions({ cardId }: { cardId: string }) {
       requestRevision(cardId, revisionNote);
       closeCardDetail();
     } else {
+      setShowConfirmation(false);
+      setConfirmed(false);
+      setApproveError(null);
       setShowRevisionForm(true);
     }
   }
+
+  const approveButtonDisabled = showConfirmation && (!confirmed || approving);
+  const approveButtonClasses = approveButtonDisabled
+    ? 'bg-indigo-600 text-white rounded-md px-3 py-1.5 text-sm font-medium opacity-40 pointer-events-none cursor-not-allowed'
+    : approving
+      ? 'bg-indigo-600 text-white rounded-md px-3 py-1.5 text-sm font-medium opacity-60 pointer-events-none cursor-not-allowed'
+      : 'bg-indigo-600 hover:bg-indigo-500 text-white rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-150 cursor-pointer';
+
+  const revisionButtonClasses = approving
+    ? 'border border-red-500 text-red-400 bg-transparent rounded-md px-3 py-1.5 text-sm font-medium opacity-50 pointer-events-none'
+    : 'border border-red-500 text-red-400 hover:bg-red-500 hover:text-white bg-transparent rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-150 cursor-pointer';
 
   return (
     <div className="px-6 py-4 flex flex-col gap-3 shrink-0 border-t border-zinc-800">
@@ -199,18 +225,66 @@ function PendingApprovalActions({ cardId }: { cardId: string }) {
           />
         </div>
       )}
+      {showConfirmation && (
+        <div className="flex flex-col gap-3">
+          <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Approval Review</p>
+          <div className={`bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-3 flex flex-col gap-3${criteria.length >= 7 ? ' max-h-48 overflow-y-auto' : ''}`}>
+            <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider pb-2 border-b border-zinc-800">
+              Acceptance Criteria &amp; Evidence
+            </p>
+            {criteria.map((c) => (
+              <div key={c.id} className="flex flex-col gap-0.5">
+                <div className="flex items-start gap-2">
+                  <span className={`shrink-0 mt-0.5 ${c.passed ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                    {c.passed ? '✅' : '·'}
+                  </span>
+                  <span className="text-sm text-zinc-300">{c.text}</span>
+                </div>
+                {c.evidence ? (
+                  <p className="ml-6 text-xs text-zinc-500 font-mono">{c.evidence}</p>
+                ) : (
+                  <p className="ml-6 text-xs text-zinc-600 italic">No evidence provided.</p>
+                )}
+              </div>
+            ))}
+          </div>
+          <label className="flex items-start gap-2.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={confirmed}
+              onChange={(e) => setConfirmed(e.target.checked)}
+              className="w-4 h-4 rounded border border-zinc-600 bg-zinc-950 accent-indigo-600 cursor-pointer shrink-0 mt-0.5"
+            />
+            <span className="text-sm text-zinc-300 leading-relaxed cursor-pointer select-none">
+              I have reviewed all acceptance criteria and confirm this work meets the requirements.
+            </span>
+          </label>
+          {approveError && (
+            <p className="text-xs text-red-400">{approveError}</p>
+          )}
+        </div>
+      )}
       <div className="flex items-center justify-between">
+        {showConfirmation ? (
+          <span
+            className="text-sm text-zinc-500 hover:text-zinc-300 cursor-pointer transition-colors"
+            onClick={() => { setShowConfirmation(false); setConfirmed(false); setApproveError(null); }}
+          >
+            ← Back
+          </span>
+        ) : (
+          <button
+            onClick={handleRequestRevision}
+            className={revisionButtonClasses}
+          >
+            ✗ Request Revision
+          </button>
+        )}
         <button
-          onClick={handleRequestRevision}
-          className="border border-red-500 text-red-400 hover:bg-red-500 hover:text-white bg-transparent rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-150 cursor-pointer"
+          onClick={showConfirmation ? handleApprove : () => setShowConfirmation(true)}
+          className={approveButtonClasses}
         >
-          ✗ Request Revision
-        </button>
-        <button
-          onClick={handleApprove}
-          className="bg-indigo-600 hover:bg-indigo-500 text-white rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-150 cursor-pointer"
-        >
-          ✓ Approve &amp; Close
+          {approving ? '↻ Approving…' : '✓ Approve & Close'}
         </button>
       </div>
     </div>
@@ -917,7 +991,7 @@ export default function CardDetailModal() {
 
         {/* Pending approval actions */}
         {card.agentStatus === 'pending-approval' && (
-          <PendingApprovalActions cardId={card.id} />
+          <PendingApprovalActions cardId={card.id} criteria={card.acceptanceCriteria} />
         )}
 
         {/* Footer — delete affordance + retry */}
