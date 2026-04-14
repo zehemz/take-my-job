@@ -59,7 +59,7 @@ export default function SessionsPage() {
           <p className="text-sm text-red-400">{error}</p>
         ) : (
           <>
-            <SessionTable items={items} />
+            <SessionTable items={items} onRefresh={() => fetchSessions()} />
             {nextPage && (
               <div className="mt-4 flex justify-center">
                 <button

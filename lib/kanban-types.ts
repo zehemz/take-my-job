@@ -8,7 +8,7 @@ export type ColumnType = 'inactive' | 'active' | 'blocked' | 'review' | 'revisio
  */
 export const VALID_TRANSITIONS: Record<ColumnType, ColumnType[]> = {
   inactive: ['active'],
-  active: ['active', 'blocked', 'review'],
+  active: ['active', 'inactive', 'blocked', 'review'],
   blocked: ['active'],
   review: ['terminal', 'revision'],
   revision: ['active'],
