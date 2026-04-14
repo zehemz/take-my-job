@@ -1,3 +1,4 @@
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import type { EffectivePermissions } from './rbac-types';
 
@@ -112,6 +113,24 @@ export async function guardCardAccess(
 ): Promise<boolean> {
   const environmentId = await resolveCardEnvironment(card.role);
   return checkCardAccess(githubUsername, card.role, environmentId);
+}
+
+/**
+ * RBAC guard that returns a 403 NextResponse if the user lacks access, or null
+ * if access is granted.  Callers use: `const forbidden = await requireCardAccess(...); if (forbidden) return forbidden;`
+ */
+export async function requireCardAccess(
+  username: string | null | undefined,
+  card: { role: string | null },
+): Promise<NextResponse | null> {
+  const hasAccess = await guardCardAccess(username, card);
+  if (!hasAccess) {
+    return NextResponse.json(
+      { error: 'Forbidden: no access to this agent role/environment' },
+      { status: 403 },
+    );
+  }
+  return null;
 }
 
 /**

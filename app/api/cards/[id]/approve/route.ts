@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { mapAgentRun, mapCard, deriveCardAgentStatus } from '@/lib/api-mappers';
+import { toCardResponse } from '@/lib/api-mappers';
 import { devAuth as auth } from '@/lib/dev-auth';
-import { guardCardAccess } from '@/lib/rbac';
+import { requireCardAccess } from '@/lib/rbac';
 import { promoteUnlockedCards } from '@/lib/auto-promote';
 
 export async function POST(
@@ -12,7 +12,7 @@ export async function POST(
   const session = await auth();
   if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  // Fetch card with its column and agent runs
+  // Fetch card with its full column (needed for business logic) and agent runs
   const card = await prisma.card.findUnique({
     where: { id: params.id },
     include: {
@@ -22,14 +22,8 @@ export async function POST(
   });
   if (!card) return NextResponse.json({ error: 'Card not found' }, { status: 404 });
 
-  // RBAC check
-  const hasAccess = await guardCardAccess(session.user.githubUsername, card);
-  if (!hasAccess) {
-    return NextResponse.json(
-      { error: 'Forbidden: no access to this agent role/environment' },
-      { status: 403 },
-    );
-  }
+  const forbidden = await requireCardAccess(session.user.githubUsername, card);
+  if (forbidden) return forbidden;
 
   if (card.column.columnType !== 'review') {
     return NextResponse.json(
@@ -70,7 +64,5 @@ export async function POST(
     console.error('[auto-promote] error after approval:', err)
   );
 
-  const mappedRuns = updatedCard.agentRuns.map(mapAgentRun);
-  const agentStatus = deriveCardAgentStatus(updatedCard.agentRuns);
-  return NextResponse.json(mapCard(updatedCard, mappedRuns, agentStatus, updatedCard.column.columnType));
+  return NextResponse.json(toCardResponse(updatedCard));
 }

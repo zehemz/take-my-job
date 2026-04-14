@@ -271,4 +271,21 @@ export const dbQueries: IDbQueries = {
     });
     return event !== null;
   },
+
 };
+
+/**
+ * Convenience query for API routes: fetches a card with agent runs (asc),
+ * column type, and dependency IDs — the shape every card endpoint needs.
+ * Standalone function (not on IDbQueries) since only API routes use it.
+ */
+export async function getCardForApi(cardId: string) {
+  return prisma.card.findUnique({
+    where: { id: cardId },
+    include: {
+      agentRuns: { orderBy: { createdAt: 'asc' as const } },
+      column: { select: { columnType: true } },
+      dependsOn: { select: { id: true } },
+    },
+  });
+}
