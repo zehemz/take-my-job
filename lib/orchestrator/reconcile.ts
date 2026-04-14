@@ -1,9 +1,9 @@
 import { scheduleRetry } from './retry'
 import type { OrchestratorDeps, SpawnRunner } from './types'
 import { AgentRunStatus } from '../types'
-import { config } from '../config'
 
 const MAX_STALL_MS = parseInt(process.env.MAX_STALL_MS ?? '3600000', 10)
+const MAX_TURNS = parseInt(process.env.MAX_TURNS ?? '10', 10)
 
 const NUDGE_MESSAGE =
   'Please continue working on the task. Remember to call update_card(completed) when done.'
@@ -71,7 +71,7 @@ export async function reconcileRunning(
           const continueSent = await deps.db.countRunEvents(run.id, 'continue_sent')
           if (turnEnded > continueSent) {
             // Unhandled idle — the event loop died before nudging
-            if (turnEnded < config.MAX_TURNS) {
+            if (turnEnded < MAX_TURNS) {
               await deps.anthropic.sendMessage(run.sessionId, {
                 type: 'user.message',
                 content: NUDGE_MESSAGE,
@@ -89,7 +89,7 @@ export async function reconcileRunning(
               }
             } else {
               await deps.db.updateAgentRunStatus(run.id, AgentRunStatus.failed, {
-                error: `Max turns (${config.MAX_TURNS}) reached without completing the task.`,
+                error: `Max turns (${MAX_TURNS}) reached without completing the task.`,
               })
             }
           }
